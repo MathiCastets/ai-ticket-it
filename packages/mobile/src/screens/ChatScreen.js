@@ -1,0 +1,351 @@
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS } from '../theme/colors';
+import { useApp } from '../context/AppContext';
+import Header from '../components/Header';
+import useMockLoading from '../hooks/useMockLoading';
+import LoadingSpinner from '../components/loading/Spinners';
+
+export default function ChatScreen({ route, navigation }) {
+  const { compraId } = route.params;
+  const { compras, enviarMensaje, userRole } = useApp();
+  const isLoading = useMockLoading();
+  const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom > 0 ? insets.bottom : 10;
+
+  const compra = compras.find((c) => c.id === compraId) || compras[0];
+  const [nuevoTexto, setNuevoTexto] = useState('');
+
+  const handleEnviar = () => {
+    if (!nuevoTexto.trim()) return;
+    enviarMensaje(compra.id, nuevoTexto);
+    setNuevoTexto('');
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.screenContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <Header
+        title="Chat de Compra"
+        subtitle={compra.ordenCodigo}
+        showBack
+        onBack={() => navigation.goBack()}
+      />
+
+      {/* Context Banner */}
+      <View style={styles.contextBanner}>
+        <View style={styles.contextLeft}>
+          <View style={styles.orgAvatar}>
+            <Ionicons name="business" size={18} color={COLORS.badgeCyanGlow} />
+          </View>
+          <View>
+            <View style={styles.orgNameRow}>
+              <Text style={styles.orgName}>{compra.organizadorNombre}</Text>
+              <Ionicons name="checkmark-circle" size={13} color={COLORS.statusSuccess} />
+            </View>
+            <Text style={styles.contextSub}>
+              {compra.eventoNombre} ({compra.tipoEntradaNombre} x{compra.cantidad})
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.statusPill}>
+          <Text style={styles.statusPillText}>{compra.estado}</Text>
+        </View>
+      </View>
+
+      {/* Messages Stream */}
+      <ScrollView
+        style={styles.messagesScroll}
+        contentContainerStyle={[
+          styles.messagesContent,
+          isLoading && styles.loadingMessagesContent,
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.dateSeparator}>
+          <View style={styles.dateLine} />
+          <Text style={styles.dateText}>CONSULTAS DE LA ORDEN</Text>
+          <View style={styles.dateLine} />
+        </View>
+
+        {isLoading ? (
+          <View style={styles.messagesLoading}>
+            <LoadingSpinner variant="dots" label="Cargando mensajes..." />
+          </View>
+        ) : compra.mensajes && compra.mensajes.length > 0 ? (
+          compra.mensajes.map((msg) => {
+            const isMe =
+              userRole === 'comprador'
+                ? msg.emisor === 'comprador'
+                : msg.emisor === 'organizador';
+
+            return (
+              <View
+                key={msg.id}
+                style={[
+                  styles.messageBubbleWrapper,
+                  isMe ? styles.myMessageWrapper : styles.otherMessageWrapper,
+                ]}
+              >
+                {!isMe && (
+                  <Text style={styles.senderLabel}>
+                    {msg.emisor === 'organizador' ? 'ORGANIZADOR' : 'COMPRADOR'}
+                  </Text>
+                )}
+
+                <View
+                  style={[
+                    styles.messageBubble,
+                    isMe ? styles.myMessageBubble : styles.otherMessageBubble,
+                  ]}
+                >
+                  <Text style={styles.messageText}>{msg.texto}</Text>
+                </View>
+
+                <View style={styles.messageMeta}>
+                  <Text style={styles.messageTime}>{msg.fechaHora}</Text>
+                  {isMe && (
+                    <Ionicons name="checkmark-done" size={14} color={COLORS.badgeCyanGlow} />
+                  )}
+                </View>
+              </View>
+            );
+          })
+        ) : (
+          <View style={styles.emptyChatBox}>
+            <Ionicons name="chatbubbles-outline" size={40} color={COLORS.textMuted} />
+            <Text style={styles.emptyChatText}>No hay mensajes en este chat.</Text>
+            <Text style={styles.emptyChatSub}>
+              Escribí tu consulta sobre accesos, horarios o dudas del evento.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Chat Input Bar */}
+      <View style={[styles.inputBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
+        <TextInput
+          style={styles.chatInput}
+          placeholder={`Escribe como ${userRole === 'comprador' ? 'comprador' : 'organizador'}...`}
+          placeholderTextColor={COLORS.textMuted}
+          value={nuevoTexto}
+          onChangeText={setNuevoTexto}
+          multiline
+          editable={!isLoading}
+        />
+        <TouchableOpacity
+          style={[styles.sendButton, (isLoading || !nuevoTexto.trim()) && styles.sendButtonDisabled]}
+          onPress={handleEnviar}
+          disabled={isLoading || !nuevoTexto.trim()}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="send" size={16} color={COLORS.textPrimary} />
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  contextBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceCard,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  contextLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  orgAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.surfaceContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orgNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  orgName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  contextSub: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+  statusPill: {
+    backgroundColor: COLORS.surfaceContainerLow,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.badgeCyanGlow,
+  },
+  messagesScroll: {
+    flex: 1,
+  },
+  messagesContent: {
+    padding: 16,
+    paddingBottom: 20,
+  },
+  loadingMessagesContent: {
+    flexGrow: 1,
+  },
+  messagesLoading: {
+    flex: 1,
+    minHeight: 280,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 14,
+    gap: 10,
+  },
+  dateLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.surfaceContainerHigh,
+  },
+  dateText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    letterSpacing: 0.8,
+  },
+  messageBubbleWrapper: {
+    marginBottom: 12,
+    maxWidth: '82%',
+  },
+  myMessageWrapper: {
+    alignSelf: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  otherMessageWrapper: {
+    alignSelf: 'flex-start',
+    alignItems: 'flex-start',
+  },
+  senderLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.tertiary,
+    letterSpacing: 0.5,
+    marginBottom: 3,
+    marginLeft: 4,
+  },
+  messageBubble: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+  },
+  myMessageBubble: {
+    backgroundColor: COLORS.primaryContainer,
+    borderBottomRightRadius: 4,
+  },
+  otherMessageBubble: {
+    backgroundColor: COLORS.surfaceCard,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  messageText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: COLORS.textPrimary,
+  },
+  messageMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+    marginRight: 4,
+  },
+  messageTime: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+  },
+  emptyChatBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 8,
+  },
+  emptyChatText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  emptyChatSub: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    maxWidth: 220,
+  },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 8,
+  },
+  chatInput: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    color: COLORS.textPrimary,
+    fontSize: 13,
+    maxHeight: 80,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.accentElectric,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    opacity: 0.4,
+  },
+});

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#170f25;color:#eaddfc;-webkit-tap-highlight-color:transparent;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "tertiary-fixed-dim": "#20d9f9", "border-translucent": "rgba(123, 44, 191, 0.35)", "surface-container": "#231c32", "surface-variant": "#393148", "on-tertiary-fixed": "#001f26", "text-primary": "#FFFFFF", "text-muted": "#8A7EA6", "on-secondary-fixed": "#2d0050", "on-tertiary-fixed-variant": "#004e5b", "on-background": "#eaddfc", "tertiary-container": "#009fb7", "surface-container-lowest": "#110a1f", "border-glass": "rgba(255, 255, 255, 0.12)", "error-container": "#93000a", "status-danger": "#FF3366", "primary": "#ffb0ce", "on-secondary-fixed-variant": "#680eac", "surface-container-high": "#2e263d", "on-error": "#690005", "inverse-on-surface": "#342d43", "primary-fixed": "#ffd9e5", "accent-electric": "#FF007F", "secondary-fixed": "#f1dbff", "on-primary-fixed-variant": "#8c0053", "on-tertiary-container": "#002f37", "on-primary-container": "#570032", "surface-card-subtle": "#22134D", "primary-fixed-dim": "#ffb0ce", "outline": "#a88893", "error": "#ffb4ab", "secondary-container": "#6b13af", "accent-violet-deep": "#3B1E6D", "on-error-container": "#ffdad6", "on-surface": "#eaddfc", "text-secondary": "#C8BEE8", "on-secondary": "#4a007f", "tertiary-fixed": "#a9edff", "primary-container": "#ff44a4", "tertiary": "#20d9f9", "surface-base": "#0F081D", "on-secondary-container": "#d4a5ff", "secondary": "#deb7ff", "inverse-surface": "#eaddfc", "surface-dim": "#170f25", "surface-bright": "#3d354d", "surface-card": "#180D36", "on-tertiary": "#00363f", "surface-container-highest": "#393148", "status-success": "#00F5A0", "on-primary-fixed": "#3e0022", "inverse-primary": "#b7006f", "surface-container-low": "#1f182d", "status-warning": "#FFB703", "on-primary": "#64003a", "badge-cyan-glow": "#00D2F2", "outline-variant": "#594049", "on-surface-variant": "#e0bdc8", "background": "#170f25", "secondary-fixed-dim": "#deb7ff", "surface": "#170f25", "surface-tint": "#ffb0ce" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter": "1rem", "space-md": "1rem", "space-xs": "0.25rem", "space-xl": "2rem", "space-sm": "0.5rem", "margin": "1.25rem", "space-lg": "1.5rem" }, "fontFamily": { "label-sm": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "display-sm": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "display-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"] }, "fontSize": { "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.04em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "display-sm": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "700" }], "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "display-lg": ["34px", { "lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "800" }], "headline-sm": ["16px", { "lineHeight": "22px", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface min-h-screen flex flex-col antialiased selection:bg-accent-electric selection:text-text-primary"><header class="fixed top-0 inset-x-0 z-50 bg-surface-base/80 backdrop-blur-xl pt-safe shadow-[0_4px_20px_rgba(15,8,29,0.5)]"><div class="h-16 px-space-md flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Volver o Cerrar" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container active:scale-95 transition-all" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back_ios_new</span></button><img alt="AI Ticket It Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1URdCOsW8WH0XwPLSDaQGd_nPWuAKnLOC-lBWmWj16zb_aDmcR-N7Gg_a-ZfHxHfOluydlYRt3Rn6lhUgWMc97_GtdS3EAE-wzjfO0tzEVWHY2NB_aNWJKDV99qf853vGA9IBjl2Ye58u0UAxkTBoAooyt8hRhrM45wTDPBQ5xPr61drSFe8NB-28H3yD-vMBFGNkbHzzZOSJ31jghUuH5EkplnvfCXV692nXBguemjDdD3a3cL0ioYBw"/><h1 class="font-headline-md text-headline-md text-text-primary tracking-tight truncate max-w-[200px]">Escáner Qr De Acreditación (Organizador)</h1></div><div class="flex items-center gap-space-xs"><button aria-label="Cerrar o Ayuda" class="w-11 h-11 flex items-center justify-center rounded-full text-text-secondary hover:text-accent-electric hover:bg-surface-container transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">close</span></button><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-border-glass" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvNYPg7wvAp6u2obdHryhC2kWmoaenv-eLV9_YEvljlzRC0uZMZEon1lcZWqm-tXC9z-Zp8LZfYrIC9rL_j54QNeMH0o_cXjLbttBtYEiEP51eYov6cbhrXV6NHchRKOGiS3_gXjBTMc7Fusx9IRfRxShLhQZa6WmQ5fg9Y7LPlxUm4DmJJ2cxhEMVkwjQXJGELIvgh1YhPh5HW5CAVk8txzWzJktqJEYhDe-EsmUX4SSjVRQc-6hd"/></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-safe bg-surface"><div class="flex flex-col w-full px-margin pb-space-xl space-y-space-md select-none">
+<!-- Live Venue Header & Operational Context -->
+<div class="bg-surface-card rounded-xl p-space-md shadow-xl relative overflow-hidden mt-space-sm">
+<div class="flex items-center justify-between gap-space-sm mb-space-xs">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-success opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-success"></span>
+</span>
+<span class="font-label-sm text-label-sm text-status-success uppercase tracking-wider truncate">Punto de Acceso En Vivo</span>
+</div>
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container text-tertiary font-label-sm text-label-sm active:scale-95 transition-transform" id="btn-sound" onclick="toggleHaptics()">
+<span class="material-symbols-outlined text-[15px]" id="sound-icon" style="font-variation-settings: 'FILL' 1;">volume_up</span>
+<span id="sound-label">Háptico ON</span>
+</button>
+</div>
+<div class="min-w-0">
+<h2 class="font-headline-md text-headline-md text-text-primary tracking-tight truncate">Festival de Música UTN 2026</h2>
+<p class="font-body-sm text-body-sm text-text-secondary flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[15px] text-primary">sensor_door</span>
+        Puerta 1: Acceso Campo &amp; Platea
+      </p>
+</div>
+<!-- Real-time Flow Metrics -->
+<div class="grid grid-cols-2 gap-space-sm mt-space-md pt-space-xs">
+<div class="bg-surface-card-subtle rounded-lg p-2.5 flex flex-col justify-center">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-text-muted">Acreditados</span>
+<span class="font-label-sm text-label-sm text-badge-cyan-glow">81%</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md text-text-primary font-bold">230</span>
+<span class="font-body-sm text-body-sm text-text-muted">/ 284</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-1.5">
+<div class="bg-badge-cyan-glow h-full rounded-full transition-all duration-500" style="width: 81%;"></div>
+</div>
+</div>
+<div class="bg-surface-card-subtle rounded-lg p-2.5 flex flex-col justify-center">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-text-muted">En espera</span>
+<span class="material-symbols-outlined text-[14px] text-status-warning">hourglass_top</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md text-status-warning font-bold">54</span>
+<span class="font-body-sm text-body-sm text-text-muted">pendientes</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-1.5">
+<div class="bg-status-warning h-full rounded-full" style="width: 19%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- QR Laser Viewfinder Simulation -->
+<div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-surface-container-lowest shadow-2xl flex items-center justify-center">
+<!-- Camera Feed Mock Atmosphere with Visual Depth -->
+<div class="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-screen scale-105" data-alt="Concert entrance turnstile crowd waiting at night with neon magenta and cyan stage lighting in background blur, authentic smartphone camera preview view" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuApQd1C1Ff-vaQaL0us_zVwPfgjhsYRcZH18zxbWAz8cHeEpQ5I6349MWxhEOUnIU3qAnXIItAuTiluRvdzHQFKmH3hca-zmQ-ieMfgOHVq85tdwHnH8q-cs2XZAD41dJrRW5Z7S4d1XGklWUJ_qoHul5_xA19zVTn-tIaXiqtY6gNwuyhbMv_DKr7G6cKIt2lJlG1SAYDHDfSdgkPF6I2IRCyN6BnFK5LFnqmTsEY')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-base/90 via-transparent to-surface-base/70 pointer-events-none"></div>
+<!-- Top floating scanner micro-hud -->
+<div class="absolute top-3 inset-x-3 flex items-center justify-between z-10 pointer-events-none">
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-base/80 backdrop-blur-md">
+<span class="w-2 h-2 rounded-full bg-status-danger animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-text-primary tracking-wider">CÁMARA TRASERA (HD)</span>
+</div>
+<div class="px-2 py-0.5 rounded bg-surface-base/80 backdrop-blur-md font-label-sm text-label-sm text-tertiary">
+        AUTO-FOCUS
+      </div>
+</div>
+<!-- Central Target Box with Cyan Glowing Corners -->
+<div class="relative w-48 h-48 flex items-center justify-center">
+<!-- Reticle corner highlights -->
+<div class="absolute -top-1 -left-1 w-6 h-6 border-t-[3px] border-l-[3px] border-badge-cyan-glow rounded-tl-sm shadow-[0_0_12px_#00D2F2]"></div>
+<div class="absolute -top-1 -right-1 w-6 h-6 border-t-[3px] border-r-[3px] border-badge-cyan-glow rounded-tr-sm shadow-[0_0_12px_#00D2F2]"></div>
+<div class="absolute -bottom-1 -left-1 w-6 h-6 border-b-[3px] border-l-[3px] border-badge-cyan-glow rounded-bl-sm shadow-[0_0_12px_#00D2F2]"></div>
+<div class="absolute -bottom-1 -right-1 w-6 h-6 border-b-[3px] border-r-[3px] border-badge-cyan-glow rounded-br-sm shadow-[0_0_12px_#00D2F2]"></div>
+<!-- Laser Scan Beam -->
+<div class="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-accent-electric to-transparent shadow-[0_0_16px_#FF007F] animate-[bounce_2s_infinite]"></div>
+<!-- Subtle Guide Graphic -->
+<span class="material-symbols-outlined text-border-glass text-[72px] opacity-40 select-none">qr_code_scanner</span>
+</div>
+<!-- Bottom Action Controls Over Viewfinder -->
+<div class="absolute bottom-3 inset-x-3 flex items-center justify-between z-10">
+<button class="w-11 h-11 rounded-full bg-surface-card-subtle/85 backdrop-blur-md text-text-primary flex items-center justify-center active:scale-90 transition-transform shadow-lg" id="torch-btn" onclick="toggleFlash()">
+<span class="material-symbols-outlined text-[20px]" id="torch-icon">flashlight_on</span>
+</button>
+<button class="px-4 py-2 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md flex items-center gap-1.5 shadow-[0_0_16px_rgba(255,68,164,0.45)] active:scale-95 transition-transform" onclick="triggerSimulatedScan()">
+<span class="material-symbols-outlined text-[18px]">document_scanner</span>
+        Escanear QR
+      </button>
+<button class="w-11 h-11 rounded-full bg-surface-card-subtle/85 backdrop-blur-md text-text-primary flex items-center justify-center active:scale-90 transition-transform shadow-lg" id="cam-switch-btn" onclick="flipCamera()">
+<span class="material-symbols-outlined text-[20px]">flip_camera_ios</span>
+</button>
+</div>
+</div>
+<!-- Manual Entry Secondary Quick Action -->
+<button class="w-full h-11 rounded-lg bg-surface-card text-text-primary flex items-center justify-center gap-2 font-label-md text-label-md active:bg-surface-card-subtle transition-colors" onclick="openManualDialog()">
+<span class="material-symbols-outlined text-primary text-[20px]">keyboard</span>
+    Ingreso manual por DNI / Código de Ticket
+  </button>
+<!-- Immediate Feedback Validation Card (Last Scanned) -->
+<div class="bg-surface-card rounded-xl p-space-md shadow-xl overflow-hidden transition-all duration-300" id="validation-card">
+<!-- Emerald Status Banner -->
+<div class="bg-status-success/20 rounded-lg p-3 flex items-center justify-between mb-space-md">
+<div class="flex items-center gap-2 min-w-0">
+<div class="w-7 h-7 rounded-full bg-status-success text-surface-base flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[18px] font-bold">check</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-lg text-label-lg text-status-success leading-tight uppercase font-extrabold truncate">¡Acceso Autorizado!</p>
+<span class="font-label-sm text-label-sm text-status-success tracking-wide">ENTRADA VÁLIDA</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-status-success text-surface-base font-label-sm text-label-sm font-bold flex-shrink-0">MOLINETE 1</span>
+</div>
+<!-- Scanned Attendee Metadata Grid -->
+<div class="flex items-start gap-space-sm mb-space-md">
+<div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-surface-card-subtle">
+<img class="w-full h-full object-cover" data-alt="Close up profile picture of a young festival attendee woman smiling, festival glitter, vibrant nocturnal neon lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDA0qUvF4LodzfbzpqfgNGhgpL4Tsew1yR0ZatcwHr4Yiiab-cKYVGJabr4XbESAI3-g_-WnZNGQfrW5KaPUTQ2iouFnBpm5p4ysPC0DRk0AGMs0cDMLkWaUoSS7q55s1j6kmyTwt7-Frszcy-8_ly13XFYcINqhl_dGw0NXVb9G13QNIjni4etdOa7Lc_Kid8msv62FeCyz4bpHphmbGcfwDh3J9na-qni_NPVZ_U"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-1">
+<h3 class="font-headline-sm text-headline-sm text-text-primary truncate font-bold" id="attendee-name">Bárbara Gómez</h3>
+<span class="font-label-sm text-label-sm text-badge-cyan-glow">DNI 38.920.114</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary truncate mt-0.5">2x Entrada General (Campo)</p>
+<p class="font-label-sm text-label-sm text-text-muted mt-0.5">Orden: #TK-84920</p>
+</div>
+</div>
+<!-- System Audit Confirmation Pill -->
+<div class="bg-surface-container rounded-lg p-2.5 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-status-success text-[18px]">verified</span>
+<span class="font-label-sm text-label-sm text-text-muted">Estado en sistema:</span>
+<span class="font-label-sm text-label-sm text-status-success font-extrabold px-1.5 py-0.5 rounded bg-status-success/10">UTILIZADA</span>
+</div>
+<span class="font-label-sm text-label-sm text-text-secondary" id="scan-timestamp">18:42:10 hs</span>
+</div>
+</div>
+<!-- Recent Scans Audit Log -->
+<div class="bg-surface-card rounded-xl p-space-md shadow-lg space-y-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-text-primary flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-text-secondary">history</span>
+        Historial Reciente
+      </h3>
+<span class="font-label-sm text-label-sm text-text-muted">Últimas 3 lecturas</span>
+</div>
+<div class="space-y-2 mt-2" id="recent-scans-list">
+<!-- Entry 1 (Success) -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-card-subtle">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Headshot of a male music festival guest with sunglasses at dusk, purple ambience" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDH6J1V_4jX_JOJDlP7iWbac-9ykpJyB6PnePL9Jh7jf5PFYeQA94zCWgcvSDGIqsK5NgJUrvg5ZGPTWDJNk3sdiLmXhSo1IEBWwHRny1_0sUQHXUppQRSKKKpkctTwLHl1so4AU39GEJnVJlR8Ct0k8CQmtjXJ7aUQ-RFldkOmhn3_g7Ov1f9ZAlY7BCs-mwk0VTsaelTaI7VQQpbP1xJ8Mt-KFY9wpLISn5Awhuw"/>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-text-primary truncate">Lucas Benítez</p>
+<span class="font-body-sm text-body-sm text-text-muted">18:41:45 hs · Campo</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-status-success/15 text-status-success font-label-sm text-label-sm font-bold flex-shrink-0">
+          Válido
+        </span>
+</div>
+<!-- Entry 2 (Failure / Warning) -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-card-subtle">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-surface-container flex items-center justify-center text-status-danger bg-status-danger/10">
+<span class="material-symbols-outlined text-[18px]">person_cancel</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-text-primary truncate">Ignacio Ramos</p>
+<span class="font-body-sm text-body-sm text-text-muted">18:40:22 hs · #TK-11843</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-status-danger/20 text-status-danger font-label-sm text-label-sm font-bold flex-shrink-0">
+          Ya Utilizada
+        </span>
+</div>
+<!-- Entry 3 (Success) -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-card-subtle">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Headshot of a young adult festival guest smiling warmly in ambient dark purple lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnqhjVgFeu3ed3Oo8iTzJ0iDNLPlztPuZATTCCLDMMFZxV846N7TZJHZefE91hTj-EYbkLuEvW3de_HUNpEwu0u6xKuTROow7JQG6rCfqk4sTsHE2zrUBUjXCEQosHNc8AphrBvndonFXqQD2LhwSFRs85eLw0Q0qXYax3-KOdhRh03j8wNIc9UJcZdsEgtTzcFSl8d14H-Hu8PSX4drmGfe05hUqJklgQLgibdxM"/>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-text-primary truncate">Martina Varela</p>
+<span class="font-body-sm text-body-sm text-text-muted">18:38:59 hs · Platea Alta</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-status-success/15 text-status-success font-label-sm text-label-sm font-bold flex-shrink-0">
+          Válido
+        </span>
+</div>
+</div>
+</div>
+<!-- Manual Entry Bottom Sheet / Modal (Initially Hidden) -->
+<div class="fixed inset-0 z-50 bg-surface-base/80 backdrop-blur-md items-end justify-center hidden" id="manual-modal">
+<div class="w-full max-w-lg bg-surface-card rounded-t-2xl p-space-md space-y-space-md shadow-2xl">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[22px]">pin</span>
+<h3 class="font-headline-sm text-headline-sm text-text-primary">Validación Manual</h3>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-text-secondary" onclick="closeManualDialog()">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-text-muted">DNI O CÓDIGO ALFANUMÉRICO DE TICKET</label>
+<div class="flex items-center bg-surface-card-subtle rounded-lg px-3 py-2">
+<span class="material-symbols-outlined text-text-muted mr-2">search</span>
+<input class="w-full bg-transparent text-text-primary placeholder:text-text-muted outline-none font-body-md text-body-md uppercase" id="manual-input" placeholder="Ej: 38920114 ó TK-84920" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-sm pt-2">
+<button class="h-12 rounded-full bg-surface-container text-text-primary font-label-md text-label-md" onclick="closeManualDialog()">
+          Cancelar
+        </button>
+<button class="h-12 rounded-full bg-accent-electric text-text-primary font-label-md text-label-md font-bold shadow-[0_0_16px_rgba(255,0,127,0.4)]" onclick="processManualEntry()">
+          Validar Acceso
+        </button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  let flashActive = false;
+  let hapticsActive = true;
+  let cameraFacingBack = true;
+
+  function toggleFlash() {
+    flashActive = !flashActive;
+    const btn = document.getElementById('torch-btn');
+    const icon = document.getElementById('torch-icon');
+    if (flashActive) {
+      btn.classList.add('bg-badge-cyan-glow', 'text-surface-base');
+      btn.classList.remove('bg-surface-card-subtle/85', 'text-text-primary');
+      icon.innerText = 'flashlight_on';
+    } else {
+      btn.classList.remove('bg-badge-cyan-glow', 'text-surface-base');
+      btn.classList.add('bg-surface-card-subtle/85', 'text-text-primary');
+      icon.innerText = 'flashlight_off';
+    }
+    if (hapticsActive && navigator.vibrate) navigator.vibrate(35);
+  }
+
+  function toggleHaptics() {
+    hapticsActive = !hapticsActive;
+    const icon = document.getElementById('sound-icon');
+    const label = document.getElementById('sound-label');
+    if (hapticsActive) {
+      icon.innerText = 'volume_up';
+      label.innerText = 'Háptico ON';
+      if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+    } else {
+      icon.innerText = 'volume_off';
+      label.innerText = 'Silenciado';
+    }
+  }
+
+  function flipCamera() {
+    cameraFacingBack = !cameraFacingBack;
+    const btn = document.getElementById('cam-switch-btn');
+    btn.classList.add('rotate-180');
+    setTimeout(() => btn.classList.remove('rotate-180'), 300);
+    if (hapticsActive && navigator.vibrate) navigator.vibrate(25);
+  }
+
+  function openManualDialog() {
+    const modal = document.getElementById('manual-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('manual-input').focus();
+  }
+
+  function closeManualDialog() {
+    const modal = document.getElementById('manual-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  function processManualEntry() {
+    const input = document.getElementById('manual-input');
+    if (input.value.trim().length > 0) {
+      triggerSimulatedScan(input.value.trim().toUpperCase());
+      closeManualDialog();
+      input.value = '';
+    }
+  }
+
+  function triggerSimulatedScan(customName) {
+    if (hapticsActive && navigator.vibrate) {
+      navigator.vibrate([60, 40, 90]);
+    }
+
+    const card = document.getElementById('validation-card');
+    card.classList.add('scale-[1.02]');
+    setTimeout(() => card.classList.remove('scale-[1.02]'), 200);
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')} hs`;
+    document.getElementById('scan-timestamp').innerText = timeStr;
+
+    if (customName) {
+      document.getElementById('attendee-name').innerText = customName;
+    }
+  }
+</script></main></body></html>

@@ -1,22 +1,23 @@
 {
-  "name": "dds-repo-base",
+  "name": "ai-ticket-it",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "start:backend": "npm start --workspace=backend",
     "dev:backend": "npm run dev --workspace=backend",
-    "start:frontend": "npm start --workspace=frontend",
-    "start:dev": "concurrently \"npm run dev:backend\" \"npm run start:frontend\"",
+    "start:mobile": "npm start --workspace=mobile",
+    "dev:mobile": "npm start --workspace=mobile",
+    "start:dev": "concurrently \"npm run dev:backend\" \"npm run start:mobile\"",
     "lint": "eslint .",
     "format": "prettier . --write"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "AI Ticket It - Plataforma de Venta de Entradas para Eventos",
   "devDependencies": {
     "@eslint/js": "^9.31.0",
     "concurrently": "^9.2.0",
