@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#170f25;color:#eaddfc;-webkit-tap-highlight-color:transparent;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "tertiary-fixed-dim": "#20d9f9", "border-translucent": "rgba(123, 44, 191, 0.35)", "surface-container": "#231c32", "surface-variant": "#393148", "on-tertiary-fixed": "#001f26", "text-primary": "#FFFFFF", "text-muted": "#8A7EA6", "on-secondary-fixed": "#2d0050", "on-tertiary-fixed-variant": "#004e5b", "on-background": "#eaddfc", "tertiary-container": "#009fb7", "surface-container-lowest": "#110a1f", "border-glass": "rgba(255, 255, 255, 0.12)", "error-container": "#93000a", "status-danger": "#FF3366", "primary": "#ffb0ce", "on-secondary-fixed-variant": "#680eac", "surface-container-high": "#2e263d", "on-error": "#690005", "inverse-on-surface": "#342d43", "primary-fixed": "#ffd9e5", "accent-electric": "#FF007F", "secondary-fixed": "#f1dbff", "on-primary-fixed-variant": "#8c0053", "on-tertiary-container": "#002f37", "on-primary-container": "#570032", "surface-card-subtle": "#22134D", "primary-fixed-dim": "#ffb0ce", "outline": "#a88893", "error": "#ffb4ab", "secondary-container": "#6b13af", "accent-violet-deep": "#3B1E6D", "on-error-container": "#ffdad6", "on-surface": "#eaddfc", "text-secondary": "#C8BEE8", "on-secondary": "#4a007f", "tertiary-fixed": "#a9edff", "primary-container": "#ff44a4", "tertiary": "#20d9f9", "surface-base": "#0F081D", "on-secondary-container": "#d4a5ff", "secondary": "deb7ff", "inverse-surface": "#eaddfc", "surface-dim": "#170f25", "surface-bright": "#3d354d", "surface-card": "#180D36", "on-tertiary": "#00363f", "surface-container-highest": "#393148", "status-success": "#00F5A0", "on-primary-fixed": "#3e0022", "inverse-primary": "#b7006f", "surface-container-low": "#1f182d", "status-warning": "#FFB703", "on-primary": "#64003a", "badge-cyan-glow": "#00D2F2", "outline-variant": "#594049", "on-surface-variant": "#e0bdc8", "background": "#170f25", "secondary-fixed-dim": "#deb7ff", "surface": "#170f25", "surface-tint": "#ffb0ce" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter": "1rem", "space-md": "1rem", "space-xs": "0.25rem", "space-xl": "2rem", "space-sm": "0.5rem", "margin": "1.25rem", "space-lg": "1.5rem" }, "fontFamily": { "label-sm": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "display-sm": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "display-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"] }, "fontSize": { "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.04em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "display-sm": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "700" }], "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "display-lg": ["34px", { "lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "800" }], "headline-sm": ["16px", { "lineHeight": "22px", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface min-h-screen flex flex-col antialiased selection:bg-accent-electric selection:text-text-primary"><header class="fixed top-0 inset-x-0 z-50 bg-surface-base/80 backdrop-blur-xl pt-safe shadow-[0_4px_20px_rgba(15,8,29,0.5)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="AI Ticket It Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1URdCOsW8WH0XwPLSDaQGd_nPWuAKnLOC-lBWmWj16zb_aDmcR-N7Gg_a-ZfHxHfOluydlYRt3Rn6lhUgWMc97_GtdS3EAE-wzjfO0tzEVWHY2NB_aNWJKDV99qf853vGA9IBjl2Ye58u0UAxkTBoAooyt8hRhrM45wTDPBQ5xPr61drSFe8NB-28H3yD-vMBFGNkbHzzZOSJ31jghUuH5EkplnvfCXV692nXBguemjDdD3a3cL0ioYBw"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-text-primary tracking-tight leading-none">AI Ticket It</span><span class="font-label-sm text-label-sm text-tertiary-fixed-dim uppercase tracking-wider leading-none mt-1">Panel De Ventas Del Evento</span></div></div><div class="flex items-center gap-space-xs"><button aria-label="Notificaciones" class="w-11 h-11 relative flex items-center justify-center rounded-full text-text-secondary hover:text-text-primary hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-accent-electric ring-2 ring-surface-base"></span></button><button aria-label="Perfil de usuario" class="w-11 h-11 flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary-container transition-all" type="button"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-border-glass" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvNYPg7wvAp6u2obdHryhC2kWmoaenv-eLV9_YEvljlzRC0uZMZEon1lcZWqm-tXC9z-Zp8LZfYrIC9rL_j54QNeMH0o_cXjLbttBtYEiEP51eYov6cbhrXV6NHchRKOGiS3_gXjBTMc7Fusx9IRfRxShLhQZa6WmQ5fg9Y7LPlxUm4DmJJ2cxhEMVkwjQXJGELIvgh1YhPh5HW5CAVk8txzWzJktqJEYhDe-EsmUX4SSjVRQc-6hd"/></button></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface"><div class="flex flex-col w-full pb-8">
+<!-- Selector de Evento Activo (Ambient Glass Card) -->
+<section class="px-margin pt-space-sm pb-space-sm">
+<div class="relative w-full rounded-xl bg-surface-card p-space-md shadow-xl overflow-hidden">
+<!-- Glow ambiental decorativo -->
+<div class="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-accent-electric/15 blur-2xl pointer-events-none"></div>
+<div class="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-badge-cyan-glow/15 blur-xl pointer-events-none"></div>
+<div class="flex items-center justify-between gap-space-sm relative z-10">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-12 h-12 rounded-lg bg-surface-card-subtle flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[26px] text-badge-cyan-glow" style="font-variation-settings: 'FILL' 1;">nightlife</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-badge-cyan-glow uppercase tracking-wider flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success inline-block animate-pulse"></span>
+              Evento en Vivo
+            </span>
+<h1 class="font-headline-md text-headline-md text-text-primary truncate font-bold">
+              Festival de Música UTN 2026
+            </h1>
+<p class="font-body-sm text-body-sm text-text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-text-muted">calendar_month</span>
+              10 Oct 2026 • Estadio Central
+            </p>
+</div>
+</div>
+<button aria-label="Cambiar de evento" class="h-10 px-space-sm rounded-lg bg-surface-card-subtle text-text-primary hover:bg-surface-variant flex items-center gap-1 shrink-0 transition-all active:scale-95" type="button">
+<span class="font-label-md text-label-md">Cambiar</span>
+<span class="material-symbols-outlined text-[18px] text-text-muted">unfold_more</span>
+</button>
+</div>
+<!-- Live ticker bar -->
+<div class="mt-space-sm pt-space-xs flex items-center justify-between font-label-sm text-label-sm text-text-muted">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-status-success">bolt</span>
+          Venta en tiempo real
+        </span>
+<span class="text-tertiary-fixed-dim">Última compra hace 4 min</span>
+</div>
+</div>
+</section>
+<!-- Métricas Clave (Bento Style Grid) -->
+<section class="px-margin py-space-xs">
+<div class="grid grid-cols-2 gap-space-sm">
+<!-- KPI 1: Total Recaudado -->
+<div class="col-span-2 rounded-xl bg-surface-card p-space-md shadow-md relative overflow-hidden flex items-center justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5 text-text-muted">
+<span class="material-symbols-outlined text-[16px] text-tertiary-fixed-dim">payments</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider">Total Recaudado</span>
+</div>
+<div class="font-display-sm text-display-sm text-text-primary font-bold mt-1 tracking-tight">
+            $4.890.000
+          </div>
+<div class="flex items-center gap-1 mt-1 font-label-sm text-label-sm text-status-success">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+<span>+18% en las últimas 24h</span>
+</div>
+</div>
+<!-- Mini Sparkline inline visual -->
+<div aria-hidden="true" class="w-24 h-12 flex items-end gap-1.5 pr-1 shrink-0">
+<div class="w-2 bg-secondary-container/40 rounded-t h-4"></div>
+<div class="w-2 bg-secondary-container/60 rounded-t h-6"></div>
+<div class="w-2 bg-secondary-container rounded-t h-5"></div>
+<div class="w-2 bg-primary-container/70 rounded-t h-8"></div>
+<div class="w-2 bg-badge-cyan-glow/60 rounded-t h-7"></div>
+<div class="w-2 bg-badge-cyan-glow rounded-t h-11 shadow-[0_0_8px_rgba(0,210,242,0.8)]"></div>
+</div>
+</div>
+<!-- KPI 2: Entradas Vendidas (Visual radial/bar) -->
+<div class="rounded-xl bg-surface-card p-space-md shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-1 text-text-muted">
+<span class="material-symbols-outlined text-[16px] text-accent-electric">confirmation_number</span>
+<span class="font-label-sm text-label-sm uppercase">Vendidas</span>
+</div>
+<div class="font-headline-lg text-headline-lg text-text-primary font-bold mt-1">
+            284 <span class="font-body-sm text-body-sm text-text-muted font-normal">/ 350</span>
+</div>
+</div>
+<div class="mt-space-sm">
+<div class="flex justify-between font-label-sm text-label-sm text-badge-cyan-glow mb-1">
+<span>Ocupación</span>
+<span class="font-bold">81%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-card-subtle rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-accent-electric to-badge-cyan-glow rounded-full" style="width: 81%;"></div>
+</div>
+</div>
+</div>
+<!-- KPI 3: Órdenes Totales -->
+<div class="rounded-xl bg-surface-card p-space-md shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-1 text-text-muted">
+<span class="material-symbols-outlined text-[16px] text-status-warning">receipt_long</span>
+<span class="font-label-sm text-label-sm uppercase">Órdenes</span>
+</div>
+<div class="font-headline-lg text-headline-lg text-text-primary font-bold mt-1">
+            142
+          </div>
+</div>
+<div class="mt-space-sm pt-1">
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-text-secondary">
+<span class="w-2 h-2 rounded-full bg-status-danger shrink-0"></span>
+<span>10 reembolsos (7%)</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Disponibilidad y Cupos por Tipo de Entrada -->
+<section class="px-margin pt-space-md">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[20px] text-badge-cyan-glow">inventory_2</span>
+<h2 class="font-headline-sm text-headline-sm text-text-primary font-bold">
+          Cupos por Tipo de Entrada
+        </h2>
+</div>
+<span class="font-label-sm text-label-sm text-text-muted">3 Categorías</span>
+</div>
+<div class="space-y-space-sm">
+<!-- Tier 1: General -->
+<div class="rounded-xl bg-surface-card p-space-md shadow-sm">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold">General</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-card-subtle font-label-sm text-label-sm text-text-secondary">
+                $15.000 ARS
+              </span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+              Acceso a pista y áreas comunes
+            </p>
+</div>
+<div class="text-right">
+<span class="font-label-lg text-label-lg text-badge-cyan-glow font-bold">142</span>
+<span class="font-body-sm text-body-sm text-text-muted">/ 200 libres</span>
+</div>
+</div>
+<!-- Progress Bar -->
+<div class="mt-space-sm">
+<div class="w-full h-2 rounded-full bg-surface-card-subtle overflow-hidden flex">
+<!-- 58 vendidas (29%), 142 disponibles (71%) -->
+<div class="h-full bg-badge-cyan-glow rounded-l-full" style="width: 29%;"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-text-muted mt-1">
+<span>58 vendidas</span>
+<span class="text-tertiary font-bold">71% restante</span>
+</div>
+</div>
+</div>
+<!-- Tier 2: Platea Preferencial -->
+<div class="rounded-xl bg-surface-card p-space-md shadow-sm">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold">Platea Preferencial</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-card-subtle font-label-sm text-label-sm text-text-secondary">
+                $22.000 ARS
+              </span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+              Butaca numerada con visión central
+            </p>
+</div>
+<div class="text-right">
+<span class="font-label-lg text-label-lg text-status-warning font-bold">38</span>
+<span class="font-body-sm text-body-sm text-text-muted">/ 100 libres</span>
+</div>
+</div>
+<!-- Progress Bar -->
+<div class="mt-space-sm">
+<div class="w-full h-2 rounded-full bg-surface-card-subtle overflow-hidden flex">
+<!-- 62 vendidas (62%), 38 disponibles (38%) -->
+<div class="h-full bg-status-warning rounded-l-full" style="width: 62%;"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-text-muted mt-1">
+<span>62 vendidas</span>
+<span class="text-status-warning font-bold">38% restante</span>
+</div>
+</div>
+</div>
+<!-- Tier 3: Pase VIP Experience -->
+<div class="rounded-xl bg-surface-card p-space-md shadow-sm relative overflow-hidden">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-text-primary font-semibold">Pase VIP Experience</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container font-label-sm text-label-sm text-text-primary font-bold">
+                $30.000 ARS
+              </span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mt-0.5">
+              Open Bar, Backstage &amp; Merch oficial
+            </p>
+</div>
+<div class="text-right">
+<span class="px-2 py-0.5 rounded-full bg-status-danger/20 font-label-sm text-label-sm text-status-danger font-bold flex items-center gap-1 justify-end">
+<span class="material-symbols-outlined text-[12px]">local_fire_department</span>
+              ¡Últimos 8!
+            </span>
+<span class="font-body-sm text-body-sm text-text-muted mt-1 block">de 50 cupos</span>
+</div>
+</div>
+<!-- Progress Bar -->
+<div class="mt-space-sm">
+<div class="w-full h-2 rounded-full bg-surface-card-subtle overflow-hidden flex">
+<!-- 42 vendidas (84%) -->
+<div class="h-full bg-accent-electric rounded-l-full shadow-[0_0_10px_rgba(255,0,127,0.8)]" style="width: 84%;"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-text-muted mt-1">
+<span>42 vendidas (84%)</span>
+<span class="text-status-danger font-bold">16% restante</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Filtro de Compras por Estado (Pills Horizontales) -->
+<section class="pt-space-lg">
+<div class="px-margin flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[20px] text-accent-electric">list_alt</span>
+<h2 class="font-headline-sm text-headline-sm text-text-primary font-bold">
+          Historial de Órdenes
+        </h2>
+</div>
+<button aria-label="Filtrar u ordenar" class="w-8 h-8 rounded-full bg-surface-card flex items-center justify-center text-text-secondary hover:text-text-primary" type="button">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+</button>
+</div>
+<!-- Horizontal scroll tabs -->
+<div class="flex items-center gap-space-xs overflow-x-auto px-margin pb-space-xs no-scrollbar">
+<button class="order-filter-tab px-3.5 py-1.5 rounded-full font-label-md text-label-md shrink-0 bg-primary-container text-text-primary font-bold shadow-[0_2px_12px_rgba(255,68,164,0.4)] transition-all" data-status="all" type="button">
+        Todas (142)
+      </button>
+<button class="order-filter-tab px-3.5 py-1.5 rounded-full font-label-md text-label-md shrink-0 bg-surface-card text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5" data-status="confirmed" type="button">
+<span class="w-2 h-2 rounded-full bg-status-success"></span>
+        Confirmadas (118)
+      </button>
+<button class="order-filter-tab px-3.5 py-1.5 rounded-full font-label-md text-label-md shrink-0 bg-surface-card text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5" data-status="pending" type="button">
+<span class="w-2 h-2 rounded-full bg-status-warning"></span>
+        Pendientes (14)
+      </button>
+<button class="order-filter-tab px-3.5 py-1.5 rounded-full font-label-md text-label-md shrink-0 bg-surface-card text-text-secondary hover:text-text-primary transition-all" data-status="used" type="button">
+        Utilizadas (0)
+      </button>
+<button class="order-filter-tab px-3.5 py-1.5 rounded-full font-label-md text-label-md shrink-0 bg-surface-card text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5" data-status="refunded" type="button">
+<span class="w-2 h-2 rounded-full bg-status-danger"></span>
+        Canceladas / Reembolsos (10)
+      </button>
+</div>
+</section>
+<!-- Lista de Compras y Asistentes -->
+<section class="px-margin pt-space-sm space-y-space-sm">
+<!-- Card 1: Confirmada - Bárbara Gómez -->
+<article class="order-card rounded-xl bg-surface-card p-space-md shadow-sm transition-all" data-card-status="confirmed">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-card-subtle flex items-center justify-center font-bold text-tertiary shrink-0">
+            BG
+          </div>
+<div>
+<div class="flex items-center gap-1.5">
+<h3 class="font-headline-sm text-headline-sm text-text-primary font-bold">Bárbara Gómez</h3>
+<span class="material-symbols-outlined text-[16px] text-badge-cyan-glow" title="Usuario Verificado">verified</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-muted">Orden #TK-84920 • Hace 35m</p>
+</div>
+</div>
+<!-- Badge Estado Confirmada -->
+<span class="px-2.5 py-1 rounded-full bg-status-success/15 font-label-sm text-label-sm text-status-success font-bold flex items-center gap-1 shrink-0">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+          Confirmada
+        </span>
+</div>
+<div class="mt-space-sm p-space-sm rounded-lg bg-surface-card-subtle/70 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-text-primary font-bold">2x Entrada General</span>
+<span class="font-body-sm text-body-sm text-text-muted">Sector Pista • Faltan 12 días</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-text-primary font-bold">$30.000</span>
+</div>
+<!-- Action Footer -->
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-status-success">check_circle</span>
+          Pago acreditado vía MP
+        </span>
+<div class="flex items-center gap-space-xs">
+<button aria-label="Abrir Chat con Bárbara Gómez" class="h-9 px-3 rounded-full bg-secondary-container text-text-primary font-label-sm text-label-sm flex items-center gap-1 hover:brightness-110 active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">chat</span>
+<span>Chat</span>
+</button>
+<button aria-label="Ver QR de Orden TK-84920" class="h-9 w-9 rounded-full bg-surface-card-subtle text-text-secondary hover:text-text-primary flex items-center justify-center active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">qr_code_2</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Card 2: Pendiente de Pago - Martín Silva -->
+<article class="order-card rounded-xl bg-surface-card p-space-md shadow-sm transition-all" data-card-status="pending">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-card-subtle flex items-center justify-center font-bold text-status-warning shrink-0">
+            MS
+          </div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-text-primary font-bold">Martín Silva</h3>
+<p class="font-body-sm text-body-sm text-text-muted">Orden #TK-90114 • Hace 15m</p>
+</div>
+</div>
+<!-- Badge Estado Pendiente -->
+<span class="px-2.5 py-1 rounded-full bg-status-warning/15 font-label-sm text-label-sm text-status-warning font-bold flex items-center gap-1 shrink-0 animate-pulse">
+<span class="w-1.5 h-1.5 rounded-full bg-status-warning"></span>
+          Pendiente de Pago
+        </span>
+</div>
+<div class="mt-space-sm p-space-sm rounded-lg bg-surface-card-subtle/70 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-text-primary font-bold">1x VIP Lounge Experience</span>
+<span class="font-body-sm text-body-sm text-status-warning flex items-center gap-1 mt-0.5 font-semibold">
+<span class="material-symbols-outlined text-[14px]">timer</span>
+            Reserva vence en 1h 45m
+          </span>
+</div>
+<span class="font-headline-sm text-headline-sm text-text-primary font-bold">$18.500</span>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-text-muted">Esperando webhook de pago</span>
+<button aria-label="Enviar recordatorio de pago a Martín Silva" class="h-9 px-3 rounded-full bg-surface-card-subtle text-status-warning font-label-sm text-label-sm flex items-center gap-1 hover:bg-surface-variant active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">notification_important</span>
+<span>Recordar</span>
+</button>
+</div>
+</article>
+<!-- Card 3: Cancelada & Reembolsada - Gonzalo Pérez -->
+<article class="order-card rounded-xl bg-surface-card p-space-md shadow-sm transition-all" data-card-status="refunded">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-card-subtle flex items-center justify-center font-bold text-status-danger shrink-0">
+            GP
+          </div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-text-primary font-bold">Gonzalo Pérez</h3>
+<p class="font-body-sm text-body-sm text-text-muted">Orden #TK-77401 • 06 Oct</p>
+</div>
+</div>
+<!-- Badge Cancelada / Reembolsada -->
+<span class="px-2.5 py-1 rounded-full bg-status-danger/15 font-label-sm text-label-sm text-status-danger font-bold flex items-center gap-1 shrink-0">
+<span class="material-symbols-outlined text-[14px]">published_with_changes</span>
+          Reembolsada
+        </span>
+</div>
+<div class="mt-space-sm p-space-sm rounded-lg bg-surface-card-subtle/50 flex items-center justify-between opacity-80">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-text-secondary line-through">2x Platea Preferencial</span>
+<span class="font-body-sm text-body-sm text-status-danger">Cupos devueltos al stock general</span>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm text-text-muted line-through">$44.000</span>
+<span class="block font-label-sm text-label-sm text-status-danger">Reintegrado</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between font-body-sm text-body-sm text-text-muted">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-status-danger">history</span>
+          Reembolso automático emitido hace 2 días
+        </span>
+<button aria-label="Ver detalle del reembolso #TK-77401" class="font-label-sm text-label-sm text-tertiary hover:underline" type="button">
+          Detalle
+        </button>
+</div>
+</article>
+<!-- Card 4: Confirmada - Lucía Fernández -->
+<article class="order-card rounded-xl bg-surface-card p-space-md shadow-sm transition-all" data-card-status="confirmed">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-card-subtle flex items-center justify-center font-bold text-secondary shrink-0">
+            LF
+          </div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-text-primary font-bold">Lucía Fernández</h3>
+<p class="font-body-sm text-body-sm text-text-muted">Orden #TK-82103 • Ayer 21:40</p>
+</div>
+</div>
+<!-- Badge Estado Confirmada -->
+<span class="px-2.5 py-1 rounded-full bg-status-success/15 font-label-sm text-label-sm text-status-success font-bold flex items-center gap-1 shrink-0">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+          Confirmada
+        </span>
+</div>
+<div class="mt-space-sm p-space-sm rounded-lg bg-surface-card-subtle/70 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-text-primary font-bold">1x Entrada General</span>
+<span class="font-body-sm text-body-sm text-text-muted">Sector Pista • Early Bird</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-text-primary font-bold">$15.000</span>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-status-success">check_circle</span>
+          Tarjeta de Crédito (1 pago)
+        </span>
+<div class="flex items-center gap-space-xs">
+<button aria-label="Abrir Chat con Lucía Fernández" class="h-9 px-3 rounded-full bg-secondary-container text-text-primary font-label-sm text-label-sm flex items-center gap-1 hover:brightness-110 active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">chat</span>
+<span>Chat</span>
+</button>
+<button aria-label="Ver QR de Orden TK-82103" class="h-9 w-9 rounded-full bg-surface-card-subtle text-text-secondary hover:text-text-primary flex items-center justify-center active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">qr_code_2</span>
+</button>
+</div>
+</div>
+</article>
+</section>
+<!-- Acciones Rápidas del Organizador (Sticky Bottom Tray) -->
+<section class="px-margin pt-space-lg space-y-space-sm">
+<div class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider px-1">
+      Operaciones de Puerta y Asistencia
+    </div>
+<div class="grid grid-cols-1 gap-space-sm">
+<!-- Botón Primario: Acreditación QR -->
+<button class="w-full h-13 py-3.5 px-space-md rounded-full bg-gradient-to-r from-accent-electric to-primary-container text-text-primary font-label-lg text-label-lg font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(224,26,138,0.45)] active:scale-98 transition-all" id="btn-scan-qr" type="button">
+<span class="material-symbols-outlined text-[22px]">qr_code_scanner</span>
+<span>Acreditación / Escanear QR en Puerta</span>
+</button>
+<!-- Botón Secundario: Exportar CSV -->
+<button class="w-full h-12 py-3 px-space-md rounded-full bg-surface-card text-text-primary font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-surface-variant active:scale-98 transition-all" id="btn-export-csv" type="button">
+<span class="material-symbols-outlined text-[20px] text-badge-cyan-glow">download</span>
+<span>Exportar Listado de Asistentes (.CSV)</span>
+</button>
+</div>
+</section>
+<!-- Toast Notification Feedback (Micro-interaction) -->
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-surface-card-subtle text-text-primary px-4 py-2.5 rounded-full font-label-md text-label-md shadow-2xl flex items-center gap-2 pointer-events-none opacity-0 transition-opacity duration-300 z-50" id="dashboard-toast">
+<span class="material-symbols-outlined text-status-success text-[18px]">check_circle</span>
+<span id="toast-message">Reporte descargado correctamente</span>
+</div>
+</div>
+<script>
+  (function() {
+    // Interactive Tab Filtering
+    const filterTabs = document.querySelectorAll('.order-filter-tab');
+    const orderCards = document.querySelectorAll('.order-card');
+    const toast = document.getElementById('dashboard-toast');
+    const toastMsg = document.getElementById('toast-message');
+
+    function showToast(message) {
+      if (!toast || !toastMsg) return;
+      toastMsg.textContent = message;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2500);
+    }
+
+    filterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Update tab styles
+        filterTabs.forEach(t => {
+          t.classList.remove('bg-primary-container', 'text-text-primary', 'font-bold', 'shadow-[0_2px_12px_rgba(255,68,164,0.4)]');
+          t.classList.add('bg-surface-card', 'text-text-secondary');
+        });
+        tab.classList.remove('bg-surface-card', 'text-text-secondary');
+        tab.classList.add('bg-primary-container', 'text-text-primary', 'font-bold', 'shadow-[0_2px_12px_rgba(255,68,164,0.4)]');
+
+        const status = tab.getAttribute('data-status');
+
+        orderCards.forEach(card => {
+          const cardStatus = card.getAttribute('data-card-status');
+          if (status === 'all' || cardStatus === status) {
+            card.classList.remove('hidden');
+          } else {
+            card.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    // Quick action: Export CSV
+    const btnExport = document.getElementById('btn-export-csv');
+    if (btnExport) {
+      btnExport.addEventListener('click', () => {
+        showToast('Listado exportado: festival_asistentes_2026.csv');
+      });
+    }
+
+    // Quick action: Scanner simulated launch
+    const btnScan = document.getElementById('btn-scan-qr');
+    if (btnScan) {
+      btnScan.addEventListener('click', () => {
+        showToast('Iniciando lector de cámara para acreditación...');
+      });
+    }
+  })();
+</script></main><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface-base/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(15,8,29,0.65)]" data-active-classes="text-badge-cyan-glow"><div class="flex justify-around items-center h-20 px-space-xs"><a class="flex-1 flex flex-col items-center justify-center py-space-xs text-text-muted transition-colors relative" data-path="explorar-eventos" href="#"><span class="material-symbols-outlined text-[24px]">explore</span><span class="font-label-sm text-label-sm mt-1">Explorar</span></a><a class="flex-1 flex flex-col items-center justify-center py-space-xs text-text-muted transition-colors relative" data-path="mis-tickets-y-compras" href="#"><div class="relative"><span class="material-symbols-outlined text-[24px]">confirmation_number</span><span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-status-success ring-2 ring-surface-base"></span></div><span class="font-label-sm text-label-sm mt-1">Mis Tickets</span></a><a aria-current="page" class="flex-1 flex flex-col items-center justify-center py-space-xs transition-colors relative text-badge-cyan-glow" data-path="panel-de-ventas-del-evento" href="#"><div class="relative"><span class="material-symbols-outlined text-[24px]">monitoring</span></div><span class="font-label-sm text-label-sm mt-1">Ventas</span></a><a class="flex-1 flex flex-col items-center justify-center py-space-xs text-text-muted transition-colors relative" data-path="bandeja-de-mensajes-organizador" href="#"><div class="relative"><span class="material-symbols-outlined text-[24px]">forum</span><span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent-electric ring-2 ring-surface-base"></span></div><span class="font-label-sm text-label-sm mt-1">Mensajes</span></a></div></nav></body></html>

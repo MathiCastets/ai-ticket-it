@@ -5,14 +5,42 @@ import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
-    files: ["packages/backend/*.{js,mjs,cjs,jsx}"],
+    ignores: [
+      "**/node_modules/**",
+      "**/.expo/**",
+      "vistas/**",
+    ],
+  },
+  {
+    files: ["packages/backend/**/*.{js,mjs,cjs,jsx}"],
     plugins: { js },
     extends: ["js/recommended"],
     languageOptions: { globals: globals.node },
   },
   {
-    files: ["packages/frontend/src/**/*.{js,jsx,mjs,cjs}"],
-    ...pluginReact.configs.flat.recommended,
+    files: ["packages/mobile/**/*.{js,jsx,mjs,cjs}"],
+    plugins: {
+      react: pluginReact,
+    },
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+    },
+    rules: {
+      ...pluginReact.configs.flat.recommended.rules,
+      "react/prop-types": "off",
+      "react/react-in-jsx-scope": "off",
+      "react/jsx-uses-vars": "error",
+      "react/jsx-uses-react": "error",
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^(React|_)" }],
+    },
     settings: { react: { version: "detect" } },
   },
 ]);

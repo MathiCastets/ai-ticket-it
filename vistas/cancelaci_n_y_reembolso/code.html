@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#170f25;color:#eaddfc;-webkit-tap-highlight-color:transparent;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "tertiary-fixed-dim": "#20d9f9", "border-translucent": "rgba(123, 44, 191, 0.35)", "surface-container": "#231c32", "surface-variant": "#393148", "on-tertiary-fixed": "#001f26", "text-primary": "#FFFFFF", "text-muted": "#8A7EA6", "on-secondary-fixed": "#2d0050", "on-tertiary-fixed-variant": "#004e5b", "on-background": "#eaddfc", "tertiary-container": "#009fb7", "surface-container-lowest": "#110a1f", "border-glass": "rgba(255, 255, 255, 0.12)", "error-container": "#93000a", "status-danger": "#FF3366", "primary": "#ffb0ce", "on-secondary-fixed-variant": "#680eac", "surface-container-high": "#2e263d", "on-error": "#690005", "inverse-on-surface": "#342d43", "primary-fixed": "#ffd9e5", "accent-electric": "#FF007F", "secondary-fixed": "#f1dbff", "on-primary-fixed-variant": "#8c0053", "on-tertiary-container": "#002f37", "on-primary-container": "#570032", "surface-card-subtle": "#22134D", "primary-fixed-dim": "#ffb0ce", "outline": "#a88893", "error": "#ffb4ab", "secondary-container": "#6b13af", "accent-violet-deep": "#3B1E6D", "on-error-container": "#ffdad6", "on-surface": "#eaddfc", "text-secondary": "#C8BEE8", "on-secondary": "#4a007f", "tertiary-fixed": "#a9edff", "primary-container": "#ff44a4", "tertiary": "#20d9f9", "surface-base": "#0F081D", "on-secondary-container": "#d4a5ff", "secondary": "#deb7ff", "inverse-surface": "#eaddfc", "surface-dim": "#170f25", "surface-bright": "#3d354d", "surface-card": "#180D36", "on-tertiary": "#00363f", "surface-container-highest": "#393148", "status-success": "#00F5A0", "on-primary-fixed": "#3e0022", "inverse-primary": "#b7006f", "surface-container-low": "#1f182d", "status-warning": "#FFB703", "on-primary": "#64003a", "badge-cyan-glow": "#00D2F2", "outline-variant": "#594049", "on-surface-variant": "#e0bdc8", "background": "#170f25", "secondary-fixed-dim": "#deb7ff", "surface": "#170f25", "surface-tint": "#ffb0ce" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter": "1rem", "space-md": "1rem", "space-xs": "0.25rem", "space-xl": "2rem", "space-sm": "0.5rem", "margin": "1.25rem", "space-lg": "1.5rem" }, "fontFamily": { "label-sm": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "display-sm": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "display-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"] }, "fontSize": { "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.04em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "display-sm": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "700" }], "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "display-lg": ["34px", { "lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "800" }], "headline-sm": ["16px", { "lineHeight": "22px", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface min-h-screen flex flex-col antialiased selection:bg-accent-electric selection:text-text-primary"><header class="fixed top-0 inset-x-0 z-50 bg-surface-base/80 backdrop-blur-xl pt-safe shadow-[0_4px_20px_rgba(15,8,29,0.5)]"><div class="h-16 px-space-md flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Volver o Cerrar" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container active:scale-95 transition-all" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back_ios_new</span></button><img alt="AI Ticket It Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1URdCOsW8WH0XwPLSDaQGd_nPWuAKnLOC-lBWmWj16zb_aDmcR-N7Gg_a-ZfHxHfOluydlYRt3Rn6lhUgWMc97_GtdS3EAE-wzjfO0tzEVWHY2NB_aNWJKDV99qf853vGA9IBjl2Ye58u0UAxkTBoAooyt8hRhrM45wTDPBQ5xPr61drSFe8NB-28H3yD-vMBFGNkbHzzZOSJ31jghUuH5EkplnvfCXV692nXBguemjDdD3a3cL0ioYBw"/><h1 class="font-headline-md text-headline-md text-text-primary tracking-tight truncate max-w-[200px]">Cancelación Y Reembolso (Comprador)</h1></div><div class="flex items-center gap-space-xs"><button aria-label="Cerrar o Ayuda" class="w-11 h-11 flex items-center justify-center rounded-full text-text-secondary hover:text-accent-electric hover:bg-surface-container transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">close</span></button><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-border-glass" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvNYPg7wvAp6u2obdHryhC2kWmoaenv-eLV9_YEvljlzRC0uZMZEon1lcZWqm-tXC9z-Zp8LZfYrIC9rL_j54QNeMH0o_cXjLbttBtYEiEP51eYov6cbhrXV6NHchRKOGiS3_gXjBTMc7Fusx9IRfRxShLhQZa6WmQ5fg9Y7LPlxUm4DmJJ2cxhEMVkwjQXJGELIvgh1YhPh5HW5CAVk8txzWzJktqJEYhDe-EsmUX4SSjVRQc-6hd"/></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-safe bg-surface"><div class="flex flex-col w-full">
+<div class="px-margin pt-space-md pb-space-xl flex flex-col gap-space-lg">
+<!-- Aviso de Validación de Reglas TP -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-high p-space-md shadow-md">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-badge-cyan-glow/10 blur-xl pointer-events-none"></div>
+<div class="flex items-start gap-space-sm relative z-10">
+<div class="w-8 h-8 rounded-full bg-tertiary-container/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary text-[20px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="flex flex-col gap-1 min-w-0">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-tertiary">Regla de Reembolso Aplicada</span>
+<p class="font-body-md text-body-md text-text-primary leading-snug">
+            Reembolso 100% garantizado: el evento se realizará en 12 días y la entrada no ha sido utilizada.
+          </p>
+</div>
+</div>
+</div>
+<!-- Resumen del Ticket a Cancelar -->
+<div class="rounded-xl bg-surface-card p-space-md shadow-lg flex flex-col gap-space-sm relative">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-text-muted">Orden #TK-84920</span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-badge-cyan-glow/10 font-label-sm text-label-sm text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-badge-cyan-glow animate-pulse"></span>
+          Activa
+        </span>
+</div>
+<div class="flex gap-space-sm items-center pt-space-xs">
+<img class="w-16 h-16 rounded-lg object-cover shrink-0" data-alt="Vibrant night outdoor music festival stage glowing with electric cyan and fuchsia laser lights, packed crowd celebrating under stars, dark purple atmospheric smoke, highly detailed concert photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwIVUyYsspcXpOR6lFzaA1pU_oPYLnPweHCIN0vHItkS-NZIIxOsXDjvU5OMgUwf_9nz20EPTYOxOPwGsU63dXCecXmwtvzCxWx0XgxE1xz2kfXPw9aRx7unjeIpLtTrmMxha2Sv7JNLvrHnXieEVlrSSu__VoNrlGkJBsbibHQ4hYeIpDqesOt7jSWGE-UktE-Ak_U6HnYxVmHI4kay20BDmkQEQTfLcmKHKeZUU"/>
+<div class="flex flex-col min-w-0">
+<h2 class="font-headline-sm text-headline-sm text-text-primary truncate">Festival de Música UTN 2026</h2>
+<span class="font-body-sm text-body-sm text-text-secondary">2x Entrada General</span>
+<span class="font-label-md text-label-md text-text-muted truncate">Titular: Bárbara Gómez</span>
+</div>
+</div>
+</div>
+<!-- Desglose Financiero -->
+<div class="rounded-xl bg-surface-card-subtle p-space-md shadow-md flex flex-col gap-space-sm">
+<div class="flex items-center gap-space-xs pb-space-xs">
+<span class="material-symbols-outlined text-tertiary text-[20px]">payments</span>
+<span class="font-label-lg text-label-lg text-text-primary">Desglose de Reintegro</span>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center font-body-sm text-body-sm">
+<span class="text-text-secondary">Valor de entradas (2x)</span>
+<span class="text-text-primary font-label-md">$30.000 ARS</span>
+</div>
+<div class="flex justify-between items-center font-body-sm text-body-sm">
+<span class="text-text-secondary">Cargo de servicio (bonificado)</span>
+<span class="text-status-success font-label-md">$0 ARS</span>
+</div>
+</div>
+<div class="mt-space-xs pt-space-sm bg-surface-container-lowest/60 -mx-space-md -mb-space-md p-space-md rounded-b-xl flex justify-between items-baseline">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-text-muted uppercase">Total a Reembolsar</span>
+<span class="font-body-sm text-body-sm text-tertiary">100% reintegrado</span>
+</div>
+<span class="font-display-sm text-display-sm text-tertiary font-bold tracking-tight">$30.000 <span class="text-headline-sm text-text-primary font-normal">ARS</span></span>
+</div>
+</div>
+<!-- Destino del Reintegro -->
+<div class="rounded-xl bg-surface-container-low p-space-md shadow-sm flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-badge-cyan-glow text-[22px]">account_balance_wallet</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-text-muted">Medio de acreditación</span>
+<span class="font-headline-sm text-headline-sm text-text-primary truncate">Mercado Pago (•••• 4128)</span>
+<span class="font-body-sm text-body-sm text-text-secondary pt-0.5">Acreditación estimada en 24 a 48 hs hábiles.</span>
+</div>
+</div>
+<!-- Selector de Motivo -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-text-primary">Motivo de la cancelación</span>
+<span class="font-body-sm text-body-sm text-text-muted">Ayuda al organizador a mejorar el evento</span>
+</div>
+<div class="flex flex-col gap-2" id="reasons-container">
+<!-- Opcion 1 (Seleccionada) -->
+<button class="reason-chip w-full p-3 rounded-xl bg-surface-card text-left flex items-center justify-between active:scale-[0.99] transition-all" data-value="conflict" type="button">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-accent-electric text-[20px] radio-icon" style="font-variation-settings: 'FILL' 1;">radio_button_checked</span>
+<span class="font-body-md text-body-md text-text-primary truncate">Viaje / Superposición de horarios</span>
+</div>
+</button>
+<!-- Opcion 2 -->
+<button class="reason-chip w-full p-3 rounded-xl bg-surface-container text-left flex items-center justify-between active:scale-[0.99] transition-all" data-value="health" type="button">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-text-muted text-[20px] radio-icon">radio_button_unchecked</span>
+<span class="font-body-md text-body-md text-text-secondary truncate">Motivos de salud / personales</span>
+</div>
+</button>
+<!-- Opcion 3 -->
+<button class="reason-chip w-full p-3 rounded-xl bg-surface-container text-left flex items-center justify-between active:scale-[0.99] transition-all" data-value="mistake" type="button">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-text-muted text-[20px] radio-icon">radio_button_unchecked</span>
+<span class="font-body-md text-body-md text-text-secondary truncate">Compré por error</span>
+</div>
+</button>
+<!-- Opcion 4 -->
+<button class="reason-chip w-full p-3 rounded-xl bg-surface-container text-left flex items-center justify-between active:scale-[0.99] transition-all" data-value="other" type="button">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-text-muted text-[20px] radio-icon">radio_button_unchecked</span>
+<span class="font-body-md text-body-md text-text-secondary truncate">Otro</span>
+</div>
+</button>
+</div>
+</div>
+<!-- Comentario Opcional -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-text-muted flex justify-between" for="optional-feedback">
+<span>Comentarios adicionales</span>
+<span class="font-body-sm text-body-sm text-text-muted">Opcional</span>
+</label>
+<div class="relative rounded-xl bg-surface-card p-3 shadow-inner">
+<textarea class="w-full bg-transparent text-text-primary placeholder:text-text-muted font-body-md text-body-md focus:outline-none resize-none" id="optional-feedback" placeholder="Cuéntanos más detalles si lo deseas..." rows="2"></textarea>
+</div>
+</div>
+<!-- Card Informativa de Invalidez y Liberación de Stock -->
+<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex items-start gap-space-sm">
+<div class="w-9 h-9 rounded-full bg-status-danger/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-status-danger text-[20px]">shield_lock</span>
+</div>
+<div class="flex flex-col gap-1 min-w-0">
+<span class="font-label-md text-label-md text-status-danger font-semibold">Acción Inmediata e Irreversible</span>
+<p class="font-body-sm text-body-sm text-text-muted leading-relaxed">
+          Una vez confirmada la cancelación, tus códigos QR quedarán invalidados inmediatamente y las 2 localidades volverán al stock disponible del organizador automáticamente.
+        </p>
+</div>
+</div>
+<!-- CTAs de Acción -->
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<button class="w-full h-[52px] rounded-full bg-accent-electric text-text-primary font-label-lg text-label-lg uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(224,26,138,0.45)] active:scale-[0.98] transition-all" id="btn-confirm-cancel" type="button">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+<span>Confirmar Cancelación y Reembolso</span>
+</button>
+<button class="w-full h-12 rounded-full bg-surface-card text-text-primary font-label-lg text-label-lg flex items-center justify-center active:scale-[0.98] transition-all hover:bg-surface-container" onclick="history.back()" type="button">
+        Mantener mis entradas
+      </button>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const chips = document.querySelectorAll('.reason-chip');
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.forEach(c => {
+          c.classList.remove('bg-surface-card');
+          c.classList.add('bg-surface-container');
+          const textSpan = c.querySelector('span:last-child');
+          textSpan.classList.remove('text-text-primary');
+          textSpan.classList.add('text-text-secondary');
+          const icon = c.querySelector('.radio-icon');
+          icon.textContent = 'radio_button_unchecked';
+          icon.classList.remove('text-accent-electric');
+          icon.classList.add('text-text-muted');
+          icon.style.fontVariationSettings = "'FILL' 0";
+        });
+        chip.classList.remove('bg-surface-container');
+        chip.classList.add('bg-surface-card');
+        const activeText = chip.querySelector('span:last-child');
+        activeText.classList.remove('text-text-secondary');
+        activeText.classList.add('text-text-primary');
+        const activeIcon = chip.querySelector('.radio-icon');
+        activeIcon.textContent = 'radio_button_checked';
+        activeIcon.classList.remove('text-text-muted');
+        activeIcon.classList.add('text-accent-electric');
+        activeIcon.style.fontVariationSettings = "'FILL' 1";
+      });
+    });
+
+    const confirmBtn = document.getElementById('btn-confirm-cancel');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `
+          <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>PROCESANDO REEMBOLSO...</span>
+        `;
+        setTimeout(() => {
+          alert('¡Cancelación procesada con éxito! Reintegro de $30.000 ARS enviado a Mercado Pago.');
+          history.back();
+        }, 1200);
+      });
+    }
+  })();
+</script></main></body></html>
