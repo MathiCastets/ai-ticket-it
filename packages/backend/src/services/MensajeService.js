@@ -50,6 +50,13 @@ export class MensajeService {
       );
     }
 
+    if (compra.estaConversacionCerrada()) {
+      throw new BusinessRuleError(
+        'Esta conversación se encuentra cerrada.',
+        'CONVERSACION_CERRADA'
+      );
+    }
+
     const mensaje = new Mensaje({ usuario, mensaje: texto });
     const mensajesAnteriores = [...compra.mensajes];
     compra.agregarMensaje(mensaje);

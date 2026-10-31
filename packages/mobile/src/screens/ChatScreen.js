@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { isConversationClosed, useConversationStatusTime } from '../conversationStatus';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
@@ -52,6 +53,8 @@ export default function ChatScreen({ route, navigation }) {
       item.id === compraId &&
       (item.compradorId === currentUser.id || item.organizadorId === currentUser.id)
   );
+  const ahora = useConversationStatusTime(compra ? [compra] : []);
+  const conversacionCerrada = isConversationClosed(compra, ahora);
   const mensajesConSeparadores = (compra?.mensajes || []).reduce((resultado, mensaje) => {
     const fecha = obtenerFechaMensaje(mensaje);
     if (fecha && fecha.clave !== resultado.ultimaFecha) {
@@ -82,7 +85,7 @@ export default function ChatScreen({ route, navigation }) {
   }, [compraId, isLoading]);
 
   const handleEnviar = async () => {
-    if (!compra || !nuevoTexto.trim()) return;
+    if (!compra || conversacionCerrada || !nuevoTexto.trim()) return;
     setIsSending(true);
     try {
       await enviarMensaje(compra.id, nuevoTexto);
@@ -131,14 +134,14 @@ export default function ChatScreen({ route, navigation }) {
           <View style={styles.orgAvatar}>
             <Ionicons name="business" size={18} color={COLORS.badgeCyanGlow} />
           </View>
-          <View>
+          <View style={styles.contextDetails}>
             <View style={styles.orgNameRow}>
-              <Text style={styles.orgName}>
+              <Text style={styles.orgName} numberOfLines={1}>
                 {compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador'}
               </Text>
               <Ionicons name="checkmark-circle" size={13} color={COLORS.statusSuccess} />
             </View>
-            <Text style={styles.contextSub}>
+            <Text style={styles.contextSub} numberOfLines={1} ellipsizeMode="tail">
               {compra.eventoNombre || compra.evento?.nombre} ({compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} x{compra.cantidad})
             </Text>
           </View>
@@ -188,12 +191,6 @@ export default function ChatScreen({ route, navigation }) {
                   isMe ? styles.myMessageWrapper : styles.otherMessageWrapper,
                 ]}
               >
-                {!isMe && (
-                  <Text style={styles.senderLabel}>
-                    {msg.emisor === 'organizador' ? 'ORGANIZADOR' : 'COMPRADOR'}
-                  </Text>
-                )}
-
                 <View
                   style={[
                     styles.messageBubble,
@@ -205,9 +202,6 @@ export default function ChatScreen({ route, navigation }) {
 
                 <View style={styles.messageMeta}>
                   <Text style={styles.messageTime}>{msg.fechaHora}</Text>
-                  {isMe && (
-                    <Ionicons name="checkmark-done" size={14} color={COLORS.badgeCyanGlow} />
-                  )}
                 </View>
               </View>
             );
@@ -224,74 +218,88 @@ export default function ChatScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Chat Input Bar */}
-      <View style={[styles.inputBar, { minHeight: 56 + bottomInset, paddingBottom: bottomInset }]}>
-        <TextInput
-          ref={chatInputRef}
+      {conversacionCerrada ? (
+        <View
           style={[
-            styles.chatInput,
-            Platform.OS === 'web' && { scrollbarWidth: 'none' },
-            { height: chatInputHeight },
+            styles.closedConversationNotice,
+            { paddingBottom: bottomInset, minHeight: 56 + bottomInset },
           ]}
-          placeholder={`Escribe como ${currentUser.nombre}...`}
-          placeholderTextColor={COLORS.textMuted}
-          value={nuevoTexto}
-          onChangeText={(texto) => {
-            setNuevoTexto(texto);
-
-            if (Platform.OS === 'web') {
-              requestAnimationFrame(() => {
-                const input = chatInputRef.current;
-                if (!input) return;
-
-                input.style.height = 'auto';
-                const nextHeight = Math.min(
-                  CHAT_INPUT_MAX_HEIGHT,
-                  Math.max(CHAT_INPUT_MIN_HEIGHT, input.scrollHeight)
-                );
-                input.style.height = `${nextHeight}px`;
-                setChatInputHeight(nextHeight);
-              });
-            } else if (!texto) {
-              setChatInputHeight(CHAT_INPUT_MIN_HEIGHT);
-            }
-          }}
-          onContentSizeChange={({ nativeEvent }) => {
-            if (Platform.OS === 'web') return;
-
-            const nextHeight = Math.min(
-              CHAT_INPUT_MAX_HEIGHT,
-              Math.max(
-                CHAT_INPUT_MIN_HEIGHT,
-                Math.ceil(nativeEvent.contentSize.height)
-              )
-            );
-            setChatInputHeight(nextHeight);
-          }}
-          onKeyPress={(event) => {
-            if (Platform.OS === 'web' && event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault();
-              handleEnviar();
-            }
-          }}
-          onSubmitEditing={handleEnviar}
-          multiline
-          submitBehavior="submit"
-          rows={Platform.OS === 'web' ? 1 : undefined}
-          editable={!isLoading && !isSending}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, (isLoading || isSending || !nuevoTexto.trim()) && styles.sendButtonDisabled]}
-          onPress={handleEnviar}
-          disabled={isLoading || isSending || !nuevoTexto.trim()}
-          activeOpacity={0.8}
         >
-          {isSending ? (
-            <LoadingSpinner size={16} style={styles.sendSpinner} />
-          ) : (
-            <Ionicons name="send" size={16} color={COLORS.textPrimary} />
-          )}
-        </TouchableOpacity>
-      </View>
+          <Ionicons name="lock-closed" size={16} color={COLORS.textMuted} />
+          <Text style={styles.closedConversationText}>
+            Esta conversación se encuentra cerrada
+          </Text>
+        </View>
+      ) : (
+        <View style={[styles.inputBar, { minHeight: 56 + bottomInset, paddingBottom: bottomInset }]}>
+          <TextInput
+            ref={chatInputRef}
+            style={[
+              styles.chatInput,
+              Platform.OS === 'web' && { scrollbarWidth: 'none' },
+              { height: chatInputHeight },
+            ]}
+            placeholder={`Escribe como ${currentUser.nombre}...`}
+            placeholderTextColor={COLORS.textMuted}
+            value={nuevoTexto}
+            onChangeText={(texto) => {
+              setNuevoTexto(texto);
+
+              if (Platform.OS === 'web') {
+                requestAnimationFrame(() => {
+                  const input = chatInputRef.current;
+                  if (!input) return;
+
+                  input.style.height = 'auto';
+                  const nextHeight = Math.min(
+                    CHAT_INPUT_MAX_HEIGHT,
+                    Math.max(CHAT_INPUT_MIN_HEIGHT, input.scrollHeight)
+                  );
+                  input.style.height = `${nextHeight}px`;
+                  setChatInputHeight(nextHeight);
+                });
+              } else if (!texto) {
+                setChatInputHeight(CHAT_INPUT_MIN_HEIGHT);
+              }
+            }}
+            onContentSizeChange={({ nativeEvent }) => {
+              if (Platform.OS === 'web') return;
+
+              const nextHeight = Math.min(
+                CHAT_INPUT_MAX_HEIGHT,
+                Math.max(
+                  CHAT_INPUT_MIN_HEIGHT,
+                  Math.ceil(nativeEvent.contentSize.height)
+                )
+              );
+              setChatInputHeight(nextHeight);
+            }}
+            onKeyPress={(event) => {
+              if (Platform.OS === 'web' && event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                handleEnviar();
+              }
+            }}
+            onSubmitEditing={handleEnviar}
+            multiline
+            submitBehavior="submit"
+            rows={Platform.OS === 'web' ? 1 : undefined}
+            editable={!isLoading && !isSending && !conversacionCerrada}
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (isLoading || isSending || conversacionCerrada || !nuevoTexto.trim()) && styles.sendButtonDisabled]}
+            onPress={handleEnviar}
+            disabled={isLoading || isSending || conversacionCerrada || !nuevoTexto.trim()}
+            activeOpacity={0.8}
+          >
+            {isSending ? (
+              <LoadingSpinner size={16} style={styles.sendSpinner} />
+            ) : (
+              <Ionicons name="send" size={16} color={COLORS.textPrimary} />
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -316,6 +324,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    minWidth: 0,
+  },
+  contextDetails: {
+    flex: 1,
+    minWidth: 0,
   },
   orgAvatar: {
     width: 36,
@@ -331,16 +344,20 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   orgName: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
   contextSub: {
+    flexShrink: 1,
     fontSize: 11,
     color: COLORS.textSecondary,
     marginTop: 1,
   },
   statusPill: {
+    flexShrink: 0,
+    marginLeft: 8,
     backgroundColor: COLORS.surfaceContainerLow,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -392,6 +409,7 @@ const styles = StyleSheet.create({
   messageBubbleWrapper: {
     marginBottom: 12,
     maxWidth: '82%',
+    minWidth: 0,
   },
   myMessageWrapper: {
     alignSelf: 'flex-end',
@@ -401,15 +419,9 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     alignItems: 'flex-start',
   },
-  senderLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: COLORS.tertiary,
-    letterSpacing: 0.5,
-    marginBottom: 3,
-    marginLeft: 4,
-  },
   messageBubble: {
+    maxWidth: '100%',
+    minWidth: 0,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 16,
@@ -425,6 +437,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   messageText: {
+    ...(Platform.OS === 'web' ? { overflowWrap: 'anywhere' } : {}),
     fontSize: 13,
     lineHeight: 18,
     color: COLORS.textPrimary,
@@ -473,6 +486,21 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
     gap: 8,
+  },
+  closedConversationNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  closedConversationText: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
   },
   chatInput: {
     flex: 1,

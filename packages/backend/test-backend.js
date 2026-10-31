@@ -13,6 +13,20 @@ import { EventoService } from './src/services/EventoService.js';
 
 async function validarMutacionesAtomicas() {
   const purchaseSeed = createSeedData();
+  const ahora = Date.now();
+  const closureSeed = createSeedData();
+  const compraParaCierre = closureSeed.compras[0];
+  compraParaCierre.evento.fecha = new Date(ahora - 48 * 60 * 60 * 1000);
+  compraParaCierre.mensajes = [];
+  assert.equal(compraParaCierre.estaConversacionCerrada(ahora), true);
+
+  compraParaCierre.mensajes = [{ enviado: new Date(ahora - 24 * 60 * 60 * 1000) }];
+  assert.equal(compraParaCierre.estaConversacionCerrada(ahora), false);
+
+  compraParaCierre.evento.fecha = new Date(ahora - 24 * 60 * 60 * 1000);
+  compraParaCierre.mensajes = [{ enviado: new Date(ahora - 72 * 60 * 60 * 1000) }];
+  assert.equal(compraParaCierre.estaConversacionCerrada(ahora), false);
+
   for (const evento of purchaseSeed.eventos) {
     for (const tipoEntrada of evento.tiposEntrada) {
       const entradasVendidas = purchaseSeed.compras
@@ -37,6 +51,21 @@ async function validarMutacionesAtomicas() {
       );
     }
   }
+
+  const closedSeed = createSeedData();
+  closedSeed.eventos[0].fecha = new Date(Date.now() - 49 * 60 * 60 * 1000);
+  closedSeed.compras[0].mensajes = [];
+  const closedMessageService = new MensajeService(
+    new CompraRepository(closedSeed.compras),
+    new UsuarioRepository(closedSeed.usuarios)
+  );
+  await assert.rejects(
+    closedMessageService.enviarMensaje('compra-1', {
+      usuarioId: 'user_comprador_1',
+      texto: 'No se puede enviar este mensaje',
+    }),
+    (error) => error.code === 'CONVERSACION_CERRADA'
+  );
 
   const purchaseBaseRepository = new CompraRepository(purchaseSeed.compras);
   const eventRepository = new EventoRepository(purchaseSeed.eventos);

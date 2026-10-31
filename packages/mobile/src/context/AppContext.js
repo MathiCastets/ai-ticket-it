@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { EVENTOS_INICIALES, COMPRAS_INICIALES, USUARIOS } from '../data/mockData';
 import { resolverImagen, USE_MOCK_DATA } from '../config/apiConfig';
 import { api } from '../services/api';
+import { isConversationClosed } from '../conversationStatus';
 
 const AppContext = createContext();
 
@@ -471,6 +472,9 @@ export const AppProvider = ({ children }) => {
     const textoLimpio = texto.trim();
     if (!textoLimpio) {
       throw new Error('El mensaje no puede estar vacío.');
+    }
+    if (isConversationClosed(compraActual)) {
+      throw new Error('Esta conversación se encuentra cerrada.');
     }
 
     if (await backendDisponible()) {
