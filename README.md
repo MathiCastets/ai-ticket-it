@@ -111,9 +111,11 @@ La app usa el backend por defecto. Para correr Expo Go en un dispositivo físico
 
 ### Carga de fotos de eventos (API)
 
-El alta `POST /api/eventos` acepta JSON como antes o `multipart/form-data` para incluir fotos. En una solicitud multipart, enviá el evento serializado como JSON en el campo `evento` y adjuntá hasta cinco archivos en campos repetidos `imagenes`. Se aceptan JPEG, PNG y WebP, con un máximo de 5 MB por foto. El backend verifica el contenido del archivo, genera nombres propios y guarda la galería en `packages/backend/uploads/`.
+El alta `POST /api/eventos` acepta JSON como antes o `multipart/form-data` para incluir una foto. En una solicitud multipart, enviá el evento serializado como JSON en el campo `evento` y adjuntá un archivo en el campo `imagenes`. Se aceptan JPEG, PNG y WebP, con un máximo de 5 MB. El backend verifica el contenido del archivo, genera un nombre propio y guarda la imagen en `packages/backend/uploads/`.
 
-La respuesta mantiene la galería en `data.multimedia` y usa la primera foto cargada como `data.imagen`. Las rutas de imagen son relativas (por ejemplo, `/uploads/<id>.jpg`) y el backend las sirve desde esa ruta; el cliente debe anteponer el origen de la API para mostrarlas. Para cambiar el directorio de almacenamiento se puede definir `UPLOADS_DIRECTORY`. El almacenamiento es local y no durable: los archivos no se suben a un servicio externo ni se comparten entre instancias del servidor.
+La respuesta mantiene la imagen en `data.multimedia` y `data.imagen`. Las rutas de imagen son relativas (por ejemplo, `/uploads/<id>.jpg`) y el backend las sirve desde esa ruta; el cliente debe anteponer el origen de la API para mostrarlas. Para cambiar el directorio de almacenamiento se puede definir `UPLOADS_DIRECTORY`. El almacenamiento es local y no durable: los archivos no se suben a un servicio externo ni se comparten entre instancias del servidor.
+
+En la app móvil/web, el formulario **Organizar** abre la galería del teléfono o el explorador de archivos de la computadora. Las fotos seleccionadas se previsualizan antes de publicar; la primera queda como portada y se muestra en Explorar, detalle del evento y Mis Tickets.
 
 ---
 
@@ -127,13 +129,16 @@ La aplicación incluye un selector de perfiles de demostración al tocar el avat
 2. **Gestión de Entradas (Mis Tickets):**
    - Pestañas de estado (Todas, Confirmadas, Pendientes, Historial).
    - Apertura del **Código QR** oficial para el acceso al evento.
-   - Botón **"Simular Check-in (Staff)"**: marca la entrada como `UTILIZADA`.
    - Botón **"Calificar Evento"**: disponible únicamente una vez utilizada la entrada (1 a 5 estrellas + reseña).
    - Botón **"Cancelar Compra"**: demuestra la regla de negocio que restituye el stock y cambia el estado a `REEMBOLSADA`. Si la entrada ya fue utilizada, el sistema bloquea la acción informando la causa.
 3. **Canal de Comunicación (Chat):**
    - Hilo de mensajes en tiempo real asociado a la compra entre el comprador y el organizador.
 4. **Perspectiva del Organizador:**
    - Cambiar al perfil del organizador del evento desde el avatar del Header.
-   - Pantalla **Crear Evento**: formulario dinámico con tipos de entrada y botón de sugerencias inteligentes.
+   - Pestaña **Eventos**: lista los eventos propios, permite editar nombre, ubicación y descripción, y consultar sus ventas.
+   - Pestaña **Organizar**: crea un evento con tipos de entrada, fotos y botón de sugerencias inteligentes.
+   - Pestaña **Escanear**: acredita entradas buscando el código de orden o el ID de compra. La lectura con cámara/QR queda fuera del alcance actual.
    - Pantalla **Panel de Ventas**: métricas de recaudación, barras de progreso de cupos vendidos y detalle de órdenes.
    - Pantalla **Mensajes**: bandeja de entrada de consultas recibidas.
+
+Las pestañas cambian según el perfil: comprador (**Explorar, Mis Tickets, Mensajes**) u organizador (**Eventos, Organizar, Escanear, Mensajes**). El perfil se cambia desde el avatar, no desde la barra de navegación.

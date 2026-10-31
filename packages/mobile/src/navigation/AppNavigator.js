@@ -17,6 +17,8 @@ import CalificarScreen from '../screens/CalificarScreen';
 import CrearEventoScreen from '../screens/CrearEventoScreen';
 import PanelVentasScreen from '../screens/PanelVentasScreen';
 import MensajesInboxScreen from '../screens/MensajesInboxScreen';
+import OrganizadorEventosScreen from '../screens/OrganizadorEventosScreen';
+import EscanearScreen from '../screens/EscanearScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -61,8 +63,12 @@ function BottomTabs() {
             iconName = focused ? 'compass' : 'compass-outline';
           } else if (route.name === 'TicketsTab') {
             iconName = focused ? 'ticket' : 'ticket-outline';
+          } else if (route.name === 'EventosTab') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'OrganizarTab') {
             iconName = focused ? 'add-circle' : 'add-circle-outline';
+          } else if (route.name === 'EscanearTab') {
+            iconName = focused ? 'qr-code' : 'qr-code-outline';
           } else if (route.name === 'MensajesTab') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           }
@@ -70,22 +76,40 @@ function BottomTabs() {
           return <Ionicons name={iconName} size={22} color={color} />;
         },
       })}
+      key={currentUser.rol}
     >
-      <Tab.Screen
-        name="ExplorarTab"
-        component={ExplorarScreen}
-        options={{ tabBarLabel: 'Explorar' }}
-      />
-      <Tab.Screen
-        name="TicketsTab"
-        component={MisTicketsScreen}
-        options={{ tabBarLabel: 'Mis Tickets' }}
-      />
-      <Tab.Screen
-        name="OrganizarTab"
-        component={currentUser.rol === 'organizador' ? PanelVentasScreen : CrearEventoScreen}
-        options={{ tabBarLabel: currentUser.rol === 'organizador' ? 'Panel Ventas' : 'Organizar' }}
-      />
+      {currentUser.rol === 'organizador' ? (
+        <>
+          <Tab.Screen
+            name="EventosTab"
+            component={OrganizadorEventosScreen}
+            options={{ tabBarLabel: 'Eventos' }}
+          />
+          <Tab.Screen
+            name="OrganizarTab"
+            component={CrearEventoScreen}
+            options={{ tabBarLabel: 'Organizar' }}
+          />
+          <Tab.Screen
+            name="EscanearTab"
+            component={EscanearScreen}
+            options={{ tabBarLabel: 'Escanear' }}
+          />
+        </>
+      ) : (
+        <>
+          <Tab.Screen
+            name="ExplorarTab"
+            component={ExplorarScreen}
+            options={{ tabBarLabel: 'Explorar' }}
+          />
+          <Tab.Screen
+            name="TicketsTab"
+            component={MisTicketsScreen}
+            options={{ tabBarLabel: 'Mis Tickets' }}
+          />
+        </>
+      )}
       <Tab.Screen
         name="MensajesTab"
         component={MensajesInboxScreen}
@@ -109,7 +133,7 @@ export default function AppNavigator() {
         <Stack.Screen name="DetalleEvento" component={DetalleEventoScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="Calificar" component={CalificarScreen} />
-        <Stack.Screen name="CrearEvento" component={CrearEventoScreen} />
+        <Stack.Screen name="PanelVentas" component={PanelVentasScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

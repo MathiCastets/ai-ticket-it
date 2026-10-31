@@ -23,7 +23,7 @@ export function receiveEventImages(req, res, next) {
     return next(
       new ValidationError(
         error instanceof multer.MulterError && error.code === 'LIMIT_UNEXPECTED_FILE'
-          ? 'Se permiten hasta cinco archivos en el campo imagenes'
+          ? 'Se permite una sola imagen por evento'
           : 'No se pudieron procesar las imágenes del evento'
       )
     );

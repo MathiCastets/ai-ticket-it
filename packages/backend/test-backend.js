@@ -596,7 +596,32 @@ async function runTests() {
     assert.equal(res.status, 201, `Crear evento should return 201, got ${res.status}: ${JSON.stringify(data)}`);
     assert.notEqual(data.data.id, firstEvent.id, 'El backend debe asignar ids de evento, no confiar en el cliente');
     assert.equal(typeof data.data.organizador, 'object', 'evento.organizador debe ser objeto (Usuario)');
+    const createdEventId = data.data.id;
     console.log(`✓ Crear evento OK (${data.data.id}). organizador normalizado: "${data.data.organizador?.nombre}"`);
+
+    res = await fetch(`${baseUrl}/eventos/${createdEventId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizadorId: 'user_org_sonora',
+        nombre: 'Synthwave Neon Night 2026 - Actualizado',
+        ubicacion: 'Niceto Club, Palermo',
+      }),
+    });
+    data = await res.json();
+    assert.equal(res.status, 200, 'El organizador debe poder editar los datos de su evento');
+    assert.equal(data.data.nombre, 'Synthwave Neon Night 2026 - Actualizado');
+    assert.equal(data.data.ubicacion, 'Niceto Club, Palermo');
+
+    res = await fetch(`${baseUrl}/eventos/${createdEventId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizadorId: 'user_org_underground',
+        nombre: 'Cambio por otro organizador',
+      }),
+    });
+    assert.equal(res.status, 400, 'Un organizador no puede modificar eventos ajenos');
 
     const imageBytes = Buffer.from([
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x00,
@@ -646,26 +671,43 @@ async function runTests() {
     res = await fetch(`${baseUrl}/eventos`, { method: 'POST', body: invalidImageForm });
     assert.equal(res.status, 400, 'El backend debe rechazar contenido que no sea una imagen real');
 
-    const tooManyImagesForm = new FormData();
-    tooManyImagesForm.append(
+    const multipleImagesForm = new FormData();
+    multipleImagesForm.append(
       'evento',
       JSON.stringify({
-        nombre: 'Demasiadas imágenes',
+        nombre: 'Más de una imagen',
         categoria: 'Recitales',
         organizadorId: 'user_org_sonora',
         fecha: '2026-12-01T22:00:00.000Z',
         tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
       })
     );
-    for (let index = 0; index < 6; index += 1) {
-      tooManyImagesForm.append(
-        'imagenes',
-        new Blob([imageBytes], { type: 'image/png' }),
-        `foto-${index}.png`
-      );
-    }
-    res = await fetch(`${baseUrl}/eventos`, { method: 'POST', body: tooManyImagesForm });
-    assert.equal(res.status, 400, 'El backend debe limitar a cinco fotos por evento');
+    multipleImagesForm.append(
+      'imagenes',
+      new Blob([imageBytes], { type: 'image/png' }),
+      'foto-1.png'
+    );
+    multipleImagesForm.append(
+      'imagenes',
+      new Blob([imageBytes], { type: 'image/png' }),
+      'foto-2.png'
+    );
+    res = await fetch(`${baseUrl}/eventos`, { method: 'POST', body: multipleImagesForm });
+    assert.equal(res.status, 400, 'El backend debe rechazar más de una foto por evento');
+
+    res = await fetch(`${baseUrl}/eventos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: 'Galería por JSON',
+        categoria: 'Recitales',
+        organizadorId: 'user_org_sonora',
+        fecha: '2026-12-01T22:00:00.000Z',
+        tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+        multimedia: ['/uploads/primera.png', '/uploads/segunda.png'],
+      }),
+    });
+    assert.equal(res.status, 400, 'El backend debe rechazar múltiples imágenes también en JSON');
 
     const oversizedImageForm = new FormData();
     oversizedImageForm.append(

@@ -6,8 +6,10 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Image,
   Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import { CATEGORIAS } from '../data/mockData';
@@ -18,6 +20,8 @@ import LoadingSpinner from '../components/loading/Spinners';
 export default function CrearEventoScreen({ navigation }) {
   const { crearEvento } = useApp();
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isPickingImages, setIsPickingImages] = useState(false);
+  const [imagenes, setImagenes] = useState([]);
 
   const [nombre, setNombre] = useState('Festival Indie Primavera 2026');
   const [categoria, setCategoria] = useState('Festivales');
@@ -55,12 +59,56 @@ export default function CrearEventoScreen({ navigation }) {
     );
   };
 
-  const handleSugerirIA = () => {
-    setNombre('Cosmos ElectroFest UTN 2026');
-    setDescripcion(
-      'Experiencia inmersiva que combina arte sonoro interactivo con tecnología de inteligencia artificial generativa en vivo.'
-    );
-    Alert.alert('Sugerencia de IA ✨', 'Se han optimizado el título y la descripción del evento.');
+  const handleSeleccionarImagenes = async () => {
+    if (imagenes.length >= 1) return;
+
+    setIsPickingImages(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: false,
+        selectionLimit: 1,
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets?.length) {
+        const validAssets = [];
+        const rejectedAssets = [];
+        for (const asset of result.assets) {
+          const fileExtension = asset.fileName?.split('.').pop()?.toLowerCase();
+          const mimeType =
+            asset.mimeType ||
+            ({
+              jpg: 'image/jpeg',
+              jpeg: 'image/jpeg',
+              png: 'image/png',
+              webp: 'image/webp',
+            }[fileExtension] || '');
+          const supportedType =
+            !mimeType || ['image/jpeg', 'image/png', 'image/webp'].includes(mimeType);
+          const withinSizeLimit = !asset.fileSize || asset.fileSize <= 5 * 1024 * 1024;
+          if (supportedType && withinSizeLimit) validAssets.push(asset);
+          else rejectedAssets.push(asset);
+        }
+
+        if (rejectedAssets.length) {
+          Alert.alert(
+            'La foto no se pudo agregar',
+            'Se aceptan imágenes JPEG, PNG o WebP de hasta 5 MB.'
+          );
+        }
+        if (validAssets.length) {
+          setImagenes([validAssets[0]]);
+        }
+      }
+    } catch (error) {
+      Alert.alert('No se pudieron seleccionar las fotos', error.message);
+    } finally {
+      setIsPickingImages(false);
+    }
+  };
+
+  const handleQuitarImagen = (uri) => {
+    setImagenes((previous) => previous.filter((imagen) => imagen.uri !== uri));
   };
 
   const handlePublicar = async () => {
@@ -88,7 +136,7 @@ export default function CrearEventoScreen({ navigation }) {
       ubicacion,
       direccion,
       descripcion,
-      imagen: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+      imagenes,
       tiposEntrada: tiposFormateados,
     };
 
@@ -97,7 +145,7 @@ export default function CrearEventoScreen({ navigation }) {
       const res = await crearEvento(nuevoEvento);
       if (!res.success) throw new Error(res.error || 'No se pudo publicar el evento.');
       Alert.alert('¡Evento Publicado!', 'Tu evento ya está disponible en la cartelera de AI Ticket It.', [
-        { text: 'Ver en Cartelera', onPress: () => navigation.navigate('ExplorarTab') },
+        { text: 'Ver mis eventos', onPress: () => navigation.navigate('EventosTab') },
       ]);
     } catch (error) {
       Alert.alert('No se pudo publicar el evento', error.message);
@@ -122,10 +170,6 @@ export default function CrearEventoScreen({ navigation }) {
         <View style={styles.cardSection}>
           <View style={styles.cardSectionHeader}>
             <Text style={styles.cardSectionTitle}>1. Información Principal</Text>
-            <TouchableOpacity style={styles.iaButton} onPress={handleSugerirIA} activeOpacity={0.8}>
-              <Ionicons name="sparkles" size={14} color={COLORS.accentElectric} />
-              <Text style={styles.iaButtonText}>Sugerir con IA ✨</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
@@ -203,6 +247,47 @@ export default function CrearEventoScreen({ navigation }) {
               multiline
               numberOfLines={3}
             />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.imagePickerHeader}>
+              <View>
+                <Text style={styles.inputLabel}>Fotos del evento</Text>
+                <Text style={styles.imagePickerHint}>Una foto JPEG, PNG o WebP (hasta 5 MB)</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.imagePickerButton, (isPickingImages || isPublishing || imagenes.length >= 1) && styles.imagePickerButtonDisabled]}
+                onPress={handleSeleccionarImagenes}
+                disabled={isPickingImages || isPublishing || imagenes.length >= 1}
+                accessibilityRole="button"
+                accessibilityLabel="Buscar fotos del evento en el dispositivo"
+              >
+                <Feather name="upload" size={15} color={COLORS.tertiary} />
+                <Text style={styles.imagePickerButtonText}>
+                  {isPickingImages ? 'ABRIENDO...' : 'BUSCAR FOTOS'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {imagenes.length > 0 ? (
+              <View style={styles.selectedImages}>
+                {imagenes.map((imagen) => (
+                  <View key={imagen.uri} style={styles.selectedImageItem}>
+                    <Image source={{ uri: imagen.uri }} style={styles.selectedImagePreview} />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => handleQuitarImagen(imagen.uri)}
+                      disabled={isPublishing}
+                      accessibilityRole="button"
+                      accessibilityLabel="Quitar foto seleccionada"
+                    >
+                      <Ionicons name="close" size={14} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.imagePickerHint}>Elegí imágenes desde la galería del celular o los archivos de la computadora.</Text>
+            )}
           </View>
         </View>
 
@@ -376,6 +461,60 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 70,
     textAlignVertical: 'top',
+  },
+  imagePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  imagePickerHint: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    marginTop: 3,
+  },
+  imagePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(32, 217, 249, 0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  imagePickerButtonDisabled: {
+    opacity: 0.55,
+  },
+  imagePickerButtonText: {
+    color: COLORS.tertiary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  selectedImages: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 4,
+  },
+  selectedImageItem: {
+    position: 'relative',
+  },
+  selectedImagePreview: {
+    width: 76,
+    height: 68,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.statusDanger,
   },
   catChipsRow: {
     gap: 8,

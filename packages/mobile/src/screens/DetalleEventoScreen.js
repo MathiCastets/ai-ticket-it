@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,9 +23,12 @@ export default function DetalleEventoScreen({ route, navigation }) {
   const { eventos, favoritos, favoritosError, toggleFavorito, comprarEntrada } = useApp();
   const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const bottomInset = insets.bottom > 0 ? insets.bottom : 12;
 
   const evento = eventos.find((e) => e.id === eventoId) || eventos[0];
+  const imagenesEvento =
+    evento.multimedia?.length > 0 ? evento.multimedia : evento.imagen ? [evento.imagen] : [];
 
   // Selection states
   const [selectedTipoId, setSelectedTipoId] = useState(
@@ -97,7 +101,20 @@ export default function DetalleEventoScreen({ route, navigation }) {
         ) : null}
         {/* Hero Image */}
         <View style={styles.heroContainer}>
-          <Image source={{ uri: evento.imagen }} style={styles.heroImage} />
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            style={styles.heroGallery}
+          >
+            {imagenesEvento.map((imagen, index) => (
+              <Image
+                key={`${imagen}-${index}`}
+                source={{ uri: imagen }}
+                style={[styles.heroImage, { width: screenWidth }]}
+              />
+            ))}
+          </ScrollView>
           <View style={styles.heroOverlay} />
 
           <View style={styles.heroTopActions}>
@@ -126,10 +143,12 @@ export default function DetalleEventoScreen({ route, navigation }) {
             <View style={styles.categoryChip}>
               <Text style={styles.categoryChipText}>{catNombre.toUpperCase()}</Text>
             </View>
+          {/*       TODO: quizas mostrarlo condicionalmente.     
             <View style={styles.demandChip}>
               <Ionicons name="flame" size={12} color={COLORS.badgeCyanGlow} />
               <Text style={styles.demandChipText}>Alta demanda</Text>
             </View>
+            */}
           </View>
 
           <Text style={styles.eventTitle}>{evento.nombre}</Text>
@@ -363,9 +382,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     height: 220,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  heroGallery: {
+    width: '100%',
+    height: '100%',
   },
   heroImage: {
-    width: '100%',
     height: '100%',
   },
   heroOverlay: {

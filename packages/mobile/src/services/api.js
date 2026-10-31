@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../config/apiConfig';
+import { Platform } from 'react-native';
 
 /**
  * Cliente HTTP para interactuar con la API Express del backend.
@@ -12,6 +13,8 @@ const defaultHeaders = {
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
+  const isMultipart =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
   const config = {
     ...options,
     headers: {
@@ -19,9 +22,12 @@ async function request(endpoint, options = {}) {
       ...options.headers,
     },
   };
+  if (isMultipart) {
+    delete config.headers['Content-Type'];
+  }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), isMultipart ? 60000 : 6000);
 
   try {
     const response = await fetch(url, {
@@ -79,10 +85,55 @@ export const api = {
       method: 'DELETE',
     }),
 
-  crearEvento: (eventoData) =>
-    request('/eventos', {
+  crearEvento: async (eventoData, imagenes = []) => {
+    if (imagenes.length === 0) {
+      return request('/eventos', {
+        method: 'POST',
+        body: JSON.stringify(eventoData),
+      });
+    }
+
+    const formData = new FormData();
+    formData.append('evento', JSON.stringify(eventoData));
+    for (const [index, imagen] of imagenes.entries()) {
+      const fileExtension = imagen.fileName?.split('.').pop()?.toLowerCase();
+      const mimeType =
+        imagen.mimeType ||
+        ({
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          webp: 'image/webp',
+        }[fileExtension] || 'image/jpeg');
+      const extension = mimeType.split('/')[1] || 'jpg';
+      const filename = imagen.fileName || `evento-${index + 1}.${extension}`;
+
+      if (Platform.OS === 'web') {
+        const file =
+          imagen.file ||
+          (await fetch(imagen.uri).then((response) => {
+            if (!response.ok) throw new Error('No se pudo leer una de las imágenes seleccionadas.');
+            return response.blob();
+          }));
+        formData.append('imagenes', file, filename);
+      } else {
+        formData.append('imagenes', {
+          uri: imagen.uri,
+          name: filename,
+          type: mimeType,
+        });
+      }
+    }
+
+    return request('/eventos', {
       method: 'POST',
-      body: JSON.stringify(eventoData),
+      body: formData,
+    });
+  },
+  actualizarEvento: (eventoId, cambios) =>
+    request(`/eventos/${eventoId}`, {
+      method: 'PUT',
+      body: JSON.stringify(cambios),
     }),
 
   // Compras

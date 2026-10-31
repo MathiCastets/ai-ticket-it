@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -13,14 +13,17 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 
-export default function PanelVentasScreen({ navigation }) {
+export default function PanelVentasScreen({ route, navigation }) {
   const { eventos, compras, currentUser } = useApp();
   const isLoading = useMockLoading();
   const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
 
   const [selectedEventoId, setSelectedEventoId] = useState(
-    eventosDelUsuario.length > 0 ? eventosDelUsuario[0].id : null
+    route?.params?.eventoId || (eventosDelUsuario.length > 0 ? eventosDelUsuario[0].id : null)
   );
+  useEffect(() => {
+    if (route?.params?.eventoId) setSelectedEventoId(route.params.eventoId);
+  }, [route?.params?.eventoId]);
 
   const selectedEvento =
     eventosDelUsuario.find((evento) => evento.id === selectedEventoId) || eventosDelUsuario[0];
@@ -51,7 +54,7 @@ export default function PanelVentasScreen({ navigation }) {
   if (isLoading) {
     return (
       <View style={styles.screenContainer}>
-        <Header title="AI Ticket It" subtitle="Panel de Ventas" />
+        <Header title="AI Ticket It" subtitle="Panel de Ventas" showBack onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <LoadingSpinner variant="dual" label="Cargando ventas del evento..." />
         </View>
@@ -61,7 +64,7 @@ export default function PanelVentasScreen({ navigation }) {
 
   return (
     <View style={styles.screenContainer}>
-      <Header title="AI Ticket It" subtitle="Panel de Ventas" />
+      <Header title="AI Ticket It" subtitle="Panel de Ventas" showBack onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Event Selector Horizontal Chips */}

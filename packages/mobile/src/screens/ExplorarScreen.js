@@ -149,7 +149,7 @@ export default function ExplorarScreen({ navigation }) {
             {filteredEventos.map((item) => (
               <TouchableOpacity key={item.id} style={styles.eventCard} onPress={() => navigation.navigate('DetalleEvento', { eventoId: item.id })} activeOpacity={0.8}>
                 <View style={styles.eventImageContainer}>
-                  <Image source={{ uri: item.imagen }} style={styles.eventImage} />
+                  <Image source={item.imagen ? { uri: item.imagen } : null} style={styles.eventImage} />
                   <View style={styles.eventCategoryTag}>
                     <Text style={styles.eventCategoryText}>{getCat(item.categoria)}</Text>
                   </View>

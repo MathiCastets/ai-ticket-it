@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { EVENTOS_INICIALES, COMPRAS_INICIALES, USUARIOS } from '../data/mockData';
-import { USE_MOCK_DATA } from '../config/apiConfig';
+import { resolverImagen, USE_MOCK_DATA } from '../config/apiConfig';
 import { api } from '../services/api';
 
 const AppContext = createContext();
@@ -53,6 +53,8 @@ const normalizarEvento = (evento) => {
 
   return {
     ...evento,
+    imagen: resolverImagen(evento.imagen || evento.multimedia?.[0]),
+    multimedia: (evento.multimedia || []).map(resolverImagen),
     categoria: categoriaObj?.nombre || evento.categoria || evento.categoriaNombre || '',
     categoriaObj,
     organizador: organizadorObj?.nombre || evento.organizador || evento.organizadorNombre || '',
@@ -84,7 +86,7 @@ const normalizarCompra = (compra) => ({
     obtenerNombreUsuario(compra.evento?.organizador) ||
     compra.evento?.organizador ||
     '',
-  imagen: compra.imagen || compra.evento?.imagen || '',
+  imagen: resolverImagen(compra.imagen || compra.evento?.imagen),
   ubicacion: compra.ubicacion || compra.evento?.ubicacion || '',
   mensajes: (compra.mensajes || []).map(normalizarMensaje),
 });
@@ -539,20 +541,23 @@ export const AppProvider = ({ children }) => {
     if (currentUser.rol !== 'organizador') {
       return { success: false, error: 'Seleccioná un perfil organizador para publicar un evento.' };
     }
+    const { imagenes = [], ...datosEvento } = nuevoEvento;
     if (await backendDisponible()) {
       const eventoServidor = await api.crearEvento({
-        ...nuevoEvento,
+        ...datosEvento,
         organizadorId: currentUser.id,
-      });
+      }, imagenes);
       const evento = normalizarEvento(eventoServidor);
       setEventos((prev) => [evento, ...prev.filter((item) => item.id !== evento.id)]);
       return { success: true, evento };
     }
 
     const evento = normalizarEvento({
-      ...nuevoEvento,
+      ...datosEvento,
       id: `evt-${Date.now()}`,
       destacado: false,
+      imagen: imagenes[0]?.uri || '',
+      multimedia: imagenes.map((imagen) => imagen.uri),
       organizador: currentUser.nombre,
       organizadorId: currentUser.id,
       organizadorRating: currentUser.rating || 5,
@@ -563,12 +568,37 @@ export const AppProvider = ({ children }) => {
     return { success: true, evento };
   };
 
+  const actualizarEvento = async (eventoId, cambios) => {
+    const eventoActual = eventos.find((item) => item.id === eventoId);
+    if (!eventoActual || eventoActual.organizadorId !== currentUser.id) {
+      return { success: false, error: 'Este evento no pertenece al organizador seleccionado.' };
+    }
+
+    if (await backendDisponible()) {
+      const eventoServidor = await api.actualizarEvento(eventoId, {
+        ...cambios,
+        organizadorId: currentUser.id,
+      });
+      const eventoActualizado = normalizarEvento(eventoServidor);
+      setEventos((prev) =>
+        prev.map((item) => (item.id === eventoId ? eventoActualizado : item))
+      );
+      return { success: true, evento: eventoActualizado };
+    }
+
+    const eventoActualizado = normalizarEvento({ ...eventoActual, ...cambios });
+    setEventos((prev) =>
+      prev.map((item) => (item.id === eventoId ? eventoActualizado : item))
+    );
+    return { success: true, evento: eventoActualizado };
+  };
+
   const marcarEntradaUtilizada = async (codigoOId) => {
     const compra = compras.find(
       (item) => item.id === codigoOId || item.ordenCodigo === codigoOId
     );
-    if (!compra || compra.compradorId !== currentUser.id) {
-      return { success: false, error: 'Esta compra no pertenece al usuario seleccionado.' };
+    if (!compra || compra.organizadorId !== currentUser.id) {
+      return { success: false, error: 'Esta entrada no pertenece a un evento del organizador seleccionado.' };
     }
 
     if (await backendDisponible()) {
@@ -607,6 +637,7 @@ export const AppProvider = ({ children }) => {
         enviarMensaje,
         calificarEvento,
         crearEvento,
+        actualizarEvento,
         marcarEntradaUtilizada,
       }}
     >

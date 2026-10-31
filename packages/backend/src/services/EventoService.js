@@ -39,6 +39,44 @@ export class EventoService {
     }
   }
 
+  async actualizarEvento(id, { organizadorId, nombre, descripcion, ubicacion, direccion }) {
+    const evento = await this.obtenerPorId(id);
+    if (evento.organizador?.id !== organizadorId) {
+      throw new BusinessRuleError(
+        'Solo el organizador del evento puede modificarlo',
+        'ORGANIZADOR_EVENTO_INVALIDO'
+      );
+    }
+
+    if (nombre !== undefined && (typeof nombre !== 'string' || !nombre.trim())) {
+      throw new BusinessRuleError('El nombre del evento no puede estar vacío');
+    }
+    for (const [field, value] of Object.entries({ descripcion, ubicacion, direccion })) {
+      if (value !== undefined && typeof value !== 'string') {
+        throw new BusinessRuleError(`${field} debe ser un texto`);
+      }
+    }
+
+    const previousValues = {
+      nombre: evento.nombre,
+      descripcion: evento.descripcion,
+      ubicacion: evento.ubicacion,
+      direccion: evento.direccion,
+    };
+
+    if (nombre !== undefined) evento.nombre = nombre.trim();
+    if (descripcion !== undefined) evento.descripcion = descripcion.trim();
+    if (ubicacion !== undefined) evento.ubicacion = ubicacion.trim();
+    if (direccion !== undefined) evento.direccion = direccion.trim();
+
+    try {
+      return await this.eventoRepository.save(evento);
+    } catch (error) {
+      Object.assign(evento, previousValues);
+      throw error;
+    }
+  }
+
   async crearEvento({
     nombre,
     fecha,
@@ -50,6 +88,15 @@ export class EventoService {
     imagen = '',
     ...resto
   }) {
+    if (!Array.isArray(imagenes) || !Array.isArray(multimedia)) {
+      throw new BusinessRuleError('La imagen del evento no es válida');
+    }
+    const imagenAdicional =
+      typeof imagen === 'string' && imagen.trim() && !multimedia.includes(imagen) ? 1 : 0;
+    if (imagenes.length + multimedia.length + imagenAdicional > 1) {
+      throw new BusinessRuleError('Cada evento puede tener una sola imagen');
+    }
+
     if (typeof nombre !== 'string' || !nombre.trim()) {
       throw new BusinessRuleError('El evento debe tener al menos nombre y fecha');
     }

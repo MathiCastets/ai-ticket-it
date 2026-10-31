@@ -96,6 +96,26 @@ export class EventoController {
     }
   };
 
+  update = async (req, res, next) => {
+    try {
+      const { organizadorId, nombre, descripcion, ubicacion, direccion } = req.body;
+      if (typeof organizadorId !== 'string' || !organizadorId.trim()) {
+        throw new ValidationError('organizadorId es requerido para modificar el evento');
+      }
+
+      const evento = await this.eventoService.actualizarEvento(req.params.id, {
+        organizadorId,
+        nombre,
+        descripcion,
+        ubicacion,
+        direccion,
+      });
+      res.status(200).json({ data: evento });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   addReview = async (req, res, next) => {
     try {
       const { id } = req.params;

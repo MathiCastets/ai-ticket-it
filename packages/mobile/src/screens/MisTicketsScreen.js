@@ -18,14 +18,13 @@ import { TicketListSkeleton } from '../components/loading/Skeletons';
 import LoadingSpinner from '../components/loading/Spinners';
 
 export default function MisTicketsScreen({ navigation }) {
-  const { compras, currentUser, getDiasRestantes, cancelarCompra, marcarEntradaUtilizada } = useApp();
+  const { compras, currentUser, getDiasRestantes, cancelarCompra } = useApp();
   const isLoading = useMockLoading();
 
   const [activeTab, setActiveTab] = useState('todas'); // 'todas' | 'confirmadas' | 'pendientes' | 'historial'
   const [selectedCompraQR, setSelectedCompraQR] = useState(null);
   const [selectedCompraCancel, setSelectedCompraCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [checkInLoadingId, setCheckInLoadingId] = useState(null);
 
   // Filter purchases by tab
   const comprasDelUsuario = compras.filter((compra) => compra.compradorId === currentUser.id);
@@ -48,19 +47,6 @@ export default function MisTicketsScreen({ navigation }) {
       Alert.alert('No se pudo cancelar', error.message);
     } finally {
       setIsCancelling(false);
-    }
-  };
-
-  const handleSimularUso = async (compraId) => {
-    setCheckInLoadingId(compraId);
-    try {
-      const res = await marcarEntradaUtilizada(compraId);
-      if (!res.success) throw new Error(res.error || 'No se pudo acreditar la entrada.');
-      Alert.alert('Entrada Acreditada', 'Se ha marcado la entrada como UTILIZADA. ¡Ahora puedes calificar el evento!');
-    } catch (error) {
-      Alert.alert('No se pudo acreditar', error.message);
-    } finally {
-      setCheckInLoadingId(null);
     }
   };
 
@@ -140,7 +126,10 @@ export default function MisTicketsScreen({ navigation }) {
                 <View key={compra.id} style={styles.ticketCard}>
                   {/* Card Media Header */}
                   <View style={styles.cardImageContainer}>
-                    <Image source={{ uri: compra.imagen || compra.evento?.imagen }} style={styles.cardImage} />
+                    <Image
+                      source={compra.imagen || compra.evento?.imagen ? { uri: compra.imagen || compra.evento?.imagen } : null}
+                      style={styles.cardImage}
+                    />
                     <View style={styles.cardImageOverlay} />
 
                     {/* Top Badges */}
@@ -234,24 +223,6 @@ export default function MisTicketsScreen({ navigation }) {
                         </TouchableOpacity>
                       )}
 
-                      {/* Quick button to simulate check-in (Acreditar) */}
-                      {isConfirmada && (
-                        <TouchableOpacity
-                          style={styles.actionBtnCheckIn}
-                          onPress={() => handleSimularUso(compra.id)}
-                          disabled={checkInLoadingId === compra.id}
-                          activeOpacity={0.7}
-                        >
-                          {checkInLoadingId === compra.id ? (
-                            <LoadingSpinner size={16} style={styles.actionSpinner} />
-                          ) : (
-                            <>
-                              <Ionicons name="checkmark-done" size={14} color={COLORS.secondary} />
-                              <Text style={styles.actionBtnCheckInText}>Acreditar</Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
-                      )}
                     </View>
                   </View>
                 </View>
@@ -604,20 +575,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.statusWarning,
-  },
-  actionBtnCheckIn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: COLORS.surfaceContainerHigh,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  actionBtnCheckInText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: COLORS.secondary,
   },
   actionSpinner: {
     width: 18,
