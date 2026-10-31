@@ -289,59 +289,64 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
                   })}
                 </View>
                 <View style={styles.dateRange}>
-                  <View style={styles.dateField}>
-                    <Text style={styles.dateFieldLabel}>Desde</Text>
-                    <View style={styles.datePickerRow}>
-                      <View style={styles.datePicker}>
-                        <DateTimeSelector
-                          value={fechaDesde}
-                          onChange={setFechaDesde}
-                          dateOnly
-                          allowPastDates
-                          placeholder="Elegir fecha"
-                          accessibilityLabel="Filtrar desde la fecha"
-                        />
+                  <View style={styles.dateRangeLabels}>
+                    <Text style={[styles.dateFieldLabel, styles.dateField]}>Desde</Text>
+                    <View style={styles.dateRangeArrowSpacer} />
+                    <Text style={[styles.dateFieldLabel, styles.dateField]}>Hasta</Text>
+                  </View>
+                  <View style={styles.dateRangeFields}>
+                    <View style={styles.dateField}>
+                      <View style={styles.datePickerRow}>
+                        <View style={styles.datePicker}>
+                          <DateTimeSelector
+                            value={fechaDesde}
+                            onChange={setFechaDesde}
+                            dateOnly
+                            allowPastDates
+                            placeholder="Elegir fecha"
+                            accessibilityLabel="Filtrar desde la fecha"
+                          />
+                        </View>
+                        {fechaDesde ? (
+                          <TouchableOpacity
+                            style={styles.clearDateButton}
+                            onPress={() => setFechaDesde(null)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Quitar fecha desde"
+                            hitSlop={8}
+                          >
+                            <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
-                      {fechaDesde ? (
-                        <TouchableOpacity
-                          style={styles.clearDateButton}
-                          onPress={() => setFechaDesde(null)}
-                          accessibilityRole="button"
-                          accessibilityLabel="Quitar fecha desde"
-                          hitSlop={8}
-                        >
-                          <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
-                        </TouchableOpacity>
-                      ) : null}
                     </View>
-                  </View>
-                  <View style={styles.dateRangeSeparator}>
-                    <Feather name="arrow-right" size={16} color={COLORS.textMuted} />
-                  </View>
-                  <View style={styles.dateField}>
-                    <Text style={styles.dateFieldLabel}>Hasta</Text>
-                    <View style={styles.datePickerRow}>
-                      <View style={styles.datePicker}>
-                        <DateTimeSelector
-                          value={fechaHasta}
-                          onChange={setFechaHasta}
-                          dateOnly
-                          allowPastDates
-                          placeholder="Elegir fecha"
-                          accessibilityLabel="Filtrar hasta la fecha"
-                        />
+                    <View style={styles.dateRangeSeparator}>
+                      <Feather name="arrow-right" size={16} color={COLORS.textMuted} />
+                    </View>
+                    <View style={styles.dateField}>
+                      <View style={styles.datePickerRow}>
+                        <View style={styles.datePicker}>
+                          <DateTimeSelector
+                            value={fechaHasta}
+                            onChange={setFechaHasta}
+                            dateOnly
+                            allowPastDates
+                            placeholder="Elegir fecha"
+                            accessibilityLabel="Filtrar hasta la fecha"
+                          />
+                        </View>
+                        {fechaHasta ? (
+                          <TouchableOpacity
+                            style={styles.clearDateButton}
+                            onPress={() => setFechaHasta(null)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Quitar fecha hasta"
+                            hitSlop={8}
+                          >
+                            <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
-                      {fechaHasta ? (
-                        <TouchableOpacity
-                          style={styles.clearDateButton}
-                          onPress={() => setFechaHasta(null)}
-                          accessibilityRole="button"
-                          accessibilityLabel="Quitar fecha hasta"
-                          hitSlop={8}
-                        >
-                          <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
-                        </TouchableOpacity>
-                      ) : null}
                     </View>
                   </View>
                 </View>
@@ -681,13 +686,20 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   filterCountActive: { color: COLORS.textPrimary },
-  dateRange: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  dateField: { flex: 1, gap: 5 },
+  dateRange: { gap: 5 },
+  dateRangeLabels: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateRangeFields: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateRangeArrowSpacer: { width: 16 },
+  dateField: { flex: 1, minWidth: 0 },
   dateFieldLabel: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' },
   datePickerRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   datePicker: { flex: 1, minWidth: 0 },
   clearDateButton: { width: 22, alignItems: 'center', justifyContent: 'center' },
-  dateRangeSeparator: { height: 45, justifyContent: 'center', alignItems: 'center' },
+  dateRangeSeparator: {
+    width: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dateRangeError: { color: COLORS.statusDanger, fontSize: 11 },
   categoryFilters: { gap: 8 },
   categoryChip: {
