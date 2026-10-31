@@ -1,13 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-} from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import { CATEGORIAS } from '../data/mockData';
@@ -17,12 +9,17 @@ import useMockLoading from '../hooks/useMockLoading';
 import { EventListSkeleton } from '../components/loading/Skeletons';
 
 export default function ExplorarScreen({ navigation }) {
-  const { eventos, favoritos, toggleFavorito } = useApp();
+  const { eventos, favoritos, favoritosError, toggleFavorito } = useApp();
   const isLoading = useMockLoading();
 
   const [searchText, setSearchText] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('Todos');
   const [selectedSort, setSelectedSort] = useState('fecha'); // 'fecha' | 'precio' | 'rating'
+  const [sortDirection, setSortDirection] = useState('asc');
+  const handleToggleFavorito = (eventoId) => toggleFavorito(eventoId).catch(() => {});
+
+  const getCat = (c) => (typeof c === 'object' && c !== null ? c.nombre || '' : c || '');
+  const getOrg = (o) => (typeof o === 'object' && o !== null ? o.nombre || '' : o || '');
 
   // Filter and sort events based on text, category and sort option
   const filteredEventos = useMemo(() => {
@@ -30,9 +27,7 @@ export default function ExplorarScreen({ navigation }) {
 
     // Filter by category
     if (selectedCategoria !== 'Todos') {
-      result = result.filter(
-        (e) => e.categoria.toLowerCase() === selectedCategoria.toLowerCase()
-      );
+      result = result.filter((e) => getCat(e.categoria).toLowerCase() === selectedCategoria.toLowerCase());
     }
 
     // Filter by text search
@@ -40,54 +35,43 @@ export default function ExplorarScreen({ navigation }) {
       const q = searchText.toLowerCase();
       result = result.filter(
         (e) =>
-          e.nombre.toLowerCase().includes(q) ||
-          e.ubicacion.toLowerCase().includes(q) ||
-          e.organizador.toLowerCase().includes(q) ||
-          e.categoria.toLowerCase().includes(q)
+          (e.nombre || '').toLowerCase().includes(q) ||
+          (e.ubicacion || '').toLowerCase().includes(q) ||
+          getOrg(e.organizador).toLowerCase().includes(q) ||
+          getCat(e.categoria).toLowerCase().includes(q)
       );
     }
 
+    const direction = sortDirection === 'asc' ? 1 : -1;
+
     // Sort by Fecha, Precio or Ranking (TP explicit requirement)
     if (selectedSort === 'fecha') {
-      result.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+      result.sort((a, b) => direction * (new Date(a.fecha).getTime() - new Date(b.fecha).getTime()));
     } else if (selectedSort === 'precio') {
-      const getMinPrice = (e) =>
-        e.tiposEntrada && e.tiposEntrada.length > 0
-          ? Math.min(...e.tiposEntrada.map((t) => t.precio))
-          : 0;
-      result.sort((a, b) => getMinPrice(a) - getMinPrice(b));
+      const getMinPrice = (e) => (e.tiposEntrada && e.tiposEntrada.length > 0 ? Math.min(...e.tiposEntrada.map((t) => t.precio)) : 0);
+      result.sort((a, b) => direction * (getMinPrice(a) - getMinPrice(b)));
     } else if (selectedSort === 'rating') {
-      result.sort((a, b) => (b.organizadorRating || 0) - (a.organizadorRating || 0));
+      result.sort((a, b) => direction * ((a.organizadorRating || 0) - (b.organizadorRating || 0)));
     }
 
     return result;
-  }, [eventos, selectedCategoria, searchText, selectedSort]);
-
-  // Find the featured event (or the first one)
-  const eventoDestacado = useMemo(() => {
-    return eventos.find((e) => e.destacado) || eventos[0];
-  }, [eventos]);
+  }, [eventos, selectedCategoria, searchText, selectedSort, sortDirection]);
 
   return (
     <View style={styles.screenContainer}>
       <Header title="AI Ticket It" subtitle="Explorar" />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {favoritosError ? (
+          <Text style={{ color: COLORS.textMuted, marginBottom: 12 }}>
+            No se pudieron sincronizar los favoritos: {favoritosError}
+          </Text>
+        ) : null}
         {/* Search & Filter Bar */}
         <View style={styles.searchSection}>
           <View style={styles.searchInputContainer}>
             <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar recitales, festivales, teatro..."
-              placeholderTextColor={COLORS.textMuted}
-              value={searchText}
-              onChangeText={setSearchText}
-            />
+            <TextInput style={styles.searchInput} placeholder="Buscar recitales, festivales, teatro..." placeholderTextColor={COLORS.textMuted} value={searchText} onChangeText={setSearchText} />
             {searchText.length > 0 && (
               <TouchableOpacity onPress={() => setSearchText('')}>
                 <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
@@ -100,29 +84,12 @@ export default function ExplorarScreen({ navigation }) {
         </View>
 
         {/* Categories Horizontal Scroll */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesContainer}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
           {CATEGORIAS.map((cat) => {
             const isSelected = selectedCategoria === cat;
             return (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.categoryChip,
-                  isSelected && styles.categoryChipSelected,
-                ]}
-                onPress={() => setSelectedCategoria(cat)}
-                activeOpacity={0.75}
-              >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    isSelected && styles.categoryTextSelected,
-                  ]}
-                >
+              <TouchableOpacity key={cat} style={[styles.categoryChip, isSelected && styles.categoryChipSelected]} onPress={() => setSelectedCategoria(cat)} activeOpacity={0.75}>
+                <Text style={[styles.categoryText, isSelected && styles.categoryTextSelected]}>
                   {cat === 'Todos' ? '🔥 Todos' : cat === 'Recitales' ? '🎵 Recitales' : cat === 'Festivales' ? '🎪 Festivales' : cat === 'Teatro' ? '🎭 Teatro' : cat === 'Conferencias' ? '🎤 Conferencias' : '⚽ Deportes'}
                 </Text>
               </TouchableOpacity>
@@ -130,12 +97,10 @@ export default function ExplorarScreen({ navigation }) {
           })}
         </ScrollView>
 
-        {/* Sorting Pills */}
         <View style={styles.sortSection}>
-          <View style={styles.sortLabelRow}>
-            <MaterialIcons name="sort" size={16} color={COLORS.tertiary} />
-            <Text style={styles.sortLabel}>ORDENAR POR:</Text>
-          </View>
+          <Text style={styles.eventCount}>
+            {filteredEventos.length} {filteredEventos.length === 1 ? 'evento' : 'eventos'}
+          </Text>
           <View style={styles.sortPillsGroup}>
             {[
               { id: 'fecha', label: 'Fecha' },
@@ -147,12 +112,30 @@ export default function ExplorarScreen({ navigation }) {
                 <TouchableOpacity
                   key={sort.id}
                   style={[styles.sortPill, active && styles.sortPillActive]}
-                  onPress={() => setSelectedSort(sort.id)}
+                  onPress={() => {
+                    if (sort.id === selectedSort) {
+                      setSortDirection((direction) => (direction === 'asc' ? 'desc' : 'asc'));
+                    } else {
+                      setSelectedSort(sort.id);
+                      setSortDirection(sort.id === 'rating' ? 'desc' : 'asc');
+                    }
+                  }}
+                  hitSlop={4}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ordenar por ${sort.label}${active ? `, ${sortDirection === 'asc' ? 'ascendente' : 'descendente'}` : ''}`}
+                  accessibilityHint={active ? 'Toca nuevamente para invertir el orden' : undefined}
                 >
-                  <Text style={[styles.sortPillText, active && styles.sortPillTextActive]}>
-                    {sort.label}
-                  </Text>
+                  <View style={styles.sortPillContent}>
+                    <Text style={[styles.sortPillText, active && styles.sortPillTextActive]}>{sort.label}</Text>
+                    {active && (
+                      <MaterialIcons
+                        name={sortDirection === 'asc' ? 'arrow-upward' : 'arrow-downward'}
+                        size={14}
+                        color={COLORS.textPrimary}
+                      />
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -162,158 +145,50 @@ export default function ExplorarScreen({ navigation }) {
         {isLoading ? (
           <EventListSkeleton count={3} />
         ) : (
-          <>
-        {/* Featured Event Card (Hero) */}
-        {eventoDestacado && (
-          <View style={styles.featuredSection}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <View style={styles.pulseDot} />
-                <Text style={styles.sectionTitle}>Evento Destacado</Text>
-              </View>
-              <Text style={styles.sectionBadge}>IMPERDIBLE</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.featuredCard}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate('DetalleEvento', { eventoId: eventoDestacado.id })}
-            >
-              {/* Media image container */}
-              <View style={styles.featuredImageContainer}>
-                <Image source={{ uri: eventoDestacado.imagen }} style={styles.featuredImage} />
-                <View style={styles.imageOverlay} />
-
-                {/* Top Badges */}
-                <View style={styles.imageTopBadges}>
-                  <View style={styles.badgeAvailable}>
-                    <View style={styles.badgeGreenDot} />
-                    <Text style={styles.badgeAvailableText}>DISPONIBLE</Text>
+          <View style={styles.eventList}>
+            {filteredEventos.map((item) => (
+              <TouchableOpacity key={item.id} style={styles.eventCard} onPress={() => navigation.navigate('DetalleEvento', { eventoId: item.id })} activeOpacity={0.8}>
+                <View style={styles.eventImageContainer}>
+                  <Image source={item.imagen ? { uri: item.imagen } : null} style={styles.eventImage} />
+                  <View style={styles.eventCategoryTag}>
+                    <Text style={styles.eventCategoryText}>{getCat(item.categoria)}</Text>
                   </View>
-                  <View style={styles.badgeCategory}>
-                    <Text style={styles.badgeCategoryText}>🔥 FESTIVAL TOP</Text>
-                  </View>
-                </View>
-
-                {/* Favorite Heart Button */}
-                <TouchableOpacity
-                  style={styles.heartButton}
-                  onPress={() => toggleFavorito(eventoDestacado.id)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={favoritos.includes(eventoDestacado.id) ? 'heart' : 'heart-outline'}
-                    size={20}
-                    color={favoritos.includes(eventoDestacado.id) ? COLORS.accentElectric : COLORS.textPrimary}
-                  />
-                </TouchableOpacity>
-
-                {/* Rating on image corner */}
-                <View style={styles.ratingBadge}>
-                  <Ionicons name="star" size={13} color={COLORS.statusWarning} />
-                  <Text style={styles.ratingText}>{eventoDestacado.organizadorRating}</Text>
-                  <Text style={styles.ratingCount}>({eventoDestacado.totalResenias})</Text>
-                </View>
-              </View>
-
-              {/* Card Body */}
-              <View style={styles.featuredBody}>
-                <Text style={styles.featuredTitle}>{eventoDestacado.nombre}</Text>
-
-                <View style={styles.featuredInfoRow}>
-                  <Ionicons name="calendar-outline" size={14} color={COLORS.tertiary} />
-                  <Text style={styles.featuredInfoText}>{eventoDestacado.fechaTexto}</Text>
-                </View>
-
-                <View style={styles.featuredInfoRow}>
-                  <Ionicons name="location-outline" size={14} color={COLORS.accentElectric} />
-                  <Text style={styles.featuredInfoText} numberOfLines={1}>
-                    {eventoDestacado.ubicacion}
-                  </Text>
-                </View>
-
-                {/* Price and Stock row */}
-                <View style={styles.priceRow}>
-                  <View>
-                    <Text style={styles.pricePrefix}>DESDE</Text>
-                    <View style={styles.priceContainer}>
-                      <Text style={styles.priceAmount}>
-                        ${eventoDestacado.tiposEntrada[0]?.precio?.toLocaleString('es-AR')}
-                      </Text>
-                      <Text style={styles.priceSuffix}> / {eventoDestacado.tiposEntrada[0]?.nombre}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.stockBadge}>
-                    <Ionicons name="checkmark-circle" size={13} color={COLORS.statusSuccess} />
-                    <Text style={styles.stockText}>Cupos Activos</Text>
-                  </View>
-                </View>
-
-                {/* Big Neon CTA Button */}
-                <TouchableOpacity
-                  style={styles.buyButton}
-                  onPress={() => navigation.navigate('DetalleEvento', { eventoId: eventoDestacado.id })}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.buyButtonText}>COMPRAR ENTRADAS</Text>
-                  <Feather name="arrow-right" size={18} color={COLORS.textPrimary} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Upcoming Events (Próximos en Cartelera) */}
-        <View style={styles.upcomingSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Próximos en Cartelera</Text>
-            <Text style={styles.sectionLink}>VER TODOS ({filteredEventos.length})</Text>
-          </View>
-
-          {filteredEventos.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.upcomingCard}
-              onPress={() => navigation.navigate('DetalleEvento', { eventoId: item.id })}
-              activeOpacity={0.8}
-            >
-              <Image source={{ uri: item.imagen }} style={styles.upcomingImage} />
-              <View style={styles.upcomingDetails}>
-                <View style={styles.upcomingHeaderRow}>
-                  <View style={styles.upcomingCategoryTag}>
-                    <Text style={styles.upcomingCategoryText}>{item.categoria.toUpperCase()}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => toggleFavorito(item.id)}>
-                    <Ionicons
-                      name={favoritos.includes(item.id) ? 'heart' : 'heart-outline'}
-                      size={18}
-                      color={favoritos.includes(item.id) ? COLORS.accentElectric : COLORS.textMuted}
-                    />
+                  <TouchableOpacity style={styles.eventFavoriteButton} onPress={() => handleToggleFavorito(item.id)} activeOpacity={0.8}>
+                    <Ionicons name={favoritos.includes(item.id) ? 'heart' : 'heart-outline'} size={18} color={favoritos.includes(item.id) ? COLORS.accentElectric : COLORS.textPrimary} />
                   </TouchableOpacity>
                 </View>
-
-                <Text style={styles.upcomingTitle} numberOfLines={1}>
-                  {item.nombre}
-                </Text>
-                <Text style={styles.upcomingDate} numberOfLines={1}>
-                  {item.fechaTexto}
-                </Text>
-
-                <View style={styles.upcomingFooterRow}>
-                  <Text style={styles.upcomingPrice}>
-                    ${item.tiposEntrada[0]?.precio?.toLocaleString('es-AR')}
+                <View style={styles.eventDetails}>
+                  <Text style={styles.eventTitle} numberOfLines={1}>
+                    {item.nombre}
                   </Text>
-                  <View style={styles.upcomingRating}>
-                    <Ionicons name="star" size={12} color={COLORS.statusWarning} />
-                    <Text style={styles.upcomingRatingText}>{item.organizadorRating}</Text>
+                  <View style={styles.eventInfoRow}>
+                    <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} />
+                    <Text style={styles.eventInfoText} numberOfLines={1}>
+                      {item.fechaTexto}
+                    </Text>
+                  </View>
+                  <View style={styles.eventInfoRow}>
+                    <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
+                    <Text style={styles.eventInfoText} numberOfLines={1}>
+                      {item.ubicacion}
+                    </Text>
+                  </View>
+                  <View style={styles.eventFooter}>
+                    <View style={styles.eventOrganizer}>
+                      <Ionicons name="star" size={12} color={COLORS.statusWarning} />
+                      <Text style={styles.eventRating}>{item.organizadorRating}</Text>
+                      <Text style={styles.eventOrganizerName} numberOfLines={1}>
+                        {getOrg(item.organizador)}
+                      </Text>
+                    </View>
+                    <Text style={styles.eventPrice}>
+                      Desde <Text style={styles.eventPriceAmount}>${item.tiposEntrada[0]?.precio?.toLocaleString('es-AR')}</Text>
+                    </Text>
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-          </>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -400,19 +275,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 14,
   },
-  sortLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sortLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-    letterSpacing: 0.5,
+  eventCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   sortPillsGroup: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.surfaceContainerLow,
     borderRadius: 16,
     padding: 3,
@@ -426,6 +296,11 @@ const styles = StyleSheet.create({
   sortPillActive: {
     backgroundColor: COLORS.accentVioletDeep,
   },
+  sortPillContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
   sortPillText: {
     fontSize: 11,
     fontWeight: '600',
@@ -434,6 +309,100 @@ const styles = StyleSheet.create({
   sortPillTextActive: {
     color: COLORS.textPrimary,
     fontWeight: '700',
+  },
+  eventList: {
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  eventCard: {
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  eventImageContainer: {
+    position: 'relative',
+    height: 190,
+  },
+  eventImage: {
+    width: '100%',
+    height: '100%',
+  },
+  eventCategoryTag: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(15, 8, 29, 0.8)',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  eventCategoryText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  eventFavoriteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(15, 8, 29, 0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eventDetails: {
+    padding: 14,
+    gap: 8,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  eventInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  eventInfoText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  eventFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+  },
+  eventOrganizer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  eventRating: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  eventOrganizerName: {
+    flexShrink: 1,
+    fontSize: 11,
+    color: COLORS.textSecondary,
+  },
+  eventPrice: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+  },
+  eventPriceAmount: {
+    fontWeight: '700',
+    color: COLORS.badgeCyanGlow,
   },
   featuredSection: {
     paddingHorizontal: 16,

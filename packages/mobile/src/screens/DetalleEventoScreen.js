@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,15 +16,19 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { EventDetailSkeleton } from '../components/loading/Skeletons';
+import LoadingSpinner from '../components/loading/Spinners';
 
 export default function DetalleEventoScreen({ route, navigation }) {
   const { eventoId } = route.params;
-  const { eventos, favoritos, toggleFavorito, comprarEntrada } = useApp();
+  const { eventos, favoritos, favoritosError, toggleFavorito, comprarEntrada } = useApp();
   const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const bottomInset = insets.bottom > 0 ? insets.bottom : 12;
 
   const evento = eventos.find((e) => e.id === eventoId) || eventos[0];
+  const imagenesEvento =
+    evento.multimedia?.length > 0 ? evento.multimedia : evento.imagen ? [evento.imagen] : [];
 
   // Selection states
   const [selectedTipoId, setSelectedTipoId] = useState(
@@ -31,9 +36,11 @@ export default function DetalleEventoScreen({ route, navigation }) {
   );
   const [cantidad, setCantidad] = useState(1);
   const [compraExitosa, setCompraExitosa] = useState(false);
+  const [isBuying, setIsBuying] = useState(false);
 
   const selectedTipo = evento.tiposEntrada?.find((t) => t.id === selectedTipoId);
   const total = selectedTipo ? selectedTipo.precio * cantidad : 0;
+  const handleToggleFavorito = () => toggleFavorito(evento.id).catch(() => {});
 
   const handleIncrement = () => {
     if (!selectedTipo) return;
@@ -50,18 +57,21 @@ export default function DetalleEventoScreen({ route, navigation }) {
     }
   };
 
-  const handleComprar = () => {
+  const handleComprar = async () => {
     if (!selectedTipo) return;
-    const res = comprarEntrada({
-      eventoId: evento.id,
-      tipoEntradaId: selectedTipo.id,
-      cantidad,
-    });
-
-    if (res.success) {
+    setIsBuying(true);
+    try {
+      const res = await comprarEntrada({
+        eventoId: evento.id,
+        tipoEntradaId: selectedTipo.id,
+        cantidad,
+      });
+      if (!res.success) throw new Error(res.error || 'No se pudo completar la compra.');
       setCompraExitosa(true);
-    } else {
-      Alert.alert('Error en la compra', res.error);
+    } catch (error) {
+      Alert.alert('Error en la compra', error.message);
+    } finally {
+      setIsBuying(false);
     }
   };
 
@@ -76,14 +86,35 @@ export default function DetalleEventoScreen({ route, navigation }) {
     );
   }
 
+  const catNombre = typeof evento?.categoria === 'object' && evento?.categoria !== null ? evento.categoria.nombre : (evento?.categoria || '');
+  const orgNombre = typeof evento?.organizador === 'object' && evento?.organizador !== null ? evento.organizador.nombre : (evento?.organizador || '');
+
   return (
     <View style={styles.screenContainer}>
       <Header title="AI Ticket It" subtitle="Detalle Evento" showBack onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + bottomInset }]} showsVerticalScrollIndicator={false}>
+        {favoritosError ? (
+          <Text style={{ color: COLORS.textMuted, marginBottom: 12 }}>
+            No se pudieron sincronizar los favoritos: {favoritosError}
+          </Text>
+        ) : null}
         {/* Hero Image */}
         <View style={styles.heroContainer}>
-          <Image source={{ uri: evento.imagen }} style={styles.heroImage} />
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            style={styles.heroGallery}
+          >
+            {imagenesEvento.map((imagen, index) => (
+              <Image
+                key={`${imagen}-${index}`}
+                source={{ uri: imagen }}
+                style={[styles.heroImage, { width: screenWidth }]}
+              />
+            ))}
+          </ScrollView>
           <View style={styles.heroOverlay} />
 
           <View style={styles.heroTopActions}>
@@ -94,7 +125,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
 
             <TouchableOpacity
               style={styles.actionRoundBtn}
-              onPress={() => toggleFavorito(evento.id)}
+              onPress={handleToggleFavorito}
               activeOpacity={0.8}
             >
               <Ionicons
@@ -110,12 +141,14 @@ export default function DetalleEventoScreen({ route, navigation }) {
         <View style={styles.contentSection}>
           <View style={styles.categoryBadgeRow}>
             <View style={styles.categoryChip}>
-              <Text style={styles.categoryChipText}>{evento.categoria.toUpperCase()}</Text>
+              <Text style={styles.categoryChipText}>{catNombre.toUpperCase()}</Text>
             </View>
+          {/*       TODO: quizas mostrarlo condicionalmente.     
             <View style={styles.demandChip}>
               <Ionicons name="flame" size={12} color={COLORS.badgeCyanGlow} />
               <Text style={styles.demandChipText}>Alta demanda</Text>
             </View>
+            */}
           </View>
 
           <Text style={styles.eventTitle}>{evento.nombre}</Text>
@@ -148,7 +181,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
             </View>
             <View style={styles.organizerTextBox}>
               <View style={styles.organizerNameRow}>
-                <Text style={styles.organizerName}>{evento.organizador}</Text>
+                <Text style={styles.organizerName}>{orgNombre}</Text>
                 <Ionicons name="checkmark-circle" size={14} color={COLORS.statusSuccess} />
               </View>
               <View style={styles.ratingRow}>
@@ -181,6 +214,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
                     isSelected && styles.ticketOptionSelected,
                     !hasCupo && styles.ticketOptionDisabled,
                   ]}
+                  disabled={isBuying}
                   onPress={() => {
                     if (hasCupo) {
                       setSelectedTipoId(tipo.id);
@@ -228,11 +262,11 @@ export default function DetalleEventoScreen({ route, navigation }) {
             <View style={styles.quantitySection}>
               <Text style={styles.quantityLabel}>Cantidad de entradas:</Text>
               <View style={styles.counterRow}>
-                <TouchableOpacity style={styles.counterBtn} onPress={handleDecrement} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.counterBtn} onPress={handleDecrement} disabled={isBuying} activeOpacity={0.7}>
                   <Feather name="minus" size={16} color={COLORS.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.counterValue}>{cantidad}</Text>
-                <TouchableOpacity style={styles.counterBtn} onPress={handleIncrement} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.counterBtn} onPress={handleIncrement} disabled={isBuying} activeOpacity={0.7}>
                   <Feather name="plus" size={16} color={COLORS.textPrimary} />
                 </TouchableOpacity>
               </View>
@@ -250,7 +284,11 @@ export default function DetalleEventoScreen({ route, navigation }) {
               evento.reseniasAnteriores.map((res) => (
                 <View key={res.id} style={styles.reviewCard}>
                   <View style={styles.reviewHeader}>
-                    <Text style={styles.reviewUser}>{res.comprador}</Text>
+                    <Text style={styles.reviewUser}>
+                      {typeof res.comprador === 'object' && res.comprador !== null
+                        ? `${res.comprador.nombre || ''} ${res.comprador.apellido || ''}`.trim()
+                        : (res.comprador || 'Comprador')}
+                    </Text>
                     <View style={styles.reviewStars}>
                       <Ionicons name="star" size={12} color={COLORS.statusWarning} />
                       <Text style={styles.reviewScore}>{res.puntuacion}</Text>
@@ -275,13 +313,22 @@ export default function DetalleEventoScreen({ route, navigation }) {
         </View>
 
         <TouchableOpacity
-          style={[styles.confirmBuyBtn, (!selectedTipo || selectedTipo.disponibles === 0) && styles.disabledBtn]}
+          style={[styles.confirmBuyBtn, (!selectedTipo || selectedTipo.disponibles === 0 || isBuying) && styles.disabledBtn]}
           onPress={handleComprar}
-          disabled={!selectedTipo || selectedTipo.disponibles === 0}
+          disabled={!selectedTipo || selectedTipo.disponibles === 0 || isBuying}
           activeOpacity={0.85}
         >
-          <Text style={styles.confirmBuyBtnText}>COMPRAR AHORA</Text>
-          <Feather name="arrow-right" size={18} color={COLORS.textPrimary} />
+          {isBuying ? (
+            <>
+              <LoadingSpinner size={18} style={styles.buttonSpinner} />
+              <Text style={styles.confirmBuyBtnText}>PROCESANDO...</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.confirmBuyBtnText}>COMPRAR AHORA</Text>
+              <Feather name="arrow-right" size={18} color={COLORS.textPrimary} />
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -335,9 +382,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     height: 220,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  heroGallery: {
+    width: '100%',
+    height: '100%',
   },
   heroImage: {
-    width: '100%',
     height: '100%',
   },
   heroOverlay: {
@@ -731,6 +782,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 24,
+  },
+  buttonSpinner: {
+    width: 18,
+    padding: 0,
   },
   disabledBtn: {
     opacity: 0.4,

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,19 +20,49 @@ import LoadingSpinner from '../components/loading/Spinners';
 
 export default function ChatScreen({ route, navigation }) {
   const { compraId } = route.params;
-  const { compras, enviarMensaje, userRole } = useApp();
+  const { compras, enviarMensaje, currentUser } = useApp();
   const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom > 0 ? insets.bottom : 10;
 
-  const compra = compras.find((c) => c.id === compraId) || compras[0];
+  const compra = compras.find(
+    (item) =>
+      item.id === compraId &&
+      (item.compradorId === currentUser.id || item.organizadorId === currentUser.id)
+  );
   const [nuevoTexto, setNuevoTexto] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
-  const handleEnviar = () => {
-    if (!nuevoTexto.trim()) return;
-    enviarMensaje(compra.id, nuevoTexto);
-    setNuevoTexto('');
+  const handleEnviar = async () => {
+    if (!compra || !nuevoTexto.trim()) return;
+    setIsSending(true);
+    try {
+      await enviarMensaje(compra.id, nuevoTexto);
+      setNuevoTexto('');
+    } catch (error) {
+      Alert.alert('No se pudo enviar el mensaje', error.message);
+    } finally {
+      setIsSending(false);
+    }
   };
+
+  if (!compra) {
+    return (
+      <View style={styles.screenContainer}>
+        <Header
+          title="Chat de Compra"
+          subtitle="Acceso no disponible"
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={styles.emptyAccess}>
+          <Ionicons name="lock-closed-outline" size={34} color={COLORS.textMuted} />
+          <Text style={styles.emptyChatText}>Esta conversación no pertenece al perfil actual.</Text>
+          <Text style={styles.emptyChatSub}>Cambiá de usuario desde el avatar para continuar.</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -53,11 +84,13 @@ export default function ChatScreen({ route, navigation }) {
           </View>
           <View>
             <View style={styles.orgNameRow}>
-              <Text style={styles.orgName}>{compra.organizadorNombre}</Text>
+              <Text style={styles.orgName}>
+                {compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador'}
+              </Text>
               <Ionicons name="checkmark-circle" size={13} color={COLORS.statusSuccess} />
             </View>
             <Text style={styles.contextSub}>
-              {compra.eventoNombre} ({compra.tipoEntradaNombre} x{compra.cantidad})
+              {compra.eventoNombre || compra.evento?.nombre} ({compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} x{compra.cantidad})
             </Text>
           </View>
         </View>
@@ -89,9 +122,8 @@ export default function ChatScreen({ route, navigation }) {
         ) : compra.mensajes && compra.mensajes.length > 0 ? (
           compra.mensajes.map((msg) => {
             const isMe =
-              userRole === 'comprador'
-                ? msg.emisor === 'comprador'
-                : msg.emisor === 'organizador';
+              msg.usuarioId === currentUser.id ||
+              (!msg.usuarioId && msg.usuario === currentUser.nombreCompleto);
 
             return (
               <View
@@ -140,20 +172,24 @@ export default function ChatScreen({ route, navigation }) {
       <View style={[styles.inputBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
         <TextInput
           style={styles.chatInput}
-          placeholder={`Escribe como ${userRole === 'comprador' ? 'comprador' : 'organizador'}...`}
+          placeholder={`Escribe como ${currentUser.nombre}...`}
           placeholderTextColor={COLORS.textMuted}
           value={nuevoTexto}
           onChangeText={setNuevoTexto}
           multiline
-          editable={!isLoading}
+          editable={!isLoading && !isSending}
         />
         <TouchableOpacity
-          style={[styles.sendButton, (isLoading || !nuevoTexto.trim()) && styles.sendButtonDisabled]}
+          style={[styles.sendButton, (isLoading || isSending || !nuevoTexto.trim()) && styles.sendButtonDisabled]}
           onPress={handleEnviar}
-          disabled={isLoading || !nuevoTexto.trim()}
+          disabled={isLoading || isSending || !nuevoTexto.trim()}
           activeOpacity={0.8}
         >
-          <Ionicons name="send" size={16} color={COLORS.textPrimary} />
+          {isSending ? (
+            <LoadingSpinner size={16} style={styles.sendSpinner} />
+          ) : (
+            <Ionicons name="send" size={16} color={COLORS.textPrimary} />
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -230,6 +266,10 @@ const styles = StyleSheet.create({
     minHeight: 280,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sendSpinner: {
+    width: 16,
+    padding: 0,
   },
   dateSeparator: {
     flexDirection: 'row',
@@ -316,6 +356,13 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     maxWidth: 220,
+  },
+  emptyAccess: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 28,
+    gap: 8,
   },
   inputBar: {
     flexDirection: 'row',

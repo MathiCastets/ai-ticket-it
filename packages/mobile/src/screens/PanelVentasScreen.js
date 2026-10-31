@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -13,29 +13,51 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 
-export default function PanelVentasScreen({ navigation }) {
-  const { eventos, compras } = useApp();
+export default function PanelVentasScreen({ route, navigation }) {
+  const { eventos, compras, currentUser } = useApp();
   const isLoading = useMockLoading();
+  const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
+  const [ahora, setAhora] = useState(Date.now());
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setAhora(Date.now()), 60000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const [selectedEventoId, setSelectedEventoId] = useState(
-    eventos && eventos.length > 0 ? eventos[0].id : null
+    route?.params?.eventoId || (eventosDelUsuario.length > 0 ? eventosDelUsuario[0].id : null)
   );
+  useEffect(() => {
+    if (route?.params?.eventoId) setSelectedEventoId(route.params.eventoId);
+  }, [route?.params?.eventoId]);
 
-  const selectedEvento = eventos.find((e) => e.id === selectedEventoId) || eventos[0];
+  const selectedEvento =
+    eventosDelUsuario.find((evento) => evento.id === selectedEventoId) || eventosDelUsuario[0];
 
   // Purchases associated with this specific event (TP requirement)
   const comprasDelEvento = useMemo(() => {
     if (!selectedEvento) return [];
-    return compras.filter((c) => c.eventoId === selectedEvento.id);
+    return compras.filter((c) => (c.eventoId || c.evento?.id) === selectedEvento.id);
   }, [selectedEvento, compras]);
 
   // Aggregate metrics
   const metricas = useMemo(() => {
-    if (!selectedEvento) return { totalRecaudado: 0, vendidas: 0, cupoTotal: 0 };
+    if (!selectedEvento) {
+      return { totalRecaudado: 0, ingresosUltimas24Horas: 0, vendidas: 0, cupoTotal: 0 };
+    }
 
     const totalRecaudado = comprasDelEvento
       .filter((c) => c.estado !== 'CANCELADA' && c.estado !== 'REEMBOLSADA')
       .reduce((acc, c) => acc + (c.total || 0), 0);
+
+    const limite24Horas = ahora - 24 * 60 * 60 * 1000;
+    const ingresosUltimas24Horas = comprasDelEvento
+      .filter((compra) => {
+        if (!['CONFIRMADA', 'UTILIZADA'].includes(compra.estado)) return false;
+        const fechaCompra = Date.parse(compra.fechaHora);
+        return Number.isFinite(fechaCompra) && fechaCompra >= limite24Horas && fechaCompra <= ahora;
+      })
+      .reduce((acumulado, compra) => acumulado + (compra.total || 0), 0);
 
     const vendidas = comprasDelEvento
       .filter((c) => c.estado !== 'CANCELADA' && c.estado !== 'REEMBOLSADA')
@@ -43,13 +65,13 @@ export default function PanelVentasScreen({ navigation }) {
 
     const cupoTotal = selectedEvento.tiposEntrada?.reduce((acc, t) => acc + t.cupo, 0) || 0;
 
-    return { totalRecaudado, vendidas, cupoTotal };
-  }, [selectedEvento, comprasDelEvento]);
+    return { totalRecaudado, ingresosUltimas24Horas, vendidas, cupoTotal };
+  }, [selectedEvento, comprasDelEvento, ahora]);
 
   if (isLoading) {
     return (
       <View style={styles.screenContainer}>
-        <Header title="AI Ticket It" subtitle="Panel de Ventas" />
+        <Header title="AI Ticket It" subtitle="Panel de Ventas" showBack onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <LoadingSpinner variant="dual" label="Cargando ventas del evento..." />
         </View>
@@ -59,14 +81,14 @@ export default function PanelVentasScreen({ navigation }) {
 
   return (
     <View style={styles.screenContainer}>
-      <Header title="AI Ticket It" subtitle="Panel de Ventas" />
+      <Header title="AI Ticket It" subtitle="Panel de Ventas" showBack onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Event Selector Horizontal Chips */}
         <View style={styles.selectorSection}>
           <Text style={styles.selectorLabel}>SELECCIONAR EVENTO:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScroll}>
-            {eventos.map((ev) => {
+            {eventosDelUsuario.map((ev) => {
               const isSelected = selectedEvento?.id === ev.id;
               return (
                 <TouchableOpacity
@@ -111,13 +133,15 @@ export default function PanelVentasScreen({ navigation }) {
               <Ionicons name="cash-outline" size={16} color={COLORS.statusSuccess} />
               <Text style={styles.kpiLabel}>TOTAL RECAUDADO</Text>
             </View>
-            <Text style={styles.kpiValue}>
-              ${(metricas.totalRecaudado || 4890000).toLocaleString('es-AR')}
-            </Text>
-            <View style={styles.kpiTrend}>
-              <Feather name="trending-up" size={12} color={COLORS.statusSuccess} />
-              <Text style={styles.kpiTrendText}>Venta activa en tiempo real</Text>
+            <View style={styles.revenueValueRow}>
+              <Feather name="trending-up" size={19} color={COLORS.statusSuccess} />
+              <Text style={styles.kpiValue}>
+                ${metricas.totalRecaudado.toLocaleString('es-AR')}
+              </Text>
             </View>
+            <Text style={styles.revenueRecentValue}>
+              +${metricas.ingresosUltimas24Horas.toLocaleString('es-AR')} hoy
+            </Text>
           </View>
 
           {/* KPI: Entradas vendidas */}
@@ -203,9 +227,11 @@ export default function PanelVentasScreen({ navigation }) {
                       <Ionicons name="person" size={16} color={COLORS.badgeCyanGlow} />
                     </View>
                     <View>
-                      <Text style={styles.buyerName}>{compra.compradorNombre}</Text>
+                      <Text style={styles.buyerName}>
+                        {compra.compradorNombre || (typeof compra.comprador === 'object' ? `${compra.comprador?.nombre || ''} ${compra.comprador?.apellido || ''}`.trim() : compra.comprador) || 'Comprador'}
+                      </Text>
                       <Text style={styles.saleDetails}>
-                        {compra.cantidad}x {compra.tipoEntradaNombre} • ${compra.total?.toLocaleString('es-AR')}
+                        {compra.cantidad}x {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} • ${compra.total?.toLocaleString('es-AR')}
                       </Text>
                       <Text style={styles.saleOrderCode}>{compra.ordenCodigo}</Text>
                     </View>
@@ -369,6 +395,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: COLORS.textPrimary,
+  },
+  revenueValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  revenueRecentValue: {
+    color: COLORS.statusSuccess,
+    fontSize: 12,
+    fontWeight: '700',
   },
   kpiTrend: {
     flexDirection: 'row',

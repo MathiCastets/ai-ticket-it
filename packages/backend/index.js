@@ -1,27 +1,27 @@
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-import express from "express";
-import cors from "cors";
+import { createApp } from './src/app.js';
+import { env } from './src/config/env.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, ".env") });
+const app = createApp();
 
-const app = express();
-app.use(express.json());
-app.use(
-  cors({
-    origin: process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-      : true,
-  }),
-);
-
-app.get("/hello", (req, res) => {
-  res.json({ message: "hello world" });
+const server = app.listen(env.PORT, () => {
+  console.log(`[AI Ticket It Backend] Servidor iniciado con éxito`);
+  console.log(`[AI Ticket It Backend] Escuchando en http://localhost:${env.PORT}`);
+  console.log(`[AI Ticket It Backend] API Base: http://localhost:${env.PORT}/api`);
+  console.log(`[AI Ticket It Backend] Entorno: ${env.NODE_ENV}`);
 });
 
-const PORT = process.env.SERVER_PORT || 8000;
-app.listen(PORT, () => {
-  console.log(`Backend escuchando en puerto ${PORT}`);
-});
+function gracefulShutdown(signal) {
+  console.log(`\n[AI Ticket It Backend] Señal ${signal} recibida. Cerrando servidor ordenadamente...`);
+  server.close(() => {
+    console.log('[AI Ticket It Backend] Servidor HTTP cerrado.');
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error('[AI Ticket It Backend] Forzando cierre del proceso tras timeout.');
+    process.exit(1);
+  }, 5000);
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

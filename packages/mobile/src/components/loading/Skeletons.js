@@ -11,21 +11,14 @@ export function Skeleton({ width = '100%', height = 14, borderRadius = 8, style 
         toValue: 1,
         duration: 1500,
         useNativeDriver: true,
-      })
+      }),
     );
     animation.start();
     return () => animation.stop();
   }, [shimmer]);
 
   return (
-    <View
-      style={[
-        styles.skeleton,
-        { width, height, borderRadius },
-        style,
-      ]}
-      accessible={false}
-    >
+    <View style={[styles.skeleton, { width, height, borderRadius }, style]} accessible={false}>
       <Animated.View
         style={[
           styles.shimmer,
@@ -45,27 +38,26 @@ export function Skeleton({ width = '100%', height = 14, borderRadius = 8, style 
   );
 }
 
-export function EventCardSkeleton({ featured = false }) {
+export function EventCardSkeleton() {
   return (
-    <View style={[styles.card, featured && styles.featuredCard]}>
-      <Skeleton height={featured ? 160 : 88} borderRadius={12} />
-      <View style={styles.eventCardContent}>
-        <Skeleton width="72%" height={16} />
-        <Skeleton width="50%" height={12} />
+    <View style={styles.eventListCard}>
+      <Skeleton height={190} borderRadius={0} />
+      <View style={styles.eventListCardContent}>
+        <Skeleton width="72%" height={18} />
+        <Skeleton width="62%" height={12} />
+        <Skeleton width="78%" height={12} />
         <View style={styles.row}>
+          <Skeleton width="42%" height={12} />
           <Skeleton width="32%" height={12} />
-          <Skeleton width="24%" height={12} />
         </View>
-        {featured ? <Skeleton height={42} borderRadius={12} /> : null}
       </View>
     </View>
   );
 }
 
-export function EventListSkeleton({ count = 3, includeFeatured = true }) {
+export function EventListSkeleton({ count = 3 }) {
   return (
-    <View style={styles.list}>
-      {includeFeatured ? <EventCardSkeleton featured /> : null}
+    <View style={styles.eventList}>
       {Array.from({ length: count }, (_, index) => (
         <EventCardSkeleton key={index} />
       ))}
@@ -167,6 +159,10 @@ const styles = StyleSheet.create({
   list: {
     gap: 12,
   },
+  eventList: {
+    paddingHorizontal: 16,
+    gap: 14,
+  },
   card: {
     gap: 12,
     padding: 14,
@@ -175,10 +171,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  featuredCard: {
-    padding: 14,
+  eventListCard: {
+    overflow: 'hidden',
+    borderRadius: 16,
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  eventCardContent: {
+  eventListCardContent: {
+    padding: 14,
     gap: 10,
   },
   row: {

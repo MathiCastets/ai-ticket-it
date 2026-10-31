@@ -17,17 +17,18 @@ import CalificarScreen from '../screens/CalificarScreen';
 import CrearEventoScreen from '../screens/CrearEventoScreen';
 import PanelVentasScreen from '../screens/PanelVentasScreen';
 import MensajesInboxScreen from '../screens/MensajesInboxScreen';
+import OrganizadorEventosScreen from '../screens/OrganizadorEventosScreen';
+import EscanearScreen from '../screens/EscanearScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function BottomTabs() {
-  const { userRole } = useApp();
+  const { currentUser } = useApp();
   const insets = useSafeAreaInsets();
 
   const isWeb = Platform.OS === 'web';
   const bottomInset = insets.bottom > 0 ? insets.bottom : Platform.OS === 'android' ? 16 : 0;
-  // Ample height so icon + label + margins never clip on any browser or mobile resolution
   const tabHeight = isWeb ? 84 : 64 + bottomInset;
 
   return (
@@ -39,7 +40,7 @@ function BottomTabs() {
           borderTopColor: 'rgba(255, 255, 255, 0.08)',
           borderTopWidth: 1,
           height: tabHeight,
-          paddingBottom: isWeb ? 16 : bottomInset + 4,
+          paddingBottom: isWeb ? 8 : bottomInset + 4,
           paddingTop: 10,
         },
         tabBarActiveTintColor: COLORS.tertiary,
@@ -48,7 +49,7 @@ function BottomTabs() {
           fontSize: 11,
           fontWeight: '700',
           marginTop: 4,
-          lineHeight: 14,
+          lineHeight: 16,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
@@ -62,8 +63,12 @@ function BottomTabs() {
             iconName = focused ? 'compass' : 'compass-outline';
           } else if (route.name === 'TicketsTab') {
             iconName = focused ? 'ticket' : 'ticket-outline';
+          } else if (route.name === 'EventosTab') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'OrganizarTab') {
             iconName = focused ? 'add-circle' : 'add-circle-outline';
+          } else if (route.name === 'EscanearTab') {
+            iconName = focused ? 'qr-code' : 'qr-code-outline';
           } else if (route.name === 'MensajesTab') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           }
@@ -71,22 +76,40 @@ function BottomTabs() {
           return <Ionicons name={iconName} size={22} color={color} />;
         },
       })}
+      key={currentUser.rol}
     >
-      <Tab.Screen
-        name="ExplorarTab"
-        component={ExplorarScreen}
-        options={{ tabBarLabel: 'Explorar' }}
-      />
-      <Tab.Screen
-        name="TicketsTab"
-        component={MisTicketsScreen}
-        options={{ tabBarLabel: 'Mis Tickets' }}
-      />
-      <Tab.Screen
-        name="OrganizarTab"
-        component={userRole === 'organizador' ? PanelVentasScreen : CrearEventoScreen}
-        options={{ tabBarLabel: userRole === 'organizador' ? 'Panel Ventas' : 'Organizar' }}
-      />
+      {currentUser.rol === 'organizador' ? (
+        <>
+          <Tab.Screen
+            name="EventosTab"
+            component={OrganizadorEventosScreen}
+            options={{ tabBarLabel: 'Eventos' }}
+          />
+          <Tab.Screen
+            name="OrganizarTab"
+            component={CrearEventoScreen}
+            options={{ tabBarLabel: 'Organizar' }}
+          />
+          <Tab.Screen
+            name="EscanearTab"
+            component={EscanearScreen}
+            options={{ tabBarLabel: 'Escanear' }}
+          />
+        </>
+      ) : (
+        <>
+          <Tab.Screen
+            name="ExplorarTab"
+            component={ExplorarScreen}
+            options={{ tabBarLabel: 'Explorar' }}
+          />
+          <Tab.Screen
+            name="TicketsTab"
+            component={MisTicketsScreen}
+            options={{ tabBarLabel: 'Mis Tickets' }}
+          />
+        </>
+      )}
       <Tab.Screen
         name="MensajesTab"
         component={MensajesInboxScreen}
@@ -110,7 +133,7 @@ export default function AppNavigator() {
         <Stack.Screen name="DetalleEvento" component={DetalleEventoScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="Calificar" component={CalificarScreen} />
-        <Stack.Screen name="CrearEvento" component={CrearEventoScreen} />
+        <Stack.Screen name="PanelVentas" component={PanelVentasScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

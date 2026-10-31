@@ -6,31 +6,47 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Image,
   Alert,
+  Modal,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import { CATEGORIAS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
+import LoadingSpinner from '../components/loading/Spinners';
+import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
 
 export default function CrearEventoScreen({ navigation }) {
   const { crearEvento } = useApp();
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isPickingImages, setIsPickingImages] = useState(false);
+  const [imagenes, setImagenes] = useState([]);
+  const [errores, setErrores] = useState({});
+  const [resultadoPublicacion, setResultadoPublicacion] = useState(null);
+  const [fechaEvento, setFechaEvento] = useState(null);
 
-  const [nombre, setNombre] = useState('Festival Indie Primavera 2026');
-  const [categoria, setCategoria] = useState('Festivales');
-  const [fechaTexto, setFechaTexto] = useState('Sábado, 21 de Noviembre 2026 • 19:00 hs');
-  const [ubicacion, setUbicacion] = useState('Ciudad Universitaria • Pabellón 3');
-  const [direccion, setDireccion] = useState('Intendente Güiraldes 2160, Núñez, CABA');
-  const [descripcion, setDescripcion] = useState(
-    'Gran encuentro de bandas independientes universitarias y feria de diseño emergente.'
-  );
+  const [nombre, setNombre] = useState('');
+  const [categoria, setCategoria] = useState('');
+  const [ubicacion, setUbicacion] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [descripcion, setDescripcion] = useState('');
 
-  // Dynamic ticket types list
   const [tiposEntrada, setTiposEntrada] = useState([
-    { id: '1', nombre: 'General Anticipada', precio: '8000', cupo: '200' },
-    { id: '2', nombre: 'Acceso VIP + Merch', precio: '15000', cupo: '50' },
+    { id: String(Date.now()), nombre: '', precio: '', cupo: '' },
   ]);
+
+  const cambiarCampo = (setter, key, value) => {
+    setter(value);
+    setErrores((prev) => {
+      if (!prev[key]) return prev;
+      const nuevosErrores = { ...prev };
+      delete nuevosErrores[key];
+      return nuevosErrores;
+    });
+  };
 
   const handleAddTipo = () => {
     setTiposEntrada((prev) => [
@@ -51,50 +67,158 @@ export default function CrearEventoScreen({ navigation }) {
     setTiposEntrada((prev) =>
       prev.map((t) => (t.id === id ? { ...t, [field]: value } : t))
     );
+    setErrores((prev) => {
+      const key = `tipo-${id}-${field}`;
+      if (!prev[key]) return prev;
+      const nuevosErrores = { ...prev };
+      delete nuevosErrores[key];
+      return nuevosErrores;
+    });
   };
 
-  const handleSugerirIA = () => {
-    setNombre('Cosmos ElectroFest UTN 2026');
-    setDescripcion(
-      'Experiencia inmersiva que combina arte sonoro interactivo con tecnología de inteligencia artificial generativa en vivo.'
-    );
-    Alert.alert('Sugerencia de IA ✨', 'Se han optimizado el título y la descripción del evento.');
+  const handleSeleccionarImagenes = async () => {
+    if (imagenes.length >= 1) return;
+
+    setIsPickingImages(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: false,
+        selectionLimit: 1,
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets?.length) {
+        const validAssets = [];
+        const rejectedAssets = [];
+        for (const asset of result.assets) {
+          const fileExtension = asset.fileName?.split('.').pop()?.toLowerCase();
+          const mimeType =
+            asset.mimeType ||
+            ({
+              jpg: 'image/jpeg',
+              jpeg: 'image/jpeg',
+              png: 'image/png',
+              webp: 'image/webp',
+            }[fileExtension] || '');
+          const supportedType =
+            !mimeType || ['image/jpeg', 'image/png', 'image/webp'].includes(mimeType);
+          const withinSizeLimit = !asset.fileSize || asset.fileSize <= 5 * 1024 * 1024;
+          if (supportedType && withinSizeLimit) validAssets.push(asset);
+          else rejectedAssets.push(asset);
+        }
+
+        if (rejectedAssets.length) {
+          Alert.alert(
+            'La foto no se pudo agregar',
+            'Se aceptan imágenes JPEG, PNG o WebP de hasta 5 MB.'
+          );
+        }
+        if (validAssets.length) {
+          setImagenes([validAssets[0]]);
+        }
+      }
+    } catch (error) {
+      Alert.alert('No se pudieron seleccionar las fotos', error.message);
+    } finally {
+      setIsPickingImages(false);
+    }
   };
 
-  const handlePublicar = () => {
-    if (!nombre.trim() || !ubicacion.trim()) {
-      Alert.alert('Campos incompletos', 'Por favor completá el nombre y ubicación del evento.');
+  const handleQuitarImagen = (uri) => {
+    setImagenes((previous) => previous.filter((imagen) => imagen.uri !== uri));
+  };
+
+  const reiniciarFormulario = () => {
+    setNombre('');
+    setCategoria('');
+    setFechaEvento(null);
+    setUbicacion('');
+    setDireccion('');
+    setDescripcion('');
+    setImagenes([]);
+    setTiposEntrada([{ id: String(Date.now()), nombre: '', precio: '', cupo: '' }]);
+    setErrores({});
+  };
+
+  const cerrarResultado = () => setResultadoPublicacion(null);
+
+  const verEventoCreado = () => {
+    const eventoId = resultadoPublicacion?.eventoId;
+    cerrarResultado();
+    if (eventoId) navigation.navigate('EventosTab', { editEventoId: eventoId });
+  };
+
+  const handlePublicar = async () => {
+    const nuevosErrores = {};
+    if (!nombre.trim()) nuevosErrores.nombre = 'Debe completar el nombre del evento.';
+    if (!categoria) nuevosErrores.categoria = 'Debe seleccionar una categoría.';
+    if (!fechaEvento) nuevosErrores.fechaTexto = 'Debe seleccionar la fecha y el horario.';
+    if (!ubicacion.trim()) nuevosErrores.ubicacion = 'Debe completar el lugar del evento.';
+    if (!direccion.trim()) nuevosErrores.direccion = 'Debe completar la dirección.';
+    if (!descripcion.trim()) nuevosErrores.descripcion = 'Debe completar la descripción del evento.';
+
+    tiposEntrada.forEach((tipo) => {
+      if (!tipo.nombre.trim()) {
+        nuevosErrores[`tipo-${tipo.id}-nombre`] = 'Debe completar el nombre del tipo de entrada.';
+      }
+      const precio = Number(tipo.precio);
+      if (!tipo.precio.trim()) {
+        nuevosErrores[`tipo-${tipo.id}-precio`] = 'Debe completar el precio de la entrada.';
+      } else if (!Number.isFinite(precio) || precio <= 0) {
+        nuevosErrores[`tipo-${tipo.id}-precio`] = 'Ingresá un precio mayor a 0.';
+      }
+      const cupo = Number(tipo.cupo);
+      if (!tipo.cupo.trim()) {
+        nuevosErrores[`tipo-${tipo.id}-cupo`] = 'Debe completar el cupo máximo.';
+      } else if (!Number.isInteger(cupo) || cupo <= 0) {
+        nuevosErrores[`tipo-${tipo.id}-cupo`] = 'Ingresá un cupo entero mayor a 0.';
+      }
+    });
+
+    setErrores(nuevosErrores);
+    if (Object.keys(nuevosErrores).length > 0) {
       return;
     }
 
-    // Format ticket types
     const tiposFormateados = tiposEntrada.map((t, idx) => ({
       id: `te-new-${idx}-${Date.now()}`,
-      nombre: t.nombre || `Entrada ${idx + 1}`,
-      descripcion: `Acceso categoría ${t.nombre}`,
-      precio: Number(t.precio) || 5000,
-      cupo: Number(t.cupo) || 100,
-      disponibles: Number(t.cupo) || 100,
+      nombre: t.nombre.trim(),
+      descripcion: `Acceso categoría ${t.nombre.trim()}`,
+      precio: Number(t.precio),
+      cupo: Number(t.cupo),
+      disponibles: Number(t.cupo),
     }));
 
     const nuevoEvento = {
-      nombre,
+      nombre: nombre.trim(),
       categoria,
-      fecha: '2026-11-21T19:00:00',
-      fechaTexto,
+      fecha: fechaEvento.toISOString(),
+      fechaTexto: formatearFechaEvento(fechaEvento),
       apertura: '18:00 hs',
-      ubicacion,
-      direccion,
-      descripcion,
-      imagen: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+      ubicacion: ubicacion.trim(),
+      direccion: direccion.trim(),
+      descripcion: descripcion.trim(),
+      imagenes,
       tiposEntrada: tiposFormateados,
     };
 
-    const res = crearEvento(nuevoEvento);
-    if (res.success) {
-      Alert.alert('¡Evento Publicado!', 'Tu evento ya está disponible en la cartelera de AI Ticket It.', [
-        { text: 'Ver en Cartelera', onPress: () => navigation.navigate('ExplorarTab') },
-      ]);
+    setIsPublishing(true);
+    try {
+      const res = await crearEvento(nuevoEvento);
+      if (!res.success) throw new Error(res.error || 'No se pudo publicar el evento.');
+      reiniciarFormulario();
+      setResultadoPublicacion({
+        tipo: 'exito',
+        mensaje: 'Tu evento ya está disponible en la cartelera de AI Ticket It.',
+        eventoId: res.evento?.id,
+      });
+    } catch (error) {
+      setResultadoPublicacion({
+        tipo: 'error',
+        mensaje: error.message || 'Ocurrió un error durante la publicación. Intentá nuevamente.',
+      });
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -114,33 +238,35 @@ export default function CrearEventoScreen({ navigation }) {
         <View style={styles.cardSection}>
           <View style={styles.cardSectionHeader}>
             <Text style={styles.cardSectionTitle}>1. Información Principal</Text>
-            <TouchableOpacity style={styles.iaButton} onPress={handleSugerirIA} activeOpacity={0.8}>
-              <Ionicons name="sparkles" size={14} color={COLORS.accentElectric} />
-              <Text style={styles.iaButtonText}>Sugerir con IA ✨</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nombre del Evento</Text>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, errores.nombre && styles.inputError]}
               value={nombre}
-              onChangeText={setNombre}
+              onChangeText={(value) => cambiarCampo(setNombre, 'nombre', value)}
               placeholder="Ej. Recital Acústico 2026"
               placeholderTextColor={COLORS.textMuted}
             />
+            {errores.nombre ? <Text style={styles.errorLabel}>{errores.nombre}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Categoría</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catChipsRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={errores.categoria && styles.catScrollError}
+              contentContainerStyle={styles.catChipsRow}
+            >
               {CATEGORIAS.filter((c) => c !== 'Todos').map((cat) => {
                 const isSelected = categoria === cat;
                 return (
                   <TouchableOpacity
                     key={cat}
                     style={[styles.catChip, isSelected && styles.catChipSelected]}
-                    onPress={() => setCategoria(cat)}
+                    onPress={() => cambiarCampo(setCategoria, 'categoria', cat)}
                   >
                     <Text style={[styles.catChipText, isSelected && styles.catChipTextSelected]}>
                       {cat}
@@ -149,52 +275,101 @@ export default function CrearEventoScreen({ navigation }) {
                 );
               })}
             </ScrollView>
+            {errores.categoria ? <Text style={styles.errorLabel}>{errores.categoria}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Fecha y Horario</Text>
-            <TextInput
-              style={styles.textInput}
-              value={fechaTexto}
-              onChangeText={setFechaTexto}
-              placeholder="Ej. Sábado, 21 de Noviembre 2026 • 20:00 hs"
-              placeholderTextColor={COLORS.textMuted}
+            <DateTimeSelector
+              value={fechaEvento}
+              error={errores.fechaTexto}
+              disabled={isPublishing}
+              onChange={(fecha) => cambiarCampo(setFechaEvento, 'fechaTexto', fecha)}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Lugar / Predio</Text>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, errores.ubicacion && styles.inputError]}
               value={ubicacion}
-              onChangeText={setUbicacion}
+              onChangeText={(value) => cambiarCampo(setUbicacion, 'ubicacion', value)}
               placeholder="Ej. Estadio Central"
               placeholderTextColor={COLORS.textMuted}
             />
+            {errores.ubicacion ? <Text style={styles.errorLabel}>{errores.ubicacion}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Dirección</Text>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, errores.direccion && styles.inputError]}
               value={direccion}
-              onChangeText={setDireccion}
+              onChangeText={(value) => cambiarCampo(setDireccion, 'direccion', value)}
               placeholder="Ej. Av. Corrientes 1234, CABA"
               placeholderTextColor={COLORS.textMuted}
             />
+            {errores.direccion ? <Text style={styles.errorLabel}>{errores.direccion}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Descripción del Evento</Text>
             <TextInput
-              style={[styles.textInput, styles.textArea]}
+              style={[styles.textInput, styles.textArea, errores.descripcion && styles.inputError]}
               value={descripcion}
-              onChangeText={setDescripcion}
+              onChangeText={(value) => cambiarCampo(setDescripcion, 'descripcion', value)}
               placeholder="Describí los artistas, propuesta y normas..."
               placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={3}
             />
+            {errores.descripcion ? <Text style={styles.errorLabel}>{errores.descripcion}</Text> : null}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.imagePickerHeader}>
+              <View>
+                <Text style={styles.inputLabel}>Foto del evento</Text>
+                <Text style={styles.imagePickerHint}>Una foto JPEG, PNG o WebP (hasta 5 MB)</Text>
+              </View>
+            </View>
+            {imagenes.length > 0 ? (
+              <View style={styles.selectedImages}>
+                {imagenes.map((imagen) => (
+                  <View key={imagen.uri} style={styles.selectedImageItem}>
+                    <Image source={{ uri: imagen.uri }} style={styles.selectedImagePreview} />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => handleQuitarImagen(imagen.uri)}
+                      disabled={isPublishing}
+                      accessibilityRole="button"
+                      accessibilityLabel="Quitar foto seleccionada"
+                    >
+                      <Ionicons name="close" size={14} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.imagePickerButton,
+                  (isPickingImages || isPublishing) && styles.imagePickerButtonDisabled,
+                ]}
+                onPress={handleSeleccionarImagenes}
+                disabled={isPickingImages || isPublishing}
+                accessibilityRole="button"
+                accessibilityLabel="Buscar fotos del evento en el dispositivo"
+              >
+                <Feather name="upload-cloud" size={30} color={COLORS.tertiary} />
+                <Text style={styles.imagePickerButtonText}>
+                  {isPickingImages ? 'ABRIENDO...' : 'BUSCAR FOTOS'}
+                </Text>
+                <Text style={styles.imagePickerDropHint}>
+                  Seleccioná una imágen deste la galería de tu celular.
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -223,36 +398,45 @@ export default function CrearEventoScreen({ navigation }) {
               </View>
 
               <TextInput
-                style={styles.tipoInput}
+                style={[styles.tipoInput, errores[`tipo-${tipo.id}-nombre`] && styles.inputError]}
                 value={tipo.nombre}
                 onChangeText={(val) => handleUpdateTipo(tipo.id, 'nombre', val)}
                 placeholder="Nombre (ej. Platea VIP, General)"
                 placeholderTextColor={COLORS.textMuted}
               />
+              {errores[`tipo-${tipo.id}-nombre`] ? (
+                <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-nombre`]}</Text>
+              ) : null}
 
               <View style={styles.tipoInlineRow}>
                 <View style={styles.tipoHalfInputBox}>
                   <Text style={styles.subInputLabel}>Precio ($ ARS):</Text>
                   <TextInput
-                    style={styles.tipoInput}
+                    style={[styles.tipoInput, errores[`tipo-${tipo.id}-precio`] && styles.inputError]}
                     value={tipo.precio}
                     onChangeText={(val) => handleUpdateTipo(tipo.id, 'precio', val)}
                     placeholder="8000"
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="numeric"
                   />
+                  {errores[`tipo-${tipo.id}-precio`] ? (
+                    <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-precio`]}</Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.tipoHalfInputBox}>
                   <Text style={styles.subInputLabel}>Cupo Máximo:</Text>
                   <TextInput
-                    style={styles.tipoInput}
+                    style={[styles.tipoInput, errores[`tipo-${tipo.id}-cupo`] && styles.inputError]}
                     value={tipo.cupo}
                     onChangeText={(val) => handleUpdateTipo(tipo.id, 'cupo', val)}
                     placeholder="150"
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="numeric"
                   />
+                  {errores[`tipo-${tipo.id}-cupo`] ? (
+                    <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-cupo`]}</Text>
+                  ) : null}
                 </View>
               </View>
             </View>
@@ -260,11 +444,76 @@ export default function CrearEventoScreen({ navigation }) {
         </View>
 
         {/* Action Button */}
-        <TouchableOpacity style={styles.publishBtn} onPress={handlePublicar} activeOpacity={0.85}>
-          <Text style={styles.publishBtnText}>PUBLICAR EVENTO</Text>
-          <Feather name="arrow-right" size={18} color={COLORS.textPrimary} />
+        <TouchableOpacity
+          style={[styles.publishBtn, isPublishing && styles.publishBtnDisabled]}
+          onPress={handlePublicar}
+          disabled={isPublishing}
+          activeOpacity={0.85}
+        >
+          {isPublishing ? (
+            <>
+              <LoadingSpinner size={18} style={styles.buttonSpinner} />
+              <Text style={styles.publishBtnText}>PUBLICANDO...</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.publishBtnText}>PUBLICAR EVENTO</Text>
+              <Feather name="arrow-right" size={18} color={COLORS.textPrimary} />
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
+      <Modal
+        visible={!!resultadoPublicacion}
+        transparent
+        animationType="fade"
+        onRequestClose={cerrarResultado}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.resultModal}>
+            <View
+              style={[
+                styles.resultIcon,
+                resultadoPublicacion?.tipo === 'exito' ? styles.successIcon : styles.failureIcon,
+              ]}
+            >
+              <Ionicons
+                name={resultadoPublicacion?.tipo === 'exito' ? 'checkmark' : 'alert'}
+                size={28}
+                color={COLORS.textPrimary}
+              />
+            </View>
+            <Text style={styles.resultTitle}>
+              {resultadoPublicacion?.tipo === 'exito'
+                ? '¡Evento publicado!'
+                : 'No se pudo publicar'}
+            </Text>
+            <Text style={styles.resultMessage}>{resultadoPublicacion?.mensaje}</Text>
+            <View style={styles.resultActions}>
+              {resultadoPublicacion?.tipo === 'exito' ? (
+                <TouchableOpacity
+                  style={styles.secondaryModalButton}
+                  onPress={cerrarResultado}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.secondaryModalButtonText}>Cerrar</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity
+                style={styles.primaryModalButton}
+                onPress={
+                  resultadoPublicacion?.tipo === 'exito' ? verEventoCreado : cerrarResultado
+                }
+                accessibilityRole="button"
+              >
+                <Text style={styles.primaryModalButtonText}>
+                  {resultadoPublicacion?.tipo === 'exito' ? 'Ver evento' : 'Cerrar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -341,6 +590,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
+  inputError: {
+    borderWidth: 1,
+    borderColor: COLORS.statusDanger,
+  },
+  errorLabel: {
+    color: COLORS.statusDanger,
+    fontSize: 11,
+    marginTop: 2,
+  },
   textInput: {
     backgroundColor: COLORS.surfaceContainerLow,
     borderRadius: 10,
@@ -355,9 +613,79 @@ const styles = StyleSheet.create({
     minHeight: 70,
     textAlignVertical: 'top',
   },
+  imagePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  imagePickerHint: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    marginTop: 3,
+  },
+  imagePickerButton: {
+    minHeight: 116,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backgroundColor: '#263A55',
+    borderColor: 'rgba(32, 217, 249, 0.72)',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  imagePickerButtonDisabled: {
+    opacity: 0.55,
+  },
+  imagePickerButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  imagePickerDropHint: {
+    color: '#B7C8E1',
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  selectedImages: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 4,
+  },
+  selectedImageItem: {
+    position: 'relative',
+  },
+  selectedImagePreview: {
+    width: 76,
+    height: 68,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.statusDanger,
+  },
   catChipsRow: {
     gap: 8,
     paddingVertical: 4,
+  },
+  catScrollError: {
+    borderWidth: 1,
+    borderColor: COLORS.statusDanger,
+    borderRadius: 14,
   },
   catChip: {
     paddingHorizontal: 12,
@@ -448,5 +776,90 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.textPrimary,
     letterSpacing: 0.5,
+  },
+  publishBtnDisabled: {
+    opacity: 0.65,
+  },
+  buttonSpinner: {
+    width: 18,
+    padding: 0,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    padding: 24,
+  },
+  resultModal: {
+    width: '100%',
+    maxWidth: 420,
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceCard,
+    borderColor: COLORS.borderGlass,
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 24,
+  },
+  resultIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  successIcon: {
+    backgroundColor: COLORS.statusSuccess,
+  },
+  failureIcon: {
+    backgroundColor: COLORS.statusDanger,
+  },
+  resultTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 19,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  resultMessage: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  resultActions: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 22,
+  },
+  primaryModalButton: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.accentElectric,
+    borderRadius: 22,
+    paddingHorizontal: 12,
+  },
+  primaryModalButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  secondaryModalButton: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceContainerHigh,
+    borderRadius: 22,
+    paddingHorizontal: 12,
+  },
+  secondaryModalButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

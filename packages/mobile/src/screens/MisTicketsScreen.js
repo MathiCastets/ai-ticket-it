@@ -15,37 +15,39 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { TicketListSkeleton } from '../components/loading/Skeletons';
+import LoadingSpinner from '../components/loading/Spinners';
 
 export default function MisTicketsScreen({ navigation }) {
-  const { compras, getDiasRestantes, cancelarCompra, marcarEntradaUtilizada } = useApp();
+  const { compras, currentUser, getDiasRestantes, cancelarCompra } = useApp();
   const isLoading = useMockLoading();
 
   const [activeTab, setActiveTab] = useState('todas'); // 'todas' | 'confirmadas' | 'pendientes' | 'historial'
   const [selectedCompraQR, setSelectedCompraQR] = useState(null);
   const [selectedCompraCancel, setSelectedCompraCancel] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Filter purchases by tab
-  const filteredCompras = compras.filter((c) => {
+  const comprasDelUsuario = compras.filter((compra) => compra.compradorId === currentUser.id);
+  const filteredCompras = comprasDelUsuario.filter((c) => {
     if (activeTab === 'confirmadas') return c.estado === 'CONFIRMADA';
     if (activeTab === 'pendientes') return c.estado === 'PENDIENTE';
     if (activeTab === 'historial') return c.estado === 'UTILIZADA' || c.estado === 'REEMBOLSADA' || c.estado === 'CANCELADA';
     return true;
   });
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!selectedCompraCancel) return;
-    const res = cancelarCompra(selectedCompraCancel.id);
-    setSelectedCompraCancel(null);
-    if (res.success) {
+    setIsCancelling(true);
+    try {
+      const res = await cancelarCompra(selectedCompraCancel.id);
+      if (!res.success) throw new Error(res.error || 'No se pudo cancelar la compra.');
+      setSelectedCompraCancel(null);
       Alert.alert('Cancelación Exitosa', res.mensaje);
-    } else {
-      Alert.alert('No se pudo cancelar', res.error);
+    } catch (error) {
+      Alert.alert('No se pudo cancelar', error.message);
+    } finally {
+      setIsCancelling(false);
     }
-  };
-
-  const handleSimularUso = (compraId) => {
-    marcarEntradaUtilizada(compraId);
-    Alert.alert('Entrada Acreditada', 'Se ha marcado la entrada como UTILIZADA. ¡Ahora puedes calificar el evento!');
   };
 
   return (
@@ -67,12 +69,18 @@ export default function MisTicketsScreen({ navigation }) {
         {/* Status Filter Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {[
-            { id: 'todas', label: `Todas (${compras.length})` },
-            { id: 'confirmadas', label: `Confirmadas (${compras.filter((c) => c.estado === 'CONFIRMADA').length})` },
-            { id: 'pendientes', label: `Pendientes (${compras.filter((c) => c.estado === 'PENDIENTE').length})` },
+            { id: 'todas', label: `Todas (${comprasDelUsuario.length})` },
+            {
+              id: 'confirmadas',
+              label: `Confirmadas (${comprasDelUsuario.filter((c) => c.estado === 'CONFIRMADA').length})`,
+            },
+            {
+              id: 'pendientes',
+              label: `Pendientes (${comprasDelUsuario.filter((c) => c.estado === 'PENDIENTE').length})`,
+            },
             {
               id: 'historial',
-              label: `Historial (${compras.filter((c) => ['UTILIZADA', 'REEMBOLSADA', 'CANCELADA'].includes(c.estado)).length})`,
+              label: `Historial (${comprasDelUsuario.filter((c) => ['UTILIZADA', 'REEMBOLSADA', 'CANCELADA'].includes(c.estado)).length})`,
             },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -118,7 +126,10 @@ export default function MisTicketsScreen({ navigation }) {
                 <View key={compra.id} style={styles.ticketCard}>
                   {/* Card Media Header */}
                   <View style={styles.cardImageContainer}>
-                    <Image source={{ uri: compra.imagen }} style={styles.cardImage} />
+                    <Image
+                      source={compra.imagen || compra.evento?.imagen ? { uri: compra.imagen || compra.evento?.imagen } : null}
+                      style={styles.cardImage}
+                    />
                     <View style={styles.cardImageOverlay} />
 
                     {/* Top Badges */}
@@ -143,21 +154,23 @@ export default function MisTicketsScreen({ navigation }) {
 
                   {/* Card Content */}
                   <View style={styles.cardBody}>
-                    <Text style={styles.eventTitle}>{compra.eventoNombre}</Text>
+                    <Text style={styles.eventTitle}>{compra.eventoNombre || compra.evento?.nombre}</Text>
                     <Text style={styles.ticketInfo}>
-                      {compra.cantidad}x {compra.tipoEntradaNombre} • Total: ${compra.total?.toLocaleString('es-AR')}
+                      {compra.cantidad}x {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} • Total: ${compra.total?.toLocaleString('es-AR')}
                     </Text>
 
                     <View style={styles.detailRow}>
                       <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
                       <Text style={styles.detailText} numberOfLines={1}>
-                        {compra.ubicacion}
+                        {compra.ubicacion || compra.evento?.ubicacion}
                       </Text>
                     </View>
 
                     <View style={styles.detailRow}>
                       <Ionicons name="business-outline" size={13} color={COLORS.tertiary} />
-                      <Text style={styles.detailText}>Organiza: {compra.organizadorNombre}</Text>
+                      <Text style={styles.detailText}>
+                        Organiza: {compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador'}
+                      </Text>
                     </View>
 
                     {/* Action Buttons Row */}
@@ -210,17 +223,6 @@ export default function MisTicketsScreen({ navigation }) {
                         </TouchableOpacity>
                       )}
 
-                      {/* Quick button to simulate check-in (Acreditar) */}
-                      {isConfirmada && (
-                        <TouchableOpacity
-                          style={styles.actionBtnCheckIn}
-                          onPress={() => handleSimularUso(compra.id)}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="checkmark-done" size={14} color={COLORS.secondary} />
-                          <Text style={styles.actionBtnCheckInText}>Acreditar</Text>
-                        </TouchableOpacity>
-                      )}
                     </View>
                   </View>
                 </View>
@@ -294,6 +296,7 @@ export default function MisTicketsScreen({ navigation }) {
                 <TouchableOpacity
                   style={styles.cancelBackBtn}
                   onPress={() => setSelectedCompraCancel(null)}
+                  disabled={isCancelling}
                 >
                   <Text style={styles.cancelBackBtnText}>Volver</Text>
                 </TouchableOpacity>
@@ -301,8 +304,13 @@ export default function MisTicketsScreen({ navigation }) {
                 <TouchableOpacity
                   style={styles.cancelConfirmBtn}
                   onPress={handleConfirmCancel}
+                  disabled={isCancelling}
                 >
-                  <Text style={styles.cancelConfirmBtnText}>Confirmar</Text>
+                  {isCancelling ? (
+                    <LoadingSpinner size={18} style={styles.actionSpinner} />
+                  ) : (
+                    <Text style={styles.cancelConfirmBtnText}>Confirmar</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -568,19 +576,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.statusWarning,
   },
-  actionBtnCheckIn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: COLORS.surfaceContainerHigh,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  actionBtnCheckInText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: COLORS.secondary,
+  actionSpinner: {
+    width: 18,
+    padding: 0,
   },
   modalBackdrop: {
     flex: 1,
