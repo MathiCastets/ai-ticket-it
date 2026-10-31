@@ -7,24 +7,66 @@ export const CATEGORIAS = [
   'Deportes',
 ];
 
-export const USUARIOS = {
-  comprador: {
+export const USUARIOS = [
+  {
     id: 'user_comprador_1',
     nombre: 'Mathi',
     apellido: 'Castets',
+    nombreCompleto: 'Mathi Castets',
     rol: 'comprador',
+    favoritos: ['evt-utn-2026'],
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
   },
-  organizador: {
+  {
+    id: 'user_comprador_2',
+    nombre: 'Lucía',
+    apellido: 'Fernández',
+    nombreCompleto: 'Lucía Fernández',
+    rol: 'comprador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=200&q=80',
+  },
+  {
     id: 'user_org_sonora',
     nombre: 'Producciones Sonora',
     apellido: '(Oficial)',
+    nombreCompleto: 'Producciones Sonora (Oficial)',
     rol: 'organizador',
+    favoritos: [],
     avatar: 'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?auto=format&fit=crop&w=200&q=80',
     rating: 4.9,
     totalResenias: 120,
   },
-};
+  {
+    id: 'user_org_underground',
+    nombre: 'Club Underground',
+    apellido: '',
+    nombreCompleto: 'Club Underground',
+    rol: 'organizador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=200&q=80',
+    rating: 4.7,
+    totalResenias: 45,
+  },
+  {
+    id: 'user_org_teatros',
+    nombre: 'Teatros Porteños',
+    apellido: '',
+    nombreCompleto: 'Teatros Porteños',
+    rol: 'organizador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'user_org_tech',
+    nombre: 'Tech Community BA',
+    apellido: '',
+    nombreCompleto: 'Tech Community BA',
+    rol: 'organizador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=200&q=80',
+  },
+];
 
 export const EVENTOS_INICIALES = [
   {
@@ -218,6 +260,7 @@ export const COMPRAS_INICIALES = [
     cantidad: 2,
     total: 30000,
     estado: 'CONFIRMADA', // PENDIENTE | CONFIRMADA | UTILIZADA | CANCELADA | REEMBOLSADA
+    compradorId: 'user_comprador_1',
     compradorNombre: 'Mathi Castets',
     organizadorNombre: 'Producciones Sonora',
     organizadorId: 'user_org_sonora',
@@ -253,7 +296,8 @@ export const COMPRAS_INICIALES = [
     cantidad: 1,
     total: 8500,
     estado: 'PENDIENTE',
-    compradorNombre: 'Mathi Castets',
+    compradorId: 'user_comprador_2',
+    compradorNombre: 'Lucía Fernández',
     organizadorNombre: 'Club Underground',
     organizadorId: 'user_org_underground',
     imagen: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
@@ -273,6 +317,7 @@ export const COMPRAS_INICIALES = [
     cantidad: 2,
     total: 24000,
     estado: 'UTILIZADA',
+    compradorId: 'user_comprador_2',
     compradorNombre: 'Mathi Castets',
     organizadorNombre: 'Teatros Porteños',
     organizadorId: 'user_org_teatros',

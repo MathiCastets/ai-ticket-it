@@ -24,23 +24,29 @@ export default function CalificarScreen({ route, navigation }) {
 
   const [puntuacion, setPuntuacion] = useState(5);
   const [comentario, setComentario] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!comentario.trim()) {
       Alert.alert('Falta comentario', 'Por favor ingresá un breve comentario sobre tu experiencia.');
       return;
     }
 
-    const res = calificarEvento({
-      compraId: compra.id,
-      puntuacion,
-      comentario: comentario.trim(),
-    });
-
-    if (res.success) {
+    setIsSubmitting(true);
+    try {
+      const res = await calificarEvento({
+        compraId: compra.id,
+        puntuacion,
+        comentario: comentario.trim(),
+      });
+      if (!res.success) throw new Error(res.error || 'No se pudo publicar la reseña.');
       Alert.alert('¡Gracias!', 'Tu reseña ha sido publicada y ayudará a futuros compradores.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
+    } catch (error) {
+      Alert.alert('No se pudo publicar la reseña', error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -71,9 +77,9 @@ export default function CalificarScreen({ route, navigation }) {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.eventCard}>
-          <Text style={styles.eventName}>{compra.eventoNombre}</Text>
+          <Text style={styles.eventName}>{compra.eventoNombre || compra.evento?.nombre}</Text>
           <Text style={styles.eventInfo}>
-            {compra.tipoEntradaNombre} • Organizado por {compra.organizadorNombre}
+            {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} • Organizado por {compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador'}
           </Text>
           <View style={styles.badgeUsed}>
             <Ionicons name="checkmark-done" size={14} color={COLORS.secondary} />
@@ -126,8 +132,20 @@ export default function CalificarScreen({ route, navigation }) {
         </View>
 
         {/* Submit Button */}
-        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} activeOpacity={0.85}>
-          <Text style={styles.submitBtnText}>PUBLICAR RESEÑA</Text>
+        <TouchableOpacity
+          style={[styles.submitBtn, isSubmitting && styles.disabledBtn]}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          activeOpacity={0.85}
+        >
+          {isSubmitting ? (
+            <>
+              <LoadingSpinner size={18} style={styles.buttonSpinner} />
+              <Text style={styles.submitBtnText}>PUBLICANDO...</Text>
+            </>
+          ) : (
+            <Text style={styles.submitBtnText}>PUBLICAR RESEÑA</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -252,5 +270,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.textPrimary,
     letterSpacing: 0.5,
+  },
+  disabledBtn: {
+    opacity: 0.65,
+  },
+  buttonSpinner: {
+    width: 18,
+    padding: 0,
   },
 });

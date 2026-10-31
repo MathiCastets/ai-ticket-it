@@ -11,6 +11,7 @@
     "start:mobile": "npm start --workspace=mobile",
     "dev:mobile": "npm start --workspace=mobile",
     "start:dev": "concurrently \"npm run dev:backend\" \"npm run start:mobile\"",
+    "test:backend": "npm test --workspace=backend",
     "lint": "eslint .",
     "format": "prettier . --write"
   },

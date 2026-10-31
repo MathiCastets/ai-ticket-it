@@ -8,6 +8,7 @@ export default defineConfig([
     ignores: [
       "**/node_modules/**",
       "**/.expo/**",
+      "**/dist/**",
       "vistas/**",
     ],
   },
@@ -16,6 +17,9 @@ export default defineConfig([
     plugins: { js },
     extends: ["js/recommended"],
     languageOptions: { globals: globals.node },
+    rules: {
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    },
   },
   {
     files: ["packages/mobile/**/*.{js,jsx,mjs,cjs}"],

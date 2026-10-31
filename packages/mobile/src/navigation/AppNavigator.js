@@ -22,12 +22,11 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function BottomTabs() {
-  const { userRole } = useApp();
+  const { currentUser } = useApp();
   const insets = useSafeAreaInsets();
 
   const isWeb = Platform.OS === 'web';
   const bottomInset = insets.bottom > 0 ? insets.bottom : Platform.OS === 'android' ? 16 : 0;
-  // Ample height so icon + label + margins never clip on any browser or mobile resolution
   const tabHeight = isWeb ? 84 : 64 + bottomInset;
 
   return (
@@ -39,7 +38,7 @@ function BottomTabs() {
           borderTopColor: 'rgba(255, 255, 255, 0.08)',
           borderTopWidth: 1,
           height: tabHeight,
-          paddingBottom: isWeb ? 16 : bottomInset + 4,
+          paddingBottom: isWeb ? 8 : bottomInset + 4,
           paddingTop: 10,
         },
         tabBarActiveTintColor: COLORS.tertiary,
@@ -48,7 +47,7 @@ function BottomTabs() {
           fontSize: 11,
           fontWeight: '700',
           marginTop: 4,
-          lineHeight: 14,
+          lineHeight: 16,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
@@ -84,8 +83,8 @@ function BottomTabs() {
       />
       <Tab.Screen
         name="OrganizarTab"
-        component={userRole === 'organizador' ? PanelVentasScreen : CrearEventoScreen}
-        options={{ tabBarLabel: userRole === 'organizador' ? 'Panel Ventas' : 'Organizar' }}
+        component={currentUser.rol === 'organizador' ? PanelVentasScreen : CrearEventoScreen}
+        options={{ tabBarLabel: currentUser.rol === 'organizador' ? 'Panel Ventas' : 'Organizar' }}
       />
       <Tab.Screen
         name="MensajesTab"

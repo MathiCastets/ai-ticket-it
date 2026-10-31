@@ -13,9 +13,11 @@ import { COLORS } from '../theme/colors';
 import { CATEGORIAS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
+import LoadingSpinner from '../components/loading/Spinners';
 
 export default function CrearEventoScreen({ navigation }) {
   const { crearEvento } = useApp();
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const [nombre, setNombre] = useState('Festival Indie Primavera 2026');
   const [categoria, setCategoria] = useState('Festivales');
@@ -61,7 +63,7 @@ export default function CrearEventoScreen({ navigation }) {
     Alert.alert('Sugerencia de IA ✨', 'Se han optimizado el título y la descripción del evento.');
   };
 
-  const handlePublicar = () => {
+  const handlePublicar = async () => {
     if (!nombre.trim() || !ubicacion.trim()) {
       Alert.alert('Campos incompletos', 'Por favor completá el nombre y ubicación del evento.');
       return;
@@ -90,11 +92,17 @@ export default function CrearEventoScreen({ navigation }) {
       tiposEntrada: tiposFormateados,
     };
 
-    const res = crearEvento(nuevoEvento);
-    if (res.success) {
+    setIsPublishing(true);
+    try {
+      const res = await crearEvento(nuevoEvento);
+      if (!res.success) throw new Error(res.error || 'No se pudo publicar el evento.');
       Alert.alert('¡Evento Publicado!', 'Tu evento ya está disponible en la cartelera de AI Ticket It.', [
         { text: 'Ver en Cartelera', onPress: () => navigation.navigate('ExplorarTab') },
       ]);
+    } catch (error) {
+      Alert.alert('No se pudo publicar el evento', error.message);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -260,9 +268,23 @@ export default function CrearEventoScreen({ navigation }) {
         </View>
 
         {/* Action Button */}
-        <TouchableOpacity style={styles.publishBtn} onPress={handlePublicar} activeOpacity={0.85}>
-          <Text style={styles.publishBtnText}>PUBLICAR EVENTO</Text>
-          <Feather name="arrow-right" size={18} color={COLORS.textPrimary} />
+        <TouchableOpacity
+          style={[styles.publishBtn, isPublishing && styles.publishBtnDisabled]}
+          onPress={handlePublicar}
+          disabled={isPublishing}
+          activeOpacity={0.85}
+        >
+          {isPublishing ? (
+            <>
+              <LoadingSpinner size={18} style={styles.buttonSpinner} />
+              <Text style={styles.publishBtnText}>PUBLICANDO...</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.publishBtnText}>PUBLICAR EVENTO</Text>
+              <Feather name="arrow-right" size={18} color={COLORS.textPrimary} />
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -448,5 +470,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.textPrimary,
     letterSpacing: 0.5,
+  },
+  publishBtnDisabled: {
+    opacity: 0.65,
+  },
+  buttonSpinner: {
+    width: 18,
+    padding: 0,
   },
 });

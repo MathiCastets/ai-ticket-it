@@ -14,8 +14,12 @@ import useMockLoading from '../hooks/useMockLoading';
 import { ConversationListSkeleton } from '../components/loading/Skeletons';
 
 export default function MensajesInboxScreen({ navigation }) {
-  const { compras, userRole } = useApp();
+  const { compras, currentUser } = useApp();
   const isLoading = useMockLoading();
+  const conversaciones = compras.filter(
+    (compra) =>
+      compra.compradorId === currentUser.id || compra.organizadorId === currentUser.id
+  );
 
   return (
     <View style={styles.screenContainer}>
@@ -25,14 +29,22 @@ export default function MensajesInboxScreen({ navigation }) {
         <View style={styles.headerInfo}>
           <Text style={styles.pageTitle}>Conversaciones Activas</Text>
           <Text style={styles.pageSubtitle}>
-            {userRole === 'organizador'
+            {currentUser.rol === 'organizador'
               ? 'Consultas directas de compradores sobre sus compras'
               : 'Chats abiertos con los organizadores de tus eventos'}
           </Text>
         </View>
 
         <View style={styles.inboxList}>
-          {isLoading ? <ConversationListSkeleton /> : compras.map((compra) => {
+          {isLoading ? <ConversationListSkeleton /> : conversaciones.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubbles-outline" size={34} color={COLORS.textMuted} />
+              <Text style={styles.emptyTitle}>Todavía no hay conversaciones</Text>
+              <Text style={styles.emptySubtitle}>
+                Las conversaciones aparecerán acá cuando compres una entrada o alguien consulte por uno de tus eventos.
+              </Text>
+            </View>
+          ) : conversaciones.map((compra) => {
             const lastMsg =
               compra.mensajes && compra.mensajes.length > 0
                 ? compra.mensajes[compra.mensajes.length - 1]
@@ -47,7 +59,7 @@ export default function MensajesInboxScreen({ navigation }) {
               >
                 <View style={styles.avatarBox}>
                   <Ionicons
-                    name={userRole === 'organizador' ? 'person' : 'business'}
+                    name={currentUser.rol === 'organizador' ? 'person' : 'business'}
                     size={20}
                     color={COLORS.badgeCyanGlow}
                   />
@@ -56,13 +68,15 @@ export default function MensajesInboxScreen({ navigation }) {
                 <View style={styles.chatCardContent}>
                   <View style={styles.cardTopRow}>
                     <Text style={styles.chatTitle}>
-                      {userRole === 'organizador' ? compra.compradorNombre : compra.organizadorNombre}
+                      {currentUser.rol === 'organizador'
+                        ? (compra.compradorNombre || (typeof compra.comprador === 'object' ? `${compra.comprador.nombre || ''} ${compra.comprador.apellido || ''}`.trim() : compra.comprador) || 'Comprador')
+                        : (compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador')}
                     </Text>
                     <Text style={styles.chatTime}>{lastMsg?.fechaHora || 'Hoy'}</Text>
                   </View>
 
                   <Text style={styles.eventRef}>
-                    {compra.eventoNombre} • {compra.ordenCodigo}
+                    {compra.eventoNombre || compra.evento?.nombre} • {compra.ordenCodigo}
                   </Text>
 
                   <Text style={styles.lastMessageText} numberOfLines={1}>
@@ -113,6 +127,23 @@ const styles = StyleSheet.create({
   },
   inboxList: {
     gap: 10,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 44,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    color: COLORS.textMuted,
   },
   chatCard: {
     flexDirection: 'row',

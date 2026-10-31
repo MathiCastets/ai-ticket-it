@@ -14,19 +14,21 @@ import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 
 export default function PanelVentasScreen({ navigation }) {
-  const { eventos, compras } = useApp();
+  const { eventos, compras, currentUser } = useApp();
   const isLoading = useMockLoading();
+  const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
 
   const [selectedEventoId, setSelectedEventoId] = useState(
-    eventos && eventos.length > 0 ? eventos[0].id : null
+    eventosDelUsuario.length > 0 ? eventosDelUsuario[0].id : null
   );
 
-  const selectedEvento = eventos.find((e) => e.id === selectedEventoId) || eventos[0];
+  const selectedEvento =
+    eventosDelUsuario.find((evento) => evento.id === selectedEventoId) || eventosDelUsuario[0];
 
   // Purchases associated with this specific event (TP requirement)
   const comprasDelEvento = useMemo(() => {
     if (!selectedEvento) return [];
-    return compras.filter((c) => c.eventoId === selectedEvento.id);
+    return compras.filter((c) => (c.eventoId || c.evento?.id) === selectedEvento.id);
   }, [selectedEvento, compras]);
 
   // Aggregate metrics
@@ -66,7 +68,7 @@ export default function PanelVentasScreen({ navigation }) {
         <View style={styles.selectorSection}>
           <Text style={styles.selectorLabel}>SELECCIONAR EVENTO:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScroll}>
-            {eventos.map((ev) => {
+            {eventosDelUsuario.map((ev) => {
               const isSelected = selectedEvento?.id === ev.id;
               return (
                 <TouchableOpacity
@@ -112,7 +114,7 @@ export default function PanelVentasScreen({ navigation }) {
               <Text style={styles.kpiLabel}>TOTAL RECAUDADO</Text>
             </View>
             <Text style={styles.kpiValue}>
-              ${(metricas.totalRecaudado || 4890000).toLocaleString('es-AR')}
+              ${metricas.totalRecaudado.toLocaleString('es-AR')}
             </Text>
             <View style={styles.kpiTrend}>
               <Feather name="trending-up" size={12} color={COLORS.statusSuccess} />
@@ -203,9 +205,11 @@ export default function PanelVentasScreen({ navigation }) {
                       <Ionicons name="person" size={16} color={COLORS.badgeCyanGlow} />
                     </View>
                     <View>
-                      <Text style={styles.buyerName}>{compra.compradorNombre}</Text>
+                      <Text style={styles.buyerName}>
+                        {compra.compradorNombre || (typeof compra.comprador === 'object' ? `${compra.comprador?.nombre || ''} ${compra.comprador?.apellido || ''}`.trim() : compra.comprador) || 'Comprador'}
+                      </Text>
                       <Text style={styles.saleDetails}>
-                        {compra.cantidad}x {compra.tipoEntradaNombre} • ${compra.total?.toLocaleString('es-AR')}
+                        {compra.cantidad}x {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} • ${compra.total?.toLocaleString('es-AR')}
                       </Text>
                       <Text style={styles.saleOrderCode}>{compra.ordenCodigo}</Text>
                     </View>
