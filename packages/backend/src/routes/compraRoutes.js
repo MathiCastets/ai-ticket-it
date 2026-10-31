@@ -11,5 +11,6 @@ router.post('/:id/acreditar', compraController.markUsed);
 router.post('/:id/calificar', compraController.rate);
 router.get('/:id/mensajes', compraController.getMessages);
 router.post('/:id/mensajes', compraController.sendMessage);
+router.put('/:id/mensajes/leidos', compraController.markMessagesRead);
 
 export default router;

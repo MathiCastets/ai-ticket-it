@@ -167,6 +167,21 @@ export class CompraController {
       next(error);
     }
   };
+
+  markMessagesRead = async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { usuarioId } = req.body;
+      if (typeof usuarioId !== 'string' || !usuarioId.trim()) {
+        throw new ValidationError('usuarioId es requerido para marcar los mensajes como leídos');
+      }
+
+      const mensajes = await this.mensajeService.marcarMensajesLeidos(id, usuarioId);
+      res.status(200).json({ data: mensajes });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const compraController = new CompraController();

@@ -82,17 +82,17 @@ export function createSeedData() {
   const categorias = [catRecitales, catFestivales, catTeatro, catConferencias, catDeportes];
 
   // 3. Tipos de entrada (se construyen primero para poder referenciarlos en Compra)
-  const teGen1      = new TipoEntrada({ id: 'te-gen-1',          nombre: 'General',                   descripcion: 'Acceso a campo general y sector gastronómico',           precio: 15000, cupo: 500, disponibles: 142 });
-  const teVip1      = new TipoEntrada({ id: 'te-vip-1',          nombre: 'Campo VIP',                 descripcion: 'Acceso preferencial frente al escenario + consumición',  precio: 28000, cupo: 150, disponibles: 18  });
-  const teLounge1   = new TipoEntrada({ id: 'te-lounge-1',       nombre: 'Experiencia Sonora Lounge', descripcion: 'Terraza exclusiva elevada con barra libre y catering',   precio: 45000, cupo: 40,  disponibles: 4   });
+  const teGen1      = new TipoEntrada({ id: 'te-gen-1',          nombre: 'General',                   descripcion: 'Acceso a campo general y sector gastronómico',           precio: 15000, cupo: 500, disponibles: 498 });
+  const teVip1      = new TipoEntrada({ id: 'te-vip-1',          nombre: 'Campo VIP',                 descripcion: 'Acceso preferencial frente al escenario + consumición',  precio: 28000, cupo: 150, disponibles: 150 });
+  const teLounge1   = new TipoEntrada({ id: 'te-lounge-1',       nombre: 'Experiencia Sonora Lounge', descripcion: 'Terraza exclusiva elevada con barra libre y catering',   precio: 45000, cupo: 40,  disponibles: 40  });
 
-  const teUnderGen  = new TipoEntrada({ id: 'te-under-gen',      nombre: 'Entrada General',           descripcion: 'Acceso a pista principal',                               precio: 8500,  cupo: 300, disponibles: 85  });
-  const teUnderVip  = new TipoEntrada({ id: 'te-under-vip',      nombre: 'VIP Balcón',                descripcion: 'Vista panorámica y barra exclusiva',                     precio: 16000, cupo: 60,  disponibles: 12  });
+  const teUnderGen  = new TipoEntrada({ id: 'te-under-gen',      nombre: 'Entrada General',           descripcion: 'Acceso a pista principal',                               precio: 8500,  cupo: 300, disponibles: 299 });
+  const teUnderVip  = new TipoEntrada({ id: 'te-under-vip',      nombre: 'VIP Balcón',                descripcion: 'Vista panorámica y barra exclusiva',                     precio: 16000, cupo: 60,  disponibles: 60  });
 
-  const teTeatroPlatea  = new TipoEntrada({ id: 'te-teatro-platea',  nombre: 'Platea Baja', descripcion: 'Fila 1 a 10 central',                  precio: 12000, cupo: 180, disponibles: 24  });
-  const teTeatroPullman = new TipoEntrada({ id: 'te-teatro-pullman', nombre: 'Pullman',     descripcion: 'Primer piso con excelente visibilidad', precio: 9500,  cupo: 120, disponibles: 40  });
+  const teTeatroPlatea  = new TipoEntrada({ id: 'te-teatro-platea',  nombre: 'Platea Baja', descripcion: 'Fila 1 a 10 central',                  precio: 12000, cupo: 180, disponibles: 178 });
+  const teTeatroPullman = new TipoEntrada({ id: 'te-teatro-pullman', nombre: 'Pullman',     descripcion: 'Primer piso con excelente visibilidad', precio: 9500,  cupo: 120, disponibles: 120 });
 
-  const teConfPass  = new TipoEntrada({ id: 'te-conf-pass', nombre: 'Pase General', descripcion: 'Acceso a todas las charlas y coffee breaks', precio: 6000, cupo: 400, disponibles: 110 });
+  const teConfPass  = new TipoEntrada({ id: 'te-conf-pass', nombre: 'Pase General', descripcion: 'Acceso a todas las charlas y coffee breaks', precio: 6000, cupo: 400, disponibles: 400 });
 
   // 4. Eventos — organizador y categoria como objetos referenciados
   const evento1 = new Evento({
@@ -160,7 +160,9 @@ export function createSeedData() {
   });
 
   const eventos = [evento1, evento2, evento3, evento4];
-  const fechaCompraDePrueba = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const fechaCompraConfirmada = new Date(Date.now() - 72 * 60 * 60 * 1000);
+  const fechaCompraPendiente = new Date(Date.now() - 36 * 60 * 60 * 1000);
+  const fechaCompraUtilizada = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
   // 5. Compras — comprador, evento y tipoEntrada como referencias directas
   const compra1 = new Compra({
@@ -172,20 +174,20 @@ export function createSeedData() {
     cantidad: 2,
     total: teGen1.precio * 2,
     estado: EstadoCompra.CONFIRMADA,
-    fechaHora: fechaCompraDePrueba,
+    fechaHora: fechaCompraConfirmada,
     reseniaRealizada: false,
     mensajes: [
       new Mensaje({
         id: 'msg-1',
         usuario: compradorMathi,
         mensaje: '¡Hola! ¿A qué hora abren las puertas del predio? ¿Hay estacionamiento disponible en el lugar?',
-        enviado: new Date(Date.now() - 3600000 * 2),
+        enviado: new Date(Date.now() - 3600000 * 72),
       }),
       new Mensaje({
         id: 'msg-2',
         usuario: orgSonora,
         mensaje: '¡Buenas tardes! Las puertas abren puntualmente a las 18:00 hs. Sí, contaremos con estacionamiento vigilado por orden de llegada con tarifa especial presentando tu entrada digital.',
-        enviado: new Date(Date.now() - 3600000 * 1.5),
+        enviado: new Date(Date.now() - 3600000 * 24),
       }),
     ],
   });
@@ -199,7 +201,7 @@ export function createSeedData() {
     cantidad: 1,
     total: teUnderGen.precio * 1,
     estado: EstadoCompra.PENDIENTE,
-    fechaHora: fechaCompraDePrueba,
+    fechaHora: fechaCompraPendiente,
     reseniaRealizada: false,
     mensajes: [],
   });
@@ -213,7 +215,7 @@ export function createSeedData() {
     cantidad: 2,
     total: teTeatroPlatea.precio * 2,
     estado: EstadoCompra.UTILIZADA,
-    fechaHora: fechaCompraDePrueba,
+    fechaHora: fechaCompraUtilizada,
     reseniaRealizada: false,
     mensajes: [],
   });

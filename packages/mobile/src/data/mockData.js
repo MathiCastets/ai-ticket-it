@@ -1,3 +1,19 @@
+const crearFechaRelativa = (horasAtras) => {
+  const fecha = new Date(Date.now() - horasAtras * 60 * 60 * 1000);
+  return {
+    enviado: fecha.toISOString(),
+    fechaHora: fecha.toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }),
+  };
+};
+
+const fechaCompraConfirmada = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+const fechaCompraPendiente = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+const fechaCompraUtilizada = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
 export const CATEGORIAS = [
   'Todos',
   'Recitales',
@@ -93,7 +109,7 @@ export const EVENTOS_INICIALES = [
         descripcion: 'Acceso a campo general y sector gastronómico',
         precio: 15000,
         cupo: 500,
-        disponibles: 142,
+        disponibles: 498,
       },
       {
         id: 'te-vip-1',
@@ -101,7 +117,7 @@ export const EVENTOS_INICIALES = [
         descripcion: 'Acceso preferencial frente al escenario + consumición',
         precio: 28000,
         cupo: 150,
-        disponibles: 18,
+        disponibles: 150,
       },
       {
         id: 'te-lounge-1',
@@ -109,7 +125,7 @@ export const EVENTOS_INICIALES = [
         descripcion: 'Terraza exclusiva elevada con barra libre y catering',
         precio: 45000,
         cupo: 40,
-        disponibles: 4,
+        disponibles: 40,
       },
     ],
     reseniasAnteriores: [
@@ -152,7 +168,7 @@ export const EVENTOS_INICIALES = [
         descripcion: 'Acceso a pista principal',
         precio: 8500,
         cupo: 300,
-        disponibles: 85,
+        disponibles: 299,
       },
       {
         id: 'te-under-vip',
@@ -160,7 +176,7 @@ export const EVENTOS_INICIALES = [
         descripcion: 'Vista panorámica y barra exclusiva',
         precio: 16000,
         cupo: 60,
-        disponibles: 12,
+        disponibles: 60,
       },
     ],
     reseniasAnteriores: [
@@ -196,7 +212,7 @@ export const EVENTOS_INICIALES = [
         descripcion: 'Fila 1 a 10 central',
         precio: 12000,
         cupo: 180,
-        disponibles: 24,
+        disponibles: 178,
       },
       {
         id: 'te-teatro-pullman',
@@ -204,7 +220,7 @@ export const EVENTOS_INICIALES = [
         descripcion: 'Primer piso con excelente visibilidad',
         precio: 9500,
         cupo: 120,
-        disponibles: 40,
+        disponibles: 120,
       },
     ],
     reseniasAnteriores: [
@@ -240,7 +256,7 @@ export const EVENTOS_INICIALES = [
         descripcion: 'Acceso a todas las charlas y coffee breaks',
         precio: 6000,
         cupo: 400,
-        disponibles: 110,
+        disponibles: 400,
       },
     ],
     reseniasAnteriores: [],
@@ -255,6 +271,7 @@ export const COMPRAS_INICIALES = [
     eventoNombre: 'Festival de Música UTN 2026',
     eventoFecha: '2026-11-10T20:00:00',
     eventoFechaTexto: '10 de Noviembre 2026 • 20:00 hs',
+    fechaHora: fechaCompraConfirmada,
     tipoEntradaId: 'te-gen-1',
     tipoEntradaNombre: 'General',
     cantidad: 2,
@@ -273,14 +290,14 @@ export const COMPRAS_INICIALES = [
         emisor: 'comprador',
         usuario: 'Mathi Castets',
         texto: '¡Hola! ¿A qué hora abren las puertas del predio? ¿Hay estacionamiento disponible en el lugar?',
-        fechaHora: '14:32',
+        ...crearFechaRelativa(48),
       },
       {
         id: 'msg-2',
         emisor: 'organizador',
         usuario: 'Producciones Sonora',
         texto: '¡Buenas tardes! Las puertas abren puntualmente a las 18:00 hs. Sí, contaremos con estacionamiento vigilado por orden de llegada con tarifa especial presentando tu entrada digital.',
-        fechaHora: '14:36',
+        ...crearFechaRelativa(12),
       },
     ],
   },
@@ -291,6 +308,7 @@ export const COMPRAS_INICIALES = [
     eventoNombre: 'Noche Electrónica Underground',
     eventoFecha: '2026-11-18T23:00:00',
     eventoFechaTexto: '18 de Noviembre 2026 • 23:00 hs',
+    fechaHora: fechaCompraPendiente,
     tipoEntradaId: 'te-under-gen',
     tipoEntradaNombre: 'Entrada General',
     cantidad: 1,
@@ -312,6 +330,7 @@ export const COMPRAS_INICIALES = [
     eventoNombre: 'Obra: El Método Grönholm',
     eventoFecha: '2026-10-15T20:30:00',
     eventoFechaTexto: '15 de Octubre 2026 • 20:30 hs',
+    fechaHora: fechaCompraUtilizada,
     tipoEntradaId: 'te-teatro-platea',
     tipoEntradaNombre: 'Platea Baja',
     cantidad: 2,

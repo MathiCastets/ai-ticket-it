@@ -13,6 +13,60 @@ import { EventoService } from './src/services/EventoService.js';
 
 async function validarMutacionesAtomicas() {
   const purchaseSeed = createSeedData();
+  const ahora = Date.now();
+  const closureSeed = createSeedData();
+  const compraParaCierre = closureSeed.compras[0];
+  compraParaCierre.evento.fecha = new Date(ahora - 48 * 60 * 60 * 1000);
+  compraParaCierre.mensajes = [];
+  assert.equal(compraParaCierre.estaConversacionCerrada(ahora), true);
+
+  compraParaCierre.mensajes = [{ enviado: new Date(ahora - 24 * 60 * 60 * 1000) }];
+  assert.equal(compraParaCierre.estaConversacionCerrada(ahora), false);
+
+  compraParaCierre.evento.fecha = new Date(ahora - 24 * 60 * 60 * 1000);
+  compraParaCierre.mensajes = [{ enviado: new Date(ahora - 72 * 60 * 60 * 1000) }];
+  assert.equal(compraParaCierre.estaConversacionCerrada(ahora), false);
+
+  for (const evento of purchaseSeed.eventos) {
+    for (const tipoEntrada of evento.tiposEntrada) {
+      const entradasVendidas = purchaseSeed.compras
+        .filter((compra) =>
+          compra.evento.id === evento.id &&
+          compra.tipoEntrada.id === tipoEntrada.id &&
+          !['CANCELADA', 'REEMBOLSADA'].includes(compra.estado)
+        )
+        .reduce((total, compra) => total + compra.cantidad, 0);
+      assert.equal(
+        tipoEntrada.disponibles,
+        tipoEntrada.cupo - entradasVendidas,
+        `El cupo disponible de "${tipoEntrada.nombre}" debe coincidir con las compras seed`
+      );
+    }
+  }
+  for (const compra of purchaseSeed.compras) {
+    for (const mensaje of compra.mensajes) {
+      assert.ok(
+        Number.isFinite(new Date(mensaje.enviado).getTime()),
+        `El mensaje "${mensaje.id}" debe tener una fecha válida`
+      );
+    }
+  }
+
+  const closedSeed = createSeedData();
+  closedSeed.eventos[0].fecha = new Date(Date.now() - 49 * 60 * 60 * 1000);
+  closedSeed.compras[0].mensajes = [];
+  const closedMessageService = new MensajeService(
+    new CompraRepository(closedSeed.compras),
+    new UsuarioRepository(closedSeed.usuarios)
+  );
+  await assert.rejects(
+    closedMessageService.enviarMensaje('compra-1', {
+      usuarioId: 'user_comprador_1',
+      texto: 'No se puede enviar este mensaje',
+    }),
+    (error) => error.code === 'CONVERSACION_CERRADA'
+  );
+
   const purchaseBaseRepository = new CompraRepository(purchaseSeed.compras);
   const eventRepository = new EventoRepository(purchaseSeed.eventos);
   const usuarioRepository = new UsuarioRepository(purchaseSeed.usuarios);
@@ -541,6 +595,28 @@ async function runTests() {
     data = await res.json();
     assert.ok(data.data.length >= 1, 'Debe haber al menos 1 mensaje');
     console.log(`✓ Historial de mensajes OK (${data.data.length} mensajes)`);
+
+    res = await fetch(`${baseUrl}/compras/${compra2.id}/mensajes/leidos`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuarioId: 'user_org_sonora' }),
+    });
+    data = await res.json();
+    assert.equal(res.status, 200, 'El organizador del evento debe poder marcar mensajes como leídos');
+    assert.ok(
+      data.data.some((mensaje) => mensaje.leidoPor?.includes('user_org_sonora')),
+      'El recibo de lectura debe incluir al usuario que abrió el chat'
+    );
+
+    res = await fetch(`${baseUrl}/compras/${compra2.id}/mensajes/leidos`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuarioId: 'user_org_underground' }),
+    });
+    data = await res.json();
+    assert.equal(res.status, 400, 'Un usuario ajeno a la compra no debe marcar mensajes como leídos');
+    assert.equal(data.error.code, 'LECTOR_NO_AUTORIZADO');
+    console.log('✓ Lecturas de mensajes persistidas y protegidas por participante');
 
     // La validación de creación debe detectar fechas inválidas y categorías inexistentes.
     const invalidEvent = {

@@ -194,4 +194,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ usuarioId, texto }),
     }),
+
+  marcarMensajesLeidos: (compraId, usuarioId) =>
+    request(`/compras/${compraId}/mensajes/leidos`, {
+      method: 'PUT',
+      body: JSON.stringify({ usuarioId }),
+    }),
 };

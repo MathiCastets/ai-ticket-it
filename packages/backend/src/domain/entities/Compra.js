@@ -5,6 +5,8 @@ import {
   ReglaNegocioError,
 } from '../errors/index.js';
 
+const MARGEN_CIERRE_CONVERSACION_MS = 48 * 60 * 60 * 1000;
+
 export class Compra {
   constructor({
     id,
@@ -112,6 +114,20 @@ export class Compra {
 
   agregarMensaje(mensaje) {
     this.mensajes.push(mensaje);
+  }
+
+  estaConversacionCerrada(ahora = Date.now()) {
+    const fechaEvento = new Date(this.evento.fecha).getTime();
+    if (!Number.isFinite(fechaEvento)) return false;
+
+    const ultimoMensaje = this.mensajes.reduce((ultimaFecha, mensaje) => {
+      const fechaMensaje = new Date(mensaje.enviado).getTime();
+      return Number.isFinite(fechaMensaje) ? Math.max(ultimaFecha, fechaMensaje) : ultimaFecha;
+    }, Number.NEGATIVE_INFINITY);
+    const ultimaActividad = Math.max(fechaEvento, ultimoMensaje);
+    const ahoraMs = ahora instanceof Date ? ahora.getTime() : Number(ahora);
+
+    return Number.isFinite(ahoraMs) && ahoraMs - ultimaActividad >= MARGEN_CIERRE_CONVERSACION_MS;
   }
 
   diasFaltantes() {
