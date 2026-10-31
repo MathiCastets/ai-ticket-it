@@ -160,6 +160,7 @@ export function createSeedData() {
   });
 
   const eventos = [evento1, evento2, evento3, evento4];
+  const fechaCompraDePrueba = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
   // 5. Compras — comprador, evento y tipoEntrada como referencias directas
   const compra1 = new Compra({
@@ -171,6 +172,7 @@ export function createSeedData() {
     cantidad: 2,
     total: teGen1.precio * 2,
     estado: EstadoCompra.CONFIRMADA,
+    fechaHora: fechaCompraDePrueba,
     reseniaRealizada: false,
     mensajes: [
       new Mensaje({
@@ -197,6 +199,7 @@ export function createSeedData() {
     cantidad: 1,
     total: teUnderGen.precio * 1,
     estado: EstadoCompra.PENDIENTE,
+    fechaHora: fechaCompraDePrueba,
     reseniaRealizada: false,
     mensajes: [],
   });
@@ -210,6 +213,7 @@ export function createSeedData() {
     cantidad: 2,
     total: teTeatroPlatea.precio * 2,
     estado: EstadoCompra.UTILIZADA,
+    fechaHora: fechaCompraDePrueba,
     reseniaRealizada: false,
     mensajes: [],
   });

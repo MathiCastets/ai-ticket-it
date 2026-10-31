@@ -67,6 +67,7 @@ const normalizarEvento = (evento) => {
 
 const normalizarCompra = (compra) => ({
   ...compra,
+  fechaHora: compra.fechaHora || null,
   eventoId: compra.eventoId || compra.evento?.id || '',
   eventoNombre: compra.eventoNombre || compra.evento?.nombre || '',
   eventoFecha: compra.eventoFecha || compra.evento?.fecha || '',
@@ -384,6 +385,7 @@ export const AppProvider = ({ children }) => {
       cantidad,
       total: tipo.precio * cantidad,
       estado: 'CONFIRMADA',
+      fechaHora: new Date().toISOString(),
       compradorId: currentUser.id,
       compradorNombre: `${currentUser.nombre} ${currentUser.apellido || ''}`.trim(),
       organizadorNombre: evento.organizador,
@@ -573,12 +575,13 @@ export const AppProvider = ({ children }) => {
     if (!eventoActual || eventoActual.organizadorId !== currentUser.id) {
       return { success: false, error: 'Este evento no pertenece al organizador seleccionado.' };
     }
+    const { imagenes = [], ...datosCambios } = cambios;
 
     if (await backendDisponible()) {
       const eventoServidor = await api.actualizarEvento(eventoId, {
-        ...cambios,
+        ...datosCambios,
         organizadorId: currentUser.id,
-      });
+      }, imagenes);
       const eventoActualizado = normalizarEvento(eventoServidor);
       setEventos((prev) =>
         prev.map((item) => (item.id === eventoId ? eventoActualizado : item))
@@ -586,7 +589,13 @@ export const AppProvider = ({ children }) => {
       return { success: true, evento: eventoActualizado };
     }
 
-    const eventoActualizado = normalizarEvento({ ...eventoActual, ...cambios });
+    const imagenNueva = imagenes[0]?.uri;
+    const eventoActualizado = normalizarEvento({
+      ...eventoActual,
+      ...datosCambios,
+      ...(imagenNueva ? { imagen: imagenNueva, multimedia: [imagenNueva] } : {}),
+      ...(datosCambios.imagen === '' ? { imagen: '', multimedia: [] } : {}),
+    });
     setEventos((prev) =>
       prev.map((item) => (item.id === eventoId ? eventoActualizado : item))
     );

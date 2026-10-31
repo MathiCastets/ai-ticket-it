@@ -27,11 +27,11 @@ export default function MensajesInboxScreen({ navigation }) {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerInfo}>
-          <Text style={styles.pageTitle}>Conversaciones Activas</Text>
+          <Text style={styles.pageTitle}>Tus Conversaciones</Text>
           <Text style={styles.pageSubtitle}>
             {currentUser.rol === 'organizador'
-              ? 'Consultas directas de compradores sobre sus compras'
-              : 'Chats abiertos con los organizadores de tus eventos'}
+              ? 'Responde directamente a las consultas de tus clientes'
+              : 'Consulta directamente con los organizadores de tus eventos'}
           </Text>
         </View>
 

@@ -11,6 +11,38 @@ const defaultHeaders = {
   Accept: 'application/json',
 };
 
+async function agregarImagenes(formData, imagenes) {
+  for (const [index, imagen] of imagenes.entries()) {
+    const fileExtension = imagen.fileName?.split('.').pop()?.toLowerCase();
+    const mimeType =
+      imagen.mimeType ||
+      ({
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        webp: 'image/webp',
+      }[fileExtension] || 'image/jpeg');
+    const extension = mimeType.split('/')[1] || 'jpg';
+    const filename = imagen.fileName || `evento-${index + 1}.${extension}`;
+
+    if (Platform.OS === 'web') {
+      const file =
+        imagen.file ||
+        (await fetch(imagen.uri).then((response) => {
+          if (!response.ok) throw new Error('No se pudo leer la imagen seleccionada.');
+          return response.blob();
+        }));
+      formData.append('imagenes', file, filename);
+    } else {
+      formData.append('imagenes', {
+        uri: imagen.uri,
+        name: filename,
+        type: mimeType,
+      });
+    }
+  }
+}
+
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   const isMultipart =
@@ -95,46 +127,29 @@ export const api = {
 
     const formData = new FormData();
     formData.append('evento', JSON.stringify(eventoData));
-    for (const [index, imagen] of imagenes.entries()) {
-      const fileExtension = imagen.fileName?.split('.').pop()?.toLowerCase();
-      const mimeType =
-        imagen.mimeType ||
-        ({
-          jpg: 'image/jpeg',
-          jpeg: 'image/jpeg',
-          png: 'image/png',
-          webp: 'image/webp',
-        }[fileExtension] || 'image/jpeg');
-      const extension = mimeType.split('/')[1] || 'jpg';
-      const filename = imagen.fileName || `evento-${index + 1}.${extension}`;
-
-      if (Platform.OS === 'web') {
-        const file =
-          imagen.file ||
-          (await fetch(imagen.uri).then((response) => {
-            if (!response.ok) throw new Error('No se pudo leer una de las imágenes seleccionadas.');
-            return response.blob();
-          }));
-        formData.append('imagenes', file, filename);
-      } else {
-        formData.append('imagenes', {
-          uri: imagen.uri,
-          name: filename,
-          type: mimeType,
-        });
-      }
-    }
+    await agregarImagenes(formData, imagenes);
 
     return request('/eventos', {
       method: 'POST',
       body: formData,
     });
   },
-  actualizarEvento: (eventoId, cambios) =>
-    request(`/eventos/${eventoId}`, {
+  actualizarEvento: async (eventoId, cambios, imagenes = []) => {
+    if (imagenes.length === 0) {
+      return request(`/eventos/${eventoId}`, {
+        method: 'PUT',
+        body: JSON.stringify(cambios),
+      });
+    }
+
+    const formData = new FormData();
+    formData.append('cambios', JSON.stringify(cambios));
+    await agregarImagenes(formData, imagenes);
+    return request(`/eventos/${eventoId}`, {
       method: 'PUT',
-      body: JSON.stringify(cambios),
-    }),
+      body: formData,
+    });
+  },
 
   // Compras
   getCompras: ({ compradorId, eventoId } = {}) => {

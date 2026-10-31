@@ -84,9 +84,7 @@ export default function EscanearScreen() {
             <Ionicons name="qr-code-outline" size={26} color={COLORS.tertiary} />
           </View>
           <Text style={styles.title}>Acreditar entrada</Text>
-          <Text style={styles.subtitle}>
-            Ingresá el código de orden que figura en el ticket. La cámara y el escaneo QR quedan para una próxima etapa.
-          </Text>
+          <Text style={styles.subtitle}>Ingresá el código de orden que figura en el ticket.</Text>
         </View>
 
         <View style={styles.formCard}>

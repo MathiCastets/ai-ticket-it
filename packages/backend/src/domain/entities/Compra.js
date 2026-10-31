@@ -15,6 +15,7 @@ export class Compra {
     cantidad = 1,
     total = 0,
     estado = EstadoCompra.CONFIRMADA,
+    fechaHora = new Date(),
     mensajes = [],
     historialCambios = [],
     reseniaRealizada = false,
@@ -43,6 +44,7 @@ export class Compra {
     this.cantidad = cantidad;
     this.total    = total;
     this.estado   = estado;
+    this.fechaHora = new Date(fechaHora);
 
     this.mensajes         = Array.isArray(mensajes)         ? mensajes         : [];
     this.historialCambios = Array.isArray(historialCambios) ? historialCambios : [];
@@ -128,6 +130,7 @@ export class Compra {
       cantidad: this.cantidad,
       total: this.total,
       estado: this.estado,
+      fechaHora: this.fechaHora,
       mensajes: this.mensajes,
       historialCambios: this.historialCambios,
       reseniaRealizada: this.reseniaRealizada,

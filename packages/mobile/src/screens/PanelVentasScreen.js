@@ -17,6 +17,12 @@ export default function PanelVentasScreen({ route, navigation }) {
   const { eventos, compras, currentUser } = useApp();
   const isLoading = useMockLoading();
   const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
+  const [ahora, setAhora] = useState(Date.now());
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setAhora(Date.now()), 60000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const [selectedEventoId, setSelectedEventoId] = useState(
     route?.params?.eventoId || (eventosDelUsuario.length > 0 ? eventosDelUsuario[0].id : null)
@@ -36,11 +42,22 @@ export default function PanelVentasScreen({ route, navigation }) {
 
   // Aggregate metrics
   const metricas = useMemo(() => {
-    if (!selectedEvento) return { totalRecaudado: 0, vendidas: 0, cupoTotal: 0 };
+    if (!selectedEvento) {
+      return { totalRecaudado: 0, ingresosUltimas24Horas: 0, vendidas: 0, cupoTotal: 0 };
+    }
 
     const totalRecaudado = comprasDelEvento
       .filter((c) => c.estado !== 'CANCELADA' && c.estado !== 'REEMBOLSADA')
       .reduce((acc, c) => acc + (c.total || 0), 0);
+
+    const limite24Horas = ahora - 24 * 60 * 60 * 1000;
+    const ingresosUltimas24Horas = comprasDelEvento
+      .filter((compra) => {
+        if (!['CONFIRMADA', 'UTILIZADA'].includes(compra.estado)) return false;
+        const fechaCompra = Date.parse(compra.fechaHora);
+        return Number.isFinite(fechaCompra) && fechaCompra >= limite24Horas && fechaCompra <= ahora;
+      })
+      .reduce((acumulado, compra) => acumulado + (compra.total || 0), 0);
 
     const vendidas = comprasDelEvento
       .filter((c) => c.estado !== 'CANCELADA' && c.estado !== 'REEMBOLSADA')
@@ -48,8 +65,8 @@ export default function PanelVentasScreen({ route, navigation }) {
 
     const cupoTotal = selectedEvento.tiposEntrada?.reduce((acc, t) => acc + t.cupo, 0) || 0;
 
-    return { totalRecaudado, vendidas, cupoTotal };
-  }, [selectedEvento, comprasDelEvento]);
+    return { totalRecaudado, ingresosUltimas24Horas, vendidas, cupoTotal };
+  }, [selectedEvento, comprasDelEvento, ahora]);
 
   if (isLoading) {
     return (
@@ -116,13 +133,15 @@ export default function PanelVentasScreen({ route, navigation }) {
               <Ionicons name="cash-outline" size={16} color={COLORS.statusSuccess} />
               <Text style={styles.kpiLabel}>TOTAL RECAUDADO</Text>
             </View>
-            <Text style={styles.kpiValue}>
-              ${metricas.totalRecaudado.toLocaleString('es-AR')}
-            </Text>
-            <View style={styles.kpiTrend}>
-              <Feather name="trending-up" size={12} color={COLORS.statusSuccess} />
-              <Text style={styles.kpiTrendText}>Venta activa en tiempo real</Text>
+            <View style={styles.revenueValueRow}>
+              <Feather name="trending-up" size={19} color={COLORS.statusSuccess} />
+              <Text style={styles.kpiValue}>
+                ${metricas.totalRecaudado.toLocaleString('es-AR')}
+              </Text>
             </View>
+            <Text style={styles.revenueRecentValue}>
+              +${metricas.ingresosUltimas24Horas.toLocaleString('es-AR')} hoy
+            </Text>
           </View>
 
           {/* KPI: Entradas vendidas */}
@@ -376,6 +395,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: COLORS.textPrimary,
+  },
+  revenueValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  revenueRecentValue: {
+    color: COLORS.statusSuccess,
+    fontSize: 12,
+    fontWeight: '700',
   },
   kpiTrend: {
     flexDirection: 'row',

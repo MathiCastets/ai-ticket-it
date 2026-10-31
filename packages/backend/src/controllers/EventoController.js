@@ -98,7 +98,28 @@ export class EventoController {
 
   update = async (req, res, next) => {
     try {
-      const { organizadorId, nombre, descripcion, ubicacion, direccion } = req.body;
+      let payload = req.body;
+      if (req.is('multipart/form-data')) {
+        try {
+          payload = JSON.parse(req.body.cambios);
+        } catch {
+          throw new ValidationError('El campo cambios debe contener un objeto JSON válido');
+        }
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+          throw new ValidationError('El campo cambios debe contener un objeto JSON');
+        }
+      }
+
+      const {
+        organizadorId,
+        nombre,
+        descripcion,
+        ubicacion,
+        direccion,
+        imagen,
+        fecha,
+        fechaTexto,
+      } = payload;
       if (typeof organizadorId !== 'string' || !organizadorId.trim()) {
         throw new ValidationError('organizadorId es requerido para modificar el evento');
       }
@@ -109,6 +130,10 @@ export class EventoController {
         descripcion,
         ubicacion,
         direccion,
+        imagen,
+        fecha,
+        fechaTexto,
+        imagenes: req.files || [],
       });
       res.status(200).json({ data: evento });
     } catch (error) {

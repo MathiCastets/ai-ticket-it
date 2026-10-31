@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -10,36 +10,95 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import useMockLoading from '../hooks/useMockLoading';
+import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
 
 const crearFormulario = (evento) => ({
   nombre: evento.nombre || '',
   descripcion: evento.descripcion || '',
   ubicacion: evento.ubicacion || '',
+  fecha: new Date(evento.fecha),
+  fechaModificada: false,
+  imagen: evento.imagen || '',
+  imagenSeleccionada: null,
+  quitarImagen: false,
 });
 
-export default function OrganizadorEventosScreen({ navigation }) {
+export default function OrganizadorEventosScreen({ navigation, route }) {
   const { eventos, currentUser, actualizarEvento } = useApp();
   const isLoading = useMockLoading();
   const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
   const [eventoEditando, setEventoEditando] = useState(null);
   const [formulario, setFormulario] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPickingImage, setIsPickingImage] = useState(false);
 
   const abrirEdicion = (evento) => {
     setEventoEditando(evento);
     setFormulario(crearFormulario(evento));
   };
 
+  useEffect(() => {
+    const eventoId = route?.params?.editEventoId;
+    if (!eventoId) return;
+
+    const evento = eventosDelUsuario.find((item) => item.id === eventoId);
+    if (evento) abrirEdicion(evento);
+    navigation.setParams({ editEventoId: undefined });
+  }, [route?.params?.editEventoId, eventos, navigation]);
+
   const cerrarEdicion = () => {
-    if (isSaving) return;
+    if (isSaving || isPickingImage) return;
     setEventoEditando(null);
     setFormulario(null);
+  };
+
+  const seleccionarImagen = async () => {
+    setIsPickingImage(true);
+    try {
+      const resultado = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: false,
+        selectionLimit: 1,
+        quality: 0.85,
+      });
+      if (resultado.canceled || !resultado.assets?.length) return;
+
+      const imagen = resultado.assets[0];
+      const extension = imagen.fileName?.split('.').pop()?.toLowerCase();
+      const mimeType =
+        imagen.mimeType ||
+        ({ jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[
+          extension
+        ] || '');
+      const formatoValido =
+        !mimeType || ['image/jpeg', 'image/png', 'image/webp'].includes(mimeType);
+      const tamanioValido = !imagen.fileSize || imagen.fileSize <= 5 * 1024 * 1024;
+      if (!formatoValido || !tamanioValido) {
+        Alert.alert(
+          'La foto no se pudo agregar',
+          'Se aceptan imágenes JPEG, PNG o WebP de hasta 5 MB.'
+        );
+        return;
+      }
+
+      setFormulario((prev) => ({
+        ...prev,
+        imagen: imagen.uri,
+        imagenSeleccionada: imagen,
+        quitarImagen: false,
+      }));
+    } catch (error) {
+      Alert.alert('No se pudo seleccionar la foto', error.message);
+    } finally {
+      setIsPickingImage(false);
+    }
   };
 
   const guardarCambios = async () => {
@@ -54,6 +113,14 @@ export default function OrganizadorEventosScreen({ navigation }) {
         nombre: formulario.nombre,
         descripcion: formulario.descripcion,
         ubicacion: formulario.ubicacion,
+        ...(formulario.fechaModificada
+          ? {
+              fecha: formulario.fecha.toISOString(),
+              fechaTexto: formatearFechaEvento(formulario.fecha),
+            }
+          : {}),
+        ...(formulario.quitarImagen ? { imagen: '' } : {}),
+        imagenes: formulario.imagenSeleccionada ? [formulario.imagenSeleccionada] : [],
       });
       if (!resultado.success) throw new Error(resultado.error || 'No se pudieron guardar los cambios.');
       setEventoEditando(null);
@@ -133,11 +200,10 @@ export default function OrganizadorEventosScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <View>
                 <Text style={styles.modalTitle}>Editar evento</Text>
-                <Text style={styles.modalSubtitle}>Los cambios se guardan en el backend.</Text>
               </View>
               <TouchableOpacity
                 onPress={cerrarEdicion}
-                disabled={isSaving}
+                disabled={isSaving || isPickingImage}
                 accessibilityRole="button"
                 accessibilityLabel="Cerrar edición"
               >
@@ -145,7 +211,74 @@ export default function OrganizadorEventosScreen({ navigation }) {
               </TouchableOpacity>
             </View>
             {formulario ? (
-              <>
+              <ScrollView
+                style={styles.modalFormScroll}
+                contentContainerStyle={styles.modalFormContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={styles.fieldLabel}>Foto de portada</Text>
+                {formulario.imagen && !formulario.quitarImagen ? (
+                  <Image source={{ uri: formulario.imagen }} style={styles.coverPreview} />
+                ) : (
+                  <View style={[styles.coverPreview, styles.coverPlaceholder]}>
+                    <Ionicons name="image-outline" size={28} color={COLORS.textMuted} />
+                    <Text style={styles.coverPlaceholderText}>Sin foto de portada</Text>
+                  </View>
+                )}
+                <View style={styles.coverActions}>
+                  <TouchableOpacity
+                    style={styles.coverButton}
+                    onPress={seleccionarImagen}
+                    disabled={isSaving || isPickingImage}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cambiar foto de portada"
+                  >
+                    {isPickingImage ? (
+                      <LoadingSpinner size={16} />
+                    ) : (
+                      <>
+                        <Feather name="upload" size={14} color={COLORS.tertiary} />
+                        <Text style={styles.coverButtonText}>
+                          {formulario.imagen && !formulario.quitarImagen
+                            ? 'Cambiar foto'
+                            : 'Elegir foto'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  {formulario.imagen && !formulario.quitarImagen ? (
+                    <TouchableOpacity
+                      style={styles.removeCoverButton}
+                      onPress={() =>
+                        setFormulario((prev) => ({
+                          ...prev,
+                          imagen: '',
+                          imagenSeleccionada: null,
+                          quitarImagen: true,
+                        }))
+                      }
+                      disabled={isSaving || isPickingImage}
+                      accessibilityRole="button"
+                      accessibilityLabel="Quitar foto de portada"
+                    >
+                      <Text style={styles.removeCoverButtonText}>Quitar foto</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+                <Text style={styles.coverHint}>JPEG, PNG o WebP de hasta 5 MB.</Text>
+                <Text style={styles.fieldLabel}>Fecha y horario</Text>
+                <DateTimeSelector
+                  value={formulario.fecha}
+                  disabled={isSaving || isPickingImage}
+                  accessibilityLabel="Modificar fecha y horario del evento"
+                  onChange={(fecha) =>
+                    setFormulario((prev) => ({
+                      ...prev,
+                      fecha,
+                      fechaModificada: true,
+                    }))
+                  }
+                />
                 <Text style={styles.fieldLabel}>Nombre</Text>
                 <TextInput
                   style={styles.input}
@@ -171,7 +304,7 @@ export default function OrganizadorEventosScreen({ navigation }) {
                 <TouchableOpacity
                   style={[styles.saveButton, isSaving && styles.disabled]}
                   onPress={guardarCambios}
-                  disabled={isSaving}
+                  disabled={isSaving || isPickingImage}
                   accessibilityRole="button"
                 >
                   {isSaving ? (
@@ -180,7 +313,7 @@ export default function OrganizadorEventosScreen({ navigation }) {
                     <Text style={styles.primaryButtonText}>Guardar cambios</Text>
                   )}
                 </TouchableOpacity>
-              </>
+              </ScrollView>
             ) : null}
           </View>
         </View>
@@ -238,6 +371,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 480,
+    maxHeight: '90%',
     alignSelf: 'center',
     padding: 18,
     gap: 10,
@@ -246,10 +380,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
+  modalFormScroll: { flexShrink: 1 },
+  modalFormContent: { gap: 10, paddingBottom: 2 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
   modalTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800' },
   modalSubtitle: { color: COLORS.textMuted, fontSize: 11, marginTop: 3 },
   fieldLabel: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' },
+  coverPreview: {
+    width: '100%',
+    height: 150,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  coverPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  coverPlaceholderText: { color: COLORS.textMuted, fontSize: 11 },
+  coverActions: { flexDirection: 'row', gap: 10 },
+  coverButton: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  coverButtonText: { color: COLORS.tertiary, fontSize: 11, fontWeight: '700' },
+  removeCoverButton: {
+    minHeight: 38,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  removeCoverButtonText: { color: COLORS.statusDanger, fontSize: 11, fontWeight: '700' },
+  coverHint: { color: COLORS.textMuted, fontSize: 10 },
   input: {
     minHeight: 42,
     paddingHorizontal: 11,

@@ -234,7 +234,7 @@ async function runTests() {
   const server = app.listen(0);
   const port = server.address().port;
   const baseUrl = `http://127.0.0.1:${port}/api`;
-  let uploadedImagePath;
+  const uploadedImagePaths = [];
 
   console.log(`[TEST] Servidor de prueba corriendo en ${baseUrl}`);
 
@@ -338,6 +338,10 @@ async function runTests() {
     assert.equal(res.status, 201, `Crear compra should return 201, got ${res.status}: ${JSON.stringify(data)}`);
     const compra = data.data;
     assert.equal(compra.estado, 'CONFIRMADA', 'Compra should be CONFIRMADA');
+    assert.ok(
+      !Number.isNaN(Date.parse(compra.fechaHora)),
+      'La compra debe incluir su fecha y hora de creación'
+    );
     assert.equal(typeof compra.comprador, 'object', 'compra.comprador debe ser un objeto (Usuario)');
     assert.equal(typeof compra.evento, 'object', 'compra.evento debe ser un objeto (Evento)');
     assert.equal(typeof compra.tipoEntrada, 'object', 'compra.tipoEntrada debe ser un objeto (TipoEntrada)');
@@ -613,6 +617,31 @@ async function runTests() {
     assert.equal(data.data.nombre, 'Synthwave Neon Night 2026 - Actualizado');
     assert.equal(data.data.ubicacion, 'Niceto Club, Palermo');
 
+    const fechaEventoFutura = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    res = await fetch(`${baseUrl}/eventos/${createdEventId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizadorId: 'user_org_sonora',
+        fecha: fechaEventoFutura,
+        fechaTexto: 'Fecha futura de prueba',
+      }),
+    });
+    data = await res.json();
+    assert.equal(res.status, 200, 'El organizador debe poder cambiar la fecha del evento');
+    assert.equal(new Date(data.data.fecha).toISOString(), fechaEventoFutura);
+    assert.equal(data.data.fechaTexto, 'Fecha futura de prueba');
+
+    res = await fetch(`${baseUrl}/eventos/${createdEventId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizadorId: 'user_org_sonora',
+        fecha: new Date(Date.now() - 60 * 1000).toISOString(),
+      }),
+    });
+    assert.equal(res.status, 400, 'El backend debe rechazar fechas de evento pasadas');
+
     res = await fetch(`${baseUrl}/eventos/${createdEventId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -643,7 +672,7 @@ async function runTests() {
     assert.equal(res.status, 201, `El alta multipart debe aceptar fotos: ${JSON.stringify(data)}`);
     assert.equal(data.data.imagen, data.data.multimedia[0]);
     assert.match(data.data.imagen, /^\/uploads\/[0-9a-f-]+\.png$/);
-    uploadedImagePath = path.join(UPLOADS_DIRECTORY, path.basename(data.data.imagen));
+    uploadedImagePaths.push(path.join(UPLOADS_DIRECTORY, path.basename(data.data.imagen)));
 
     res = await fetch(`http://127.0.0.1:${port}${data.data.imagen}`);
     assert.equal(res.status, 200, 'La imagen cargada debe ser servida por el backend');
@@ -651,6 +680,40 @@ async function runTests() {
     assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
     assert.deepEqual(Buffer.from(await res.arrayBuffer()), imageBytes);
     console.log('✓ Fotos de evento validadas, guardadas y disponibles desde /uploads');
+
+    const updateImageForm = new FormData();
+    updateImageForm.append(
+      'cambios',
+      JSON.stringify({
+        organizadorId: 'user_org_sonora',
+        nombre: 'Galería del organizador actualizada',
+      })
+    );
+    updateImageForm.append(
+      'imagenes',
+      new Blob([imageBytes], { type: 'image/png' }),
+      'portada-actualizada.png'
+    );
+    res = await fetch(`${baseUrl}/eventos/${data.data.id}`, {
+      method: 'PUT',
+      body: updateImageForm,
+    });
+    data = await res.json();
+    assert.equal(res.status, 200, `La edición multipart debe aceptar portada: ${JSON.stringify(data)}`);
+    assert.equal(data.data.imagen, data.data.multimedia[0]);
+    assert.match(data.data.imagen, /^\/uploads\/[0-9a-f-]+\.png$/);
+    uploadedImagePaths.push(path.join(UPLOADS_DIRECTORY, path.basename(data.data.imagen)));
+
+    res = await fetch(`${baseUrl}/eventos/${data.data.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizadorId: 'user_org_sonora', imagen: '' }),
+    });
+    data = await res.json();
+    assert.equal(res.status, 200, 'El organizador debe poder quitar la portada');
+    assert.equal(data.data.imagen, '');
+    assert.deepEqual(data.data.multimedia, []);
+    console.log('✓ Portada reemplazada y quitada desde la edición del evento');
 
     const invalidImageForm = new FormData();
     invalidImageForm.append(
@@ -751,7 +814,13 @@ async function runTests() {
     console.error('❌ Error en test:', err);
     process.exitCode = 1;
   } finally {
-    if (uploadedImagePath) await unlink(uploadedImagePath);
+    await Promise.all(
+      uploadedImagePaths.map((imagePath) =>
+        unlink(imagePath).catch((error) => {
+          if (error.code !== 'ENOENT') throw error;
+        })
+      )
+    );
     server.close();
   }
 }

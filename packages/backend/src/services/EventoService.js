@@ -39,7 +39,20 @@ export class EventoService {
     }
   }
 
-  async actualizarEvento(id, { organizadorId, nombre, descripcion, ubicacion, direccion }) {
+  async actualizarEvento(
+    id,
+    {
+      organizadorId,
+      nombre,
+      descripcion,
+      ubicacion,
+      direccion,
+      imagen,
+      fecha,
+      fechaTexto,
+      imagenes = [],
+    }
+  ) {
     const evento = await this.obtenerPorId(id);
     if (evento.organizador?.id !== organizadorId) {
       throw new BusinessRuleError(
@@ -56,23 +69,79 @@ export class EventoService {
         throw new BusinessRuleError(`${field} debe ser un texto`);
       }
     }
+    if (imagen !== undefined && typeof imagen !== 'string') {
+      throw new BusinessRuleError('La imagen del evento no es válida');
+    }
+    if (fecha !== undefined) {
+      const nuevaFecha = new Date(fecha);
+      if (typeof fecha !== 'string' || Number.isNaN(nuevaFecha.getTime())) {
+        throw new BusinessRuleError('La fecha del evento no es válida');
+      }
+      if (nuevaFecha.getTime() <= Date.now()) {
+        throw new BusinessRuleError('La fecha y hora del evento deben ser posteriores al momento actual.');
+      }
+    }
+    if (fechaTexto !== undefined && typeof fechaTexto !== 'string') {
+      throw new BusinessRuleError('La fecha formateada debe ser un texto');
+    }
+    if (!Array.isArray(imagenes) || imagenes.length > 1) {
+      throw new BusinessRuleError('Cada evento puede tener una sola imagen');
+    }
 
     const previousValues = {
       nombre: evento.nombre,
       descripcion: evento.descripcion,
       ubicacion: evento.ubicacion,
       direccion: evento.direccion,
+      fecha: evento.fecha,
+      fechaTexto: evento.fechaTexto,
+      imagen: evento.imagen,
+      multimedia: evento.multimedia,
     };
+    const imagenesAnteriores = [
+      ...new Set([evento.imagen, ...(evento.multimedia || [])].filter((path) => path?.startsWith('/uploads/'))),
+    ];
 
+    const imagenesSubidas = imagenes.length ? await this.eventoImageStorage.guardar(imagenes) : [];
     if (nombre !== undefined) evento.nombre = nombre.trim();
     if (descripcion !== undefined) evento.descripcion = descripcion.trim();
     if (ubicacion !== undefined) evento.ubicacion = ubicacion.trim();
     if (direccion !== undefined) evento.direccion = direccion.trim();
+    if (fecha !== undefined) evento.fecha = new Date(fecha);
+    if (fechaTexto !== undefined) evento.fechaTexto = fechaTexto.trim();
+    if (imagenesSubidas.length) {
+      evento.imagen = imagenesSubidas[0];
+      evento.multimedia = imagenesSubidas;
+    } else if (imagen !== undefined) {
+      evento.imagen = imagen.trim();
+      evento.multimedia = evento.imagen ? [evento.imagen] : [];
+    }
 
     try {
-      return await this.eventoRepository.save(evento);
+      const eventoGuardado = await this.eventoRepository.save(evento);
+      const imagenesAEliminar = imagenesAnteriores.filter(
+        (path) => !evento.multimedia.includes(path)
+      );
+      if (imagenesAEliminar.length) {
+        try {
+          await this.eventoImageStorage.eliminar(imagenesAEliminar);
+        } catch (cleanupError) {
+          console.error('[EventoService] No se pudieron limpiar imágenes reemplazadas:', cleanupError);
+        }
+      }
+      return eventoGuardado;
     } catch (error) {
       Object.assign(evento, previousValues);
+      if (imagenesSubidas.length) {
+        try {
+          await this.eventoImageStorage.eliminar(imagenesSubidas);
+        } catch (cleanupError) {
+          throw new AggregateError(
+            [error, cleanupError],
+            'No se pudieron guardar los cambios ni limpiar la imagen cargada.'
+          );
+        }
+      }
       throw error;
     }
   }
