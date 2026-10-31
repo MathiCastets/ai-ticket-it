@@ -73,6 +73,53 @@ export class MensajeService {
       throw error;
     }
   }
+
+  async marcarMensajesLeidos(compraId, usuarioId) {
+    let compra;
+    try {
+      compra = await this.compraRepository.findById(compraId);
+    } catch (error) {
+      if (error instanceof EntityNotFoundError) {
+        throw new ResourceNotFoundError('Compra', compraId);
+      }
+      throw error;
+    }
+
+    const organizadorId =
+      typeof compra.evento.organizador === 'object'
+        ? compra.evento.organizador?.id
+        : compra.evento.organizadorId;
+    if (usuarioId !== compra.comprador.id && usuarioId !== organizadorId) {
+      throw new BusinessRuleError(
+        'Solo el comprador y el organizador del evento pueden leer este chat.',
+        'LECTOR_NO_AUTORIZADO'
+      );
+    }
+
+    const mensajesAnteriores = compra.mensajes.map((mensaje) => ({
+      mensaje,
+      leidoPor: [...(mensaje.leidoPor || [])],
+    }));
+    let huboCambios = false;
+    for (const mensaje of compra.mensajes) {
+      const emisorId = mensaje.usuario?.id || mensaje.usuarioId;
+      if (emisorId !== usuarioId && !mensaje.leidoPor?.includes(usuarioId)) {
+        mensaje.leidoPor = [...(mensaje.leidoPor || []), usuarioId];
+        huboCambios = true;
+      }
+    }
+    if (!huboCambios) return compra.mensajes;
+
+    try {
+      await this.compraRepository.save(compra);
+      return compra.mensajes;
+    } catch (error) {
+      for (const { mensaje, leidoPor } of mensajesAnteriores) {
+        mensaje.leidoPor = leidoPor;
+      }
+      throw error;
+    }
+  }
 }
 
 export const mensajeService = new MensajeService();

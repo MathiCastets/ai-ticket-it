@@ -21,6 +21,7 @@ const normalizarMensaje = (mensaje) => {
     emisor: mensaje.emisor || usuario?.rol || 'organizador',
     usuario: obtenerNombreUsuario(usuario) || mensaje.usuarioNombre || '',
     texto: mensaje.texto || mensaje.mensaje || '',
+    leidoPor: Array.isArray(mensaje.leidoPor) ? mensaje.leidoPor : [],
     fechaHora:
       mensaje.fechaHora ||
       mensaje.fechaHoraFormateada ||
@@ -89,7 +90,18 @@ const normalizarCompra = (compra) => ({
     '',
   imagen: resolverImagen(compra.imagen || compra.evento?.imagen),
   ubicacion: compra.ubicacion || compra.evento?.ubicacion || '',
-  mensajes: (compra.mensajes || []).map(normalizarMensaje),
+  mensajes: (compra.mensajes || []).map((mensaje) =>
+    normalizarMensaje({
+      ...mensaje,
+      usuarioId:
+        mensaje.usuarioId ||
+        (mensaje.emisor === 'comprador'
+          ? compra.compradorId || compra.comprador?.id
+          : mensaje.emisor === 'organizador'
+            ? compra.organizadorId || compra.evento?.organizador?.id
+            : ''),
+    })
+  ),
 });
 
 const USUARIO_INICIAL_ID = 'user_comprador_1';
@@ -479,9 +491,11 @@ export const AppProvider = ({ children }) => {
 
     const nuevoMensaje = normalizarMensaje({
       id: `msg-${Date.now()}`,
+      usuarioId: currentUser.id,
       emisor: currentUser.rol,
       usuario: currentUser.nombreCompleto || `${currentUser.nombre} ${currentUser.apellido || ''}`.trim(),
       texto: textoLimpio,
+      enviado: new Date().toISOString(),
       fechaHora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     });
     setCompras((prev) =>
@@ -492,6 +506,46 @@ export const AppProvider = ({ children }) => {
       )
     );
     return nuevoMensaje;
+  };
+
+  const marcarMensajesLeidos = async (compraId) => {
+    const compraActual = compras.find((item) => item.id === compraId);
+    if (
+      !compraActual ||
+      (compraActual.compradorId !== currentUser.id &&
+        compraActual.organizadorId !== currentUser.id)
+    ) {
+      throw new Error('Esta conversación no pertenece al usuario seleccionado.');
+    }
+
+    const mensajesNoLeidos = (compraActual.mensajes || []).some(
+      (mensaje) =>
+        mensaje.usuarioId !== currentUser.id &&
+        !mensaje.leidoPor?.includes(currentUser.id)
+    );
+    if (!mensajesNoLeidos) return;
+
+    let mensajesActualizados;
+    if (await backendDisponible()) {
+      mensajesActualizados = await api.marcarMensajesLeidos(compraId, currentUser.id);
+    } else {
+      mensajesActualizados = compraActual.mensajes.map((mensaje) =>
+        mensaje.usuarioId !== currentUser.id
+          ? {
+              ...mensaje,
+              leidoPor: [...new Set([...(mensaje.leidoPor || []), currentUser.id])],
+            }
+          : mensaje
+      );
+    }
+
+    setCompras((prev) =>
+      prev.map((compra) =>
+        compra.id === compraId
+          ? { ...compra, mensajes: mensajesActualizados.map(normalizarMensaje) }
+          : compra
+      )
+    );
   };
 
   const calificarEvento = async ({ compraId, puntuacion, comentario }) => {
@@ -644,6 +698,7 @@ export const AppProvider = ({ children }) => {
         comprarEntrada,
         cancelarCompra,
         enviarMensaje,
+        marcarMensajesLeidos,
         calificarEvento,
         crearEvento,
         actualizarEvento,

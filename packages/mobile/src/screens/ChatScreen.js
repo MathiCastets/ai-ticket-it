@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,20 +18,68 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 
+const obtenerFechaMensaje = (mensaje) => {
+  if (!mensaje.enviado) return null;
+  const fecha = new Date(mensaje.enviado);
+  if (Number.isNaN(fecha.getTime())) return null;
+
+  return {
+    clave: `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`,
+    etiqueta: fecha.toLocaleDateString('es-AR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }),
+  };
+};
+
+const CHAT_INPUT_LINE_HEIGHT = 18;
+const CHAT_INPUT_VERTICAL_PADDING = 8;
+const CHAT_INPUT_MIN_HEIGHT = CHAT_INPUT_LINE_HEIGHT + CHAT_INPUT_VERTICAL_PADDING * 2;
+const CHAT_INPUT_MAX_HEIGHT = CHAT_INPUT_LINE_HEIGHT * 4 + CHAT_INPUT_VERTICAL_PADDING * 2;
+
 export default function ChatScreen({ route, navigation }) {
   const { compraId } = route.params;
-  const { compras, enviarMensaje, currentUser } = useApp();
+  const { compras, enviarMensaje, marcarMensajesLeidos, currentUser } = useApp();
   const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom > 0 ? insets.bottom : 10;
+  const messagesScrollRef = useRef(null);
+  const chatInputRef = useRef(null);
 
   const compra = compras.find(
     (item) =>
       item.id === compraId &&
       (item.compradorId === currentUser.id || item.organizadorId === currentUser.id)
   );
+  const mensajesConSeparadores = (compra?.mensajes || []).reduce((resultado, mensaje) => {
+    const fecha = obtenerFechaMensaje(mensaje);
+    if (fecha && fecha.clave !== resultado.ultimaFecha) {
+      resultado.items.push({ tipo: 'separador', id: `fecha-${fecha.clave}`, etiqueta: fecha.etiqueta });
+      resultado.ultimaFecha = fecha.clave;
+    }
+    resultado.items.push({ tipo: 'mensaje', mensaje });
+    return resultado;
+  }, { items: [], ultimaFecha: null }).items;
   const [nuevoTexto, setNuevoTexto] = useState('');
+  const [chatInputHeight, setChatInputHeight] = useState(CHAT_INPUT_MIN_HEIGHT);
   const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    marcarMensajesLeidos(compraId).catch((error) => {
+      Alert.alert('No se pudieron marcar los mensajes como leídos', error.message);
+    });
+  }, [compraId, currentUser.id, marcarMensajesLeidos]);
+
+  useEffect(() => {
+    if (isLoading) return undefined;
+
+    const frame = requestAnimationFrame(() => {
+      messagesScrollRef.current?.scrollToEnd({ animated: false });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [compraId, isLoading]);
 
   const handleEnviar = async () => {
     if (!compra || !nuevoTexto.trim()) return;
@@ -39,6 +87,7 @@ export default function ChatScreen({ route, navigation }) {
     try {
       await enviarMensaje(compra.id, nuevoTexto);
       setNuevoTexto('');
+      setChatInputHeight(CHAT_INPUT_MIN_HEIGHT);
     } catch (error) {
       Alert.alert('No se pudo enviar el mensaje', error.message);
     } finally {
@@ -58,7 +107,7 @@ export default function ChatScreen({ route, navigation }) {
         <View style={styles.emptyAccess}>
           <Ionicons name="lock-closed-outline" size={34} color={COLORS.textMuted} />
           <Text style={styles.emptyChatText}>Esta conversación no pertenece al perfil actual.</Text>
-          <Text style={styles.emptyChatSub}>Cambiá de usuario desde el avatar para continuar.</Text>
+          <Text style={styles.emptyChatSub}>Proba a iniciar sesión con otra cuenta.</Text>
         </View>
       </View>
     );
@@ -102,6 +151,7 @@ export default function ChatScreen({ route, navigation }) {
 
       {/* Messages Stream */}
       <ScrollView
+        ref={messagesScrollRef}
         style={styles.messagesScroll}
         contentContainerStyle={[
           styles.messagesContent,
@@ -109,18 +159,23 @@ export default function ChatScreen({ route, navigation }) {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.dateSeparator}>
-          <View style={styles.dateLine} />
-          <Text style={styles.dateText}>CONSULTAS DE LA ORDEN</Text>
-          <View style={styles.dateLine} />
-        </View>
-
         {isLoading ? (
           <View style={styles.messagesLoading}>
             <LoadingSpinner variant="dots" label="Cargando mensajes..." />
           </View>
-        ) : compra.mensajes && compra.mensajes.length > 0 ? (
-          compra.mensajes.map((msg) => {
+        ) : mensajesConSeparadores.length > 0 ? (
+          mensajesConSeparadores.map((item) => {
+            if (item.tipo === 'separador') {
+              return (
+                <View key={item.id} style={styles.dateSeparator}>
+                  <View style={styles.dateLine} />
+                  <Text style={styles.dateText}>{item.etiqueta}</Text>
+                  <View style={styles.dateLine} />
+                </View>
+              );
+            }
+
+            const msg = item.mensaje;
             const isMe =
               msg.usuarioId === currentUser.id ||
               (!msg.usuarioId && msg.usuario === currentUser.nombreCompleto);
@@ -169,14 +224,59 @@ export default function ChatScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Chat Input Bar */}
-      <View style={[styles.inputBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
+      <View style={[styles.inputBar, { minHeight: 56 + bottomInset, paddingBottom: bottomInset }]}>
         <TextInput
-          style={styles.chatInput}
+          ref={chatInputRef}
+          style={[
+            styles.chatInput,
+            Platform.OS === 'web' && { scrollbarWidth: 'none' },
+            { height: chatInputHeight },
+          ]}
           placeholder={`Escribe como ${currentUser.nombre}...`}
           placeholderTextColor={COLORS.textMuted}
           value={nuevoTexto}
-          onChangeText={setNuevoTexto}
+          onChangeText={(texto) => {
+            setNuevoTexto(texto);
+
+            if (Platform.OS === 'web') {
+              requestAnimationFrame(() => {
+                const input = chatInputRef.current;
+                if (!input) return;
+
+                input.style.height = 'auto';
+                const nextHeight = Math.min(
+                  CHAT_INPUT_MAX_HEIGHT,
+                  Math.max(CHAT_INPUT_MIN_HEIGHT, input.scrollHeight)
+                );
+                input.style.height = `${nextHeight}px`;
+                setChatInputHeight(nextHeight);
+              });
+            } else if (!texto) {
+              setChatInputHeight(CHAT_INPUT_MIN_HEIGHT);
+            }
+          }}
+          onContentSizeChange={({ nativeEvent }) => {
+            if (Platform.OS === 'web') return;
+
+            const nextHeight = Math.min(
+              CHAT_INPUT_MAX_HEIGHT,
+              Math.max(
+                CHAT_INPUT_MIN_HEIGHT,
+                Math.ceil(nativeEvent.contentSize.height)
+              )
+            );
+            setChatInputHeight(nextHeight);
+          }}
+          onKeyPress={(event) => {
+            if (Platform.OS === 'web' && event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              handleEnviar();
+            }
+          }}
+          onSubmitEditing={handleEnviar}
           multiline
+          submitBehavior="submit"
+          rows={Platform.OS === 'web' ? 1 : undefined}
           editable={!isLoading && !isSending}
         />
         <TouchableOpacity
@@ -379,10 +479,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceCard,
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: CHAT_INPUT_VERTICAL_PADDING,
     color: COLORS.textPrimary,
     fontSize: 13,
-    maxHeight: 80,
+    lineHeight: CHAT_INPUT_LINE_HEIGHT,
+    textAlignVertical: 'center',
+    maxHeight: CHAT_INPUT_MAX_HEIGHT,
   },
   sendButton: {
     width: 40,

@@ -49,6 +49,11 @@ export default function MensajesInboxScreen({ navigation }) {
               compra.mensajes && compra.mensajes.length > 0
                 ? compra.mensajes[compra.mensajes.length - 1]
                 : null;
+            const mensajesNoLeidos = (compra.mensajes || []).filter(
+              (mensaje) =>
+                mensaje.usuarioId !== currentUser.id &&
+                !mensaje.leidoPor?.includes(currentUser.id)
+            ).length;
 
             return (
               <TouchableOpacity
@@ -66,14 +71,11 @@ export default function MensajesInboxScreen({ navigation }) {
                 </View>
 
                 <View style={styles.chatCardContent}>
-                  <View style={styles.cardTopRow}>
-                    <Text style={styles.chatTitle}>
-                      {currentUser.rol === 'organizador'
-                        ? (compra.compradorNombre || (typeof compra.comprador === 'object' ? `${compra.comprador.nombre || ''} ${compra.comprador.apellido || ''}`.trim() : compra.comprador) || 'Comprador')
-                        : (compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador')}
-                    </Text>
-                    <Text style={styles.chatTime}>{lastMsg?.fechaHora || 'Hoy'}</Text>
-                  </View>
+                  <Text style={styles.chatTitle} numberOfLines={1}>
+                    {currentUser.rol === 'organizador'
+                      ? (compra.compradorNombre || (typeof compra.comprador === 'object' ? `${compra.comprador.nombre || ''} ${compra.comprador.apellido || ''}`.trim() : compra.comprador) || 'Comprador')
+                      : (compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador')}
+                  </Text>
 
                   <Text style={styles.eventRef}>
                     {compra.eventoNombre || compra.evento?.nombre} • {compra.ordenCodigo}
@@ -84,11 +86,14 @@ export default function MensajesInboxScreen({ navigation }) {
                   </Text>
                 </View>
 
-                {compra.mensajes?.length > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadCount}>{compra.mensajes.length}</Text>
-                  </View>
-                )}
+                <View style={styles.chatCardAside}>
+                  <Text style={styles.chatTime}>{lastMsg?.fechaHora || 'Hoy'}</Text>
+                  {mensajesNoLeidos > 0 ? (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadCount}>{mensajesNoLeidos}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -165,17 +170,21 @@ const styles = StyleSheet.create({
   },
   chatCardContent: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'center',
   },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  chatCardAside: {
+    width: 36,
+    alignSelf: 'stretch',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    gap: 10,
   },
   chatTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.textPrimary,
+    flexShrink: 1,
   },
   chatTime: {
     fontSize: 10,

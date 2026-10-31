@@ -4,6 +4,7 @@ export class Mensaje {
     usuario,   // Usuario (referencia directa, según diagrama de clases)
     mensaje,   // String (nombre del campo según diagrama)
     enviado = null,
+    leidoPor = [],
   }) {
     if (!mensaje || !String(mensaje).trim()) {
       throw new Error('Mensaje no puede estar vacío');
@@ -14,6 +15,7 @@ export class Mensaje {
     this.usuario = usuario;
     this.mensaje = String(mensaje).trim();
     this.enviado = enviado ? new Date(enviado) : new Date();
+    this.leidoPor = Array.isArray(leidoPor) ? [...leidoPor] : [];
   }
 
   get fechaHoraFormateada() {
