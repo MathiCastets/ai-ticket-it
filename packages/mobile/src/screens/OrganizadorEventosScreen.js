@@ -30,14 +30,88 @@ const crearFormulario = (evento) => ({
   quitarImagen: false,
 });
 
+const normalizarTexto = (texto) =>
+  String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase();
+
+const obtenerEstadoEvento = (evento, ahora) => {
+  const fecha = new Date(evento.fecha).getTime();
+  if (!Number.isFinite(fecha)) return 'sinFecha';
+  return fecha <= ahora ? 'terminados' : 'activos';
+};
+
 export default function OrganizadorEventosScreen({ navigation, route }) {
-  const { eventos, currentUser, actualizarEvento } = useApp();
+  const { eventos, categorias, currentUser, actualizarEvento } = useApp();
   const isLoading = useMockLoading();
   const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
   const [eventoEditando, setEventoEditando] = useState(null);
   const [formulario, setFormulario] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPickingImage, setIsPickingImage] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [fechaDesde, setFechaDesde] = useState(null);
+  const [fechaHasta, setFechaHasta] = useState(null);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todas');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const ahora = Date.now();
+  const textoBusqueda = normalizarTexto(busqueda.trim());
+  const errorRangoFechas =
+    fechaDesde &&
+    fechaHasta &&
+    fechaDesde.getTime() > fechaHasta.getTime()
+      ? 'La fecha Desde debe ser anterior o igual a Hasta.'
+      : '';
+  const categoriasDisponibles = [
+    'Todas',
+    ...new Set([
+      ...(categorias || []),
+      ...eventosDelUsuario.map((evento) => evento.categoria).filter(Boolean),
+    ]),
+  ];
+  const cantidadActivos = eventosDelUsuario.filter(
+    (evento) => obtenerEstadoEvento(evento, ahora) === 'activos'
+  ).length;
+  const cantidadTerminados = eventosDelUsuario.filter(
+    (evento) => obtenerEstadoEvento(evento, ahora) === 'terminados'
+  ).length;
+  const eventosVisibles = eventosDelUsuario
+    .filter((evento) => {
+      const estado = obtenerEstadoEvento(evento, ahora);
+      const coincideEstado = filtroEstado === 'todos' || estado === filtroEstado;
+      const coincideCategoria =
+        categoriaSeleccionada === 'Todas' || evento.categoria === categoriaSeleccionada;
+      const coincideBusqueda =
+        !textoBusqueda ||
+        normalizarTexto(
+          `${evento.nombre || ''} ${evento.categoria || ''} ${evento.descripcion || ''} ${evento.ubicacion || ''}`
+        ).includes(textoBusqueda);
+      const fechaEvento = new Date(evento.fecha).getTime();
+      const coincideFecha =
+        !errorRangoFechas &&
+        ((!fechaDesde && !fechaHasta) ||
+          (Number.isFinite(fechaEvento) &&
+            (!fechaDesde || fechaEvento >= fechaDesde.getTime()) &&
+            (!fechaHasta ||
+              fechaEvento <=
+                new Date(
+                  fechaHasta.getFullYear(),
+                  fechaHasta.getMonth(),
+                  fechaHasta.getDate(),
+                  23,
+                  59,
+                  59,
+                  999
+                ).getTime())));
+
+      return coincideEstado && coincideCategoria && coincideBusqueda && coincideFecha;
+    })
+    .sort(
+      (eventoA, eventoB) =>
+        Number(obtenerEstadoEvento(eventoA, ahora) === 'terminados') -
+        Number(obtenerEstadoEvento(eventoB, ahora) === 'terminados')
+    );
 
   const abrirEdicion = (evento) => {
     setEventoEditando(evento);
@@ -143,7 +217,7 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.pageHeading}>
             <Text style={styles.title}>Tus eventos</Text>
-            <Text style={styles.subtitle}>Administrá la información y revisá el rendimiento de cada uno.</Text>
+            {/*<Text style={styles.subtitle}>Administrá la información y revisá el rendimiento de cada uno.</Text>*/}
           </View>
 
           {eventosDelUsuario.length === 0 ? (
@@ -153,43 +227,269 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
               <Text style={styles.subtitle}>Usá Organizar para crear tu primer evento.</Text>
             </View>
           ) : (
-            eventosDelUsuario.map((evento) => (
-              <View key={evento.id} style={styles.eventCard}>
-                {evento.imagen ? (
-                  <Image source={{ uri: evento.imagen }} style={styles.eventImage} />
-                ) : (
-                  <View style={[styles.eventImage, styles.imagePlaceholder]}>
-                    <Ionicons name="image-outline" size={28} color={COLORS.textMuted} />
+            <>
+              <View style={styles.filters}>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="search" size={18} color={COLORS.textMuted} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Buscar por nombre o categoría..."
+                    placeholderTextColor={COLORS.textMuted}
+                    value={busqueda}
+                    onChangeText={setBusqueda}
+                    returnKeyType="search"
+                    accessibilityLabel="Buscar eventos por nombre o categoría"
+                  />
+                  {busqueda.length > 0 ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Limpiar búsqueda"
+                      onPress={() => setBusqueda('')}
+                      hitSlop={8}
+                    >
+                      <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+                <View style={styles.filterTabs}>
+                  {[
+                    { id: 'todos', label: 'Todos', count: eventosDelUsuario.length },
+                    { id: 'activos', label: 'Activos', count: cantidadActivos },
+                    { id: 'terminados', label: 'Terminados', count: cantidadTerminados },
+                  ].map((opcion) => {
+                    const activo = filtroEstado === opcion.id;
+                    return (
+                      <TouchableOpacity
+                        key={opcion.id}
+                        style={[styles.filterTab, activo && styles.filterTabActive]}
+                        onPress={() => setFiltroEstado(opcion.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: activo }}
+                      >
+                        <Text style={[styles.filterTabText, activo && styles.filterTabTextActive]}>
+                          {opcion.label}
+                        </Text>
+                        <View
+                          style={[
+                            styles.filterCountBadge,
+                            activo && styles.filterCountBadgeActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.filterCount,
+                              activo && styles.filterCountActive,
+                            ]}
+                          >
+                            {opcion.count}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <View style={styles.dateRange}>
+                  <View style={styles.dateField}>
+                    <Text style={styles.dateFieldLabel}>Desde</Text>
+                    <View style={styles.datePickerRow}>
+                      <View style={styles.datePicker}>
+                        <DateTimeSelector
+                          value={fechaDesde}
+                          onChange={setFechaDesde}
+                          dateOnly
+                          allowPastDates
+                          placeholder="Elegir fecha"
+                          accessibilityLabel="Filtrar desde la fecha"
+                        />
+                      </View>
+                      {fechaDesde ? (
+                        <TouchableOpacity
+                          style={styles.clearDateButton}
+                          onPress={() => setFechaDesde(null)}
+                          accessibilityRole="button"
+                          accessibilityLabel="Quitar fecha desde"
+                          hitSlop={8}
+                        >
+                          <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
                   </View>
-                )}
-                <View style={styles.eventInfo}>
-                  <Text style={styles.eventCategory}>{evento.categoria}</Text>
-                  <Text style={styles.eventName}>{evento.nombre}</Text>
-                  <Text style={styles.eventMeta}>{evento.fechaTexto || evento.fecha}</Text>
-                  <Text style={styles.eventMeta}>{evento.ubicacion}</Text>
+                  <View style={styles.dateRangeSeparator}>
+                    <Feather name="arrow-right" size={16} color={COLORS.textMuted} />
+                  </View>
+                  <View style={styles.dateField}>
+                    <Text style={styles.dateFieldLabel}>Hasta</Text>
+                    <View style={styles.datePickerRow}>
+                      <View style={styles.datePicker}>
+                        <DateTimeSelector
+                          value={fechaHasta}
+                          onChange={setFechaHasta}
+                          dateOnly
+                          allowPastDates
+                          placeholder="Elegir fecha"
+                          accessibilityLabel="Filtrar hasta la fecha"
+                        />
+                      </View>
+                      {fechaHasta ? (
+                        <TouchableOpacity
+                          style={styles.clearDateButton}
+                          onPress={() => setFechaHasta(null)}
+                          accessibilityRole="button"
+                          accessibilityLabel="Quitar fecha hasta"
+                          hitSlop={8}
+                        >
+                          <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={() => abrirEdicion(evento)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Editar ${evento.nombre}`}
-                  >
-                    <Feather name="edit-2" size={15} color={COLORS.tertiary} />
-                    <Text style={styles.secondaryButtonText}>Editar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.primaryButton}
-                    onPress={() => navigation.navigate('PanelVentas', { eventoId: evento.id })}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Ver ventas de ${evento.nombre}`}
-                  >
-                    <Ionicons name="stats-chart-outline" size={15} color={COLORS.textPrimary} />
-                    <Text style={styles.primaryButtonText}>Ventas</Text>
-                  </TouchableOpacity>
-                </View>
+                {errorRangoFechas ? (
+                  <Text style={styles.dateRangeError}>{errorRangoFechas}</Text>
+                ) : null}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoryFilters}
+                >
+                  {categoriasDisponibles.map((categoria) => {
+                    const activa = categoriaSeleccionada === categoria;
+                    return (
+                      <TouchableOpacity
+                        key={categoria}
+                        style={[styles.categoryChip, activa && styles.categoryChipActive]}
+                        onPress={() => setCategoriaSeleccionada(categoria)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: activa }}
+                      >
+                        <Text style={[styles.categoryChipText, activa && styles.categoryChipTextActive]}>
+                          {categoria}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
               </View>
-            ))
+
+              {eventosVisibles.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="search-outline" size={34} color={COLORS.textMuted} />
+                  <Text style={styles.emptyTitle}>
+                    {errorRangoFechas ? 'Revisá el rango de fechas' : 'No encontramos eventos'}
+                  </Text>
+                  <Text style={styles.subtitle}>
+                    {errorRangoFechas
+                      ? errorRangoFechas
+                      : 'Probá con otro nombre o cambiá los filtros.'}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.clearFiltersButton}
+                    onPress={() => {
+                      setBusqueda('');
+                      setFechaDesde(null);
+                      setFechaHasta(null);
+                      setCategoriaSeleccionada('Todas');
+                      setFiltroEstado('todos');
+                    }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.clearFiltersText}>Limpiar filtros</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : eventosVisibles.map((evento) => {
+                const estado = obtenerEstadoEvento(evento, ahora);
+                return (
+                  <View
+                    key={evento.id}
+                    style={[
+                      styles.eventCard,
+                      estado === 'terminados' && styles.endedEventCard,
+                    ]}
+                  >
+                    {evento.imagen ? (
+                      <Image source={{ uri: evento.imagen }} style={styles.eventImage} />
+                    ) : (
+                      <View style={[styles.eventImage, styles.imagePlaceholder]}>
+                        <Ionicons name="image-outline" size={28} color={COLORS.textMuted} />
+                      </View>
+                    )}
+                    <View style={styles.eventInfo}>
+                      <View style={styles.eventLabels}>
+                        <Text style={styles.eventCategory}>{evento.categoria}</Text>
+                        {estado !== 'sinFecha' ? (
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              estado === 'terminados' && styles.endedStatusBadge,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.statusBadgeText,
+                                estado === 'terminados' && styles.endedStatusBadgeText,
+                              ]}
+                            >
+                              {estado === 'terminados' ? 'TERMINADO' : 'ACTIVO'}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text style={styles.eventName}>{evento.nombre}</Text>
+                      <Text style={styles.eventMeta}>{evento.fechaTexto || evento.fecha}</Text>
+                      <Text style={styles.eventMeta}>{evento.ubicacion}</Text>
+                    </View>
+                    <View style={styles.actions}>
+                      <TouchableOpacity
+                        style={styles.secondaryButton}
+                        onPress={() => abrirEdicion(evento)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Editar ${evento.nombre}`}
+                      >
+                        <Feather name="edit-2" size={15} color={COLORS.tertiary} />
+                        <Text style={styles.secondaryButtonText}>Editar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.primaryButton}
+                        onPress={() => navigation.navigate('PanelVentas', { eventoId: evento.id })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Ver ventas de ${evento.nombre}`}
+                      >
+                        <Ionicons name="stats-chart-outline" size={15} color={COLORS.textPrimary} />
+                        <Text style={styles.primaryButtonText}>Ventas</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {estado === 'terminados' ? (
+                      <TouchableOpacity
+                        style={styles.repeatButton}
+                        onPress={() =>
+                          navigation.navigate('OrganizarTab', {
+                            repeatEvento: {
+                              nombre: evento.nombre,
+                              categoria: evento.categoria,
+                              ubicacion: evento.ubicacion,
+                              direccion: evento.direccion,
+                              descripcion: evento.descripcion,
+                              imagen: evento.imagen || evento.multimedia?.[0] || '',
+                              tiposEntrada: (evento.tiposEntrada || []).map((tipo) => ({
+                                nombre: tipo.nombre,
+                                precio: tipo.precio,
+                                cupo: tipo.cupo,
+                              })),
+                            },
+                          })
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={`Repetir ${evento.nombre}`}
+                      >
+                        <Feather name="copy" size={14} color={COLORS.tertiary} />
+                        <Text style={styles.repeatButtonText}>Repetir evento</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </>
           )}
         </ScrollView>
       )}
@@ -329,6 +629,82 @@ const styles = StyleSheet.create({
   pageHeading: { gap: 4, marginBottom: 4 },
   title: { color: COLORS.textPrimary, fontSize: 22, fontWeight: '800' },
   subtitle: { color: COLORS.textMuted, fontSize: 12, lineHeight: 18 },
+  filters: { gap: 10 },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    gap: 9,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  searchInput: { flex: 1, color: COLORS.textPrimary, fontSize: 13 },
+  filterTabs: { flexDirection: 'row', gap: 8 },
+  filterTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 38,
+    paddingHorizontal: 8,
+    borderRadius: 19,
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  filterTabActive: {
+    backgroundColor: COLORS.accentElectric,
+    borderColor: COLORS.accentElectric,
+  },
+  filterTabText: { color: COLORS.badgeCyanGlow, fontSize: 12, fontWeight: '700' },
+  filterTabTextActive: { color: COLORS.textPrimary },
+  filterCountBadge: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceContainerHigh,
+  },
+  filterCountBadgeActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
+  filterCount: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 12,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
+  filterCountActive: { color: COLORS.textPrimary },
+  dateRange: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  dateField: { flex: 1, gap: 5 },
+  dateFieldLabel: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' },
+  datePickerRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  datePicker: { flex: 1, minWidth: 0 },
+  clearDateButton: { width: 22, alignItems: 'center', justifyContent: 'center' },
+  dateRangeSeparator: { height: 45, justifyContent: 'center', alignItems: 'center' },
+  dateRangeError: { color: COLORS.statusDanger, fontSize: 11 },
+  categoryFilters: { gap: 8 },
+  categoryChip: {
+    minHeight: 34,
+    justifyContent: 'center',
+    paddingHorizontal: 13,
+    borderRadius: 17,
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  categoryChipActive: {
+    backgroundColor: COLORS.surfaceContainerHigh,
+    borderColor: COLORS.tertiary,
+  },
+  categoryChipText: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' },
+  categoryChipTextActive: { color: COLORS.tertiary },
   eventCard: {
     overflow: 'hidden',
     borderRadius: 16,
@@ -336,13 +712,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.07)',
   },
+  endedEventCard: {
+    backgroundColor: COLORS.surfaceContainer,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
   eventImage: { width: '100%', height: 150 },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surfaceContainerLow },
   eventInfo: { padding: 14, gap: 5 },
+  eventLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   eventCategory: { color: COLORS.tertiary, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,245,160,0.12)',
+  },
+  statusBadgeText: { color: COLORS.statusSuccess, fontSize: 9, fontWeight: '800' },
+  endedStatusBadge: { backgroundColor: 'rgba(138,126,166,0.18)' },
+  endedStatusBadgeText: { color: COLORS.textMuted },
   eventName: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '800' },
   eventMeta: { color: COLORS.textMuted, fontSize: 11 },
   actions: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingBottom: 14 },
+  repeatButton: {
+    minHeight: 36,
+    marginHorizontal: 14,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  repeatButtonText: { color: COLORS.tertiary, fontSize: 11, fontWeight: '700' },
   secondaryButton: {
     flex: 1,
     minHeight: 40,
@@ -367,6 +771,14 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: COLORS.textPrimary, fontSize: 12, fontWeight: '700' },
   emptyState: { alignItems: 'center', gap: 8, paddingVertical: 56 },
   emptyTitle: { color: COLORS.textPrimary, fontSize: 15, fontWeight: '700' },
+  clearFiltersButton: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  clearFiltersText: { color: COLORS.tertiary, fontSize: 12, fontWeight: '700' },
   modalBackdrop: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: 'rgba(4,8,16,0.78)' },
   modalCard: {
     width: '100%',

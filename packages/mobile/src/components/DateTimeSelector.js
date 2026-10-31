@@ -27,6 +27,9 @@ export default function DateTimeSelector({
   error,
   disabled = false,
   accessibilityLabel = 'Elegir fecha y horario del evento',
+  allowPastDates = false,
+  dateOnly = false,
+  placeholder = 'Elegí fecha y horario',
 }) {
   const [visible, setVisible] = useState(false);
   const [fechaBorrador, setFechaBorrador] = useState(null);
@@ -46,6 +49,23 @@ export default function DateTimeSelector({
   };
 
   const confirmarFecha = () => {
+    if (dateOnly) {
+      if (!fechaBorrador) {
+        setErrorSelector('Seleccioná un día del calendario.');
+        return;
+      }
+
+      onChange(
+        new Date(
+          fechaBorrador.getFullYear(),
+          fechaBorrador.getMonth(),
+          fechaBorrador.getDate()
+        )
+      );
+      setVisible(false);
+      return;
+    }
+
     const hora = Number(horaBorrador);
     const minuto = Number(minutoBorrador);
     if (!fechaBorrador) {
@@ -105,7 +125,11 @@ export default function DateTimeSelector({
           accessibilityLabel={accessibilityLabel}
         >
           <Text style={[styles.datePickerText, !value && styles.placeholder]}>
-            {value ? formatearFechaEvento(value) : 'Elegí fecha y horario'}
+            {value
+              ? dateOnly
+                ? value.toLocaleDateString('es-AR')
+                : formatearFechaEvento(value)
+              : placeholder}
           </Text>
           <Ionicons name="calendar-outline" size={18} color={COLORS.tertiary} />
         </TouchableOpacity>
@@ -122,8 +146,14 @@ export default function DateTimeSelector({
           <View style={styles.dateModal}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>Fecha y horario</Text>
-                <Text style={styles.modalSubtitle}>Seleccioná el día y la hora.</Text>
+                <Text style={styles.modalTitle}>
+                  {dateOnly ? 'Elegir fecha' : 'Fecha y horario'}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  {dateOnly
+                    ? 'Seleccioná un día del calendario.'
+                    : 'Seleccioná el día y la hora.'}
+                </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setVisible(false)}
@@ -178,7 +208,8 @@ export default function DateTimeSelector({
                   dia === null
                     ? null
                     : new Date(mesVisible.getFullYear(), mesVisible.getMonth(), dia);
-                const pasado = fechaDia && !mismoDia(fechaDia, hoy) && fechaDia < hoy;
+                const pasado =
+                  !allowPastDates && fechaDia && !mismoDia(fechaDia, hoy) && fechaDia < hoy;
                 const seleccionado =
                   dia !== null &&
                   fechaBorrador?.getFullYear() === mesVisible.getFullYear() &&
@@ -222,36 +253,40 @@ export default function DateTimeSelector({
               })}
             </View>
 
-            <Text style={styles.timeLabel}>Hora</Text>
-            <View style={styles.timeInputRow}>
-              <TextInput
-                style={styles.timeInput}
-                value={horaBorrador}
-                onChangeText={(text) => {
-                  setHoraBorrador(text.replace(/\D/g, '').slice(0, 2));
-                  setErrorSelector('');
-                }}
-                placeholder="HH"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="number-pad"
-                maxLength={2}
-                accessibilityLabel="Hora de inicio, de 00 a 23"
-              />
-              <Text style={styles.timeSeparator}>:</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={minutoBorrador}
-                onChangeText={(text) => {
-                  setMinutoBorrador(text.replace(/\D/g, '').slice(0, 2));
-                  setErrorSelector('');
-                }}
-                placeholder="MM"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="number-pad"
-                maxLength={2}
-                accessibilityLabel="Minutos, de 00 a 59"
-              />
-            </View>
+            {!dateOnly ? (
+              <>
+                <Text style={styles.timeLabel}>Hora</Text>
+                <View style={styles.timeInputRow}>
+                  <TextInput
+                    style={styles.timeInput}
+                    value={horaBorrador}
+                    onChangeText={(text) => {
+                      setHoraBorrador(text.replace(/\D/g, '').slice(0, 2));
+                      setErrorSelector('');
+                    }}
+                    placeholder="HH"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    accessibilityLabel="Hora de inicio, de 00 a 23"
+                  />
+                  <Text style={styles.timeSeparator}>:</Text>
+                  <TextInput
+                    style={styles.timeInput}
+                    value={minutoBorrador}
+                    onChangeText={(text) => {
+                      setMinutoBorrador(text.replace(/\D/g, '').slice(0, 2));
+                      setErrorSelector('');
+                    }}
+                    placeholder="MM"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    accessibilityLabel="Minutos, de 00 a 59"
+                  />
+                </View>
+              </>
+            ) : null}
             {errorSelector ? <Text style={styles.errorLabel}>{errorSelector}</Text> : null}
             <View style={styles.actions}>
               <TouchableOpacity

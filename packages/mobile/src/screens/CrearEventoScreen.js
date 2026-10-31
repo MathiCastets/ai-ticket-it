@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,14 +18,16 @@ import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
 
-export default function CrearEventoScreen({ navigation }) {
+export default function CrearEventoScreen({ navigation, route }) {
   const { crearEvento, categorias } = useApp();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPickingImages, setIsPickingImages] = useState(false);
   const [imagenes, setImagenes] = useState([]);
+  const [imagenExistente, setImagenExistente] = useState('');
   const [errores, setErrores] = useState({});
   const [resultadoPublicacion, setResultadoPublicacion] = useState(null);
   const [fechaEvento, setFechaEvento] = useState(null);
+  const [modoRepetir, setModoRepetir] = useState(false);
 
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState('');
@@ -36,6 +38,34 @@ export default function CrearEventoScreen({ navigation }) {
   const [tiposEntrada, setTiposEntrada] = useState([
     { id: String(Date.now()), nombre: '', precio: '', cupo: '' },
   ]);
+
+  useEffect(() => {
+    const evento = route?.params?.repeatEvento;
+    if (!evento) return;
+
+    setModoRepetir(true);
+    setNombre(evento.nombre || '');
+    setCategoria(evento.categoria || '');
+    setFechaEvento(null);
+    setUbicacion(evento.ubicacion || '');
+    setDireccion(evento.direccion || '');
+    setDescripcion(evento.descripcion || '');
+    setImagenExistente(evento.imagen || '');
+    setImagenes([]);
+    setTiposEntrada(
+      evento.tiposEntrada?.length
+        ? evento.tiposEntrada.map((tipo, index) => ({
+            id: `repeat-${Date.now()}-${index}`,
+            nombre: tipo.nombre || '',
+            precio: String(tipo.precio ?? ''),
+            cupo: String(tipo.cupo ?? ''),
+          }))
+        : [{ id: String(Date.now()), nombre: '', precio: '', cupo: '' }]
+    );
+    setErrores({});
+    setResultadoPublicacion(null);
+    navigation.setParams({ repeatEvento: undefined });
+  }, [navigation, route?.params?.repeatEvento]);
 
   const cambiarCampo = (setter, key, value) => {
     setter(value);
@@ -114,6 +144,7 @@ export default function CrearEventoScreen({ navigation }) {
         }
         if (validAssets.length) {
           setImagenes([validAssets[0]]);
+          setImagenExistente('');
         }
       }
     } catch (error) {
@@ -125,6 +156,7 @@ export default function CrearEventoScreen({ navigation }) {
 
   const handleQuitarImagen = (uri) => {
     setImagenes((previous) => previous.filter((imagen) => imagen.uri !== uri));
+    if (imagenExistente === uri) setImagenExistente('');
   };
 
   const reiniciarFormulario = () => {
@@ -135,8 +167,10 @@ export default function CrearEventoScreen({ navigation }) {
     setDireccion('');
     setDescripcion('');
     setImagenes([]);
+    setImagenExistente('');
     setTiposEntrada([{ id: String(Date.now()), nombre: '', precio: '', cupo: '' }]);
     setErrores({});
+    setModoRepetir(false);
   };
 
   const cerrarResultado = () => setResultadoPublicacion(null);
@@ -197,6 +231,7 @@ export default function CrearEventoScreen({ navigation }) {
       ubicacion: ubicacion.trim(),
       direccion: direccion.trim(),
       descripcion: descripcion.trim(),
+      imagen: imagenExistente,
       imagenes,
       tiposEntrada: tiposFormateados,
     };
@@ -227,10 +262,17 @@ export default function CrearEventoScreen({ navigation }) {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerTitleBox}>
-          <Text style={styles.pageTitle}>Publicar Nuevo Evento</Text>
-          <Text style={styles.pageSubtitle}>
-            Configura los detalles, cupos y categorías comerciales para tu audiencia.
+          <Text style={styles.pageTitle}>
+            {modoRepetir ? 'Repetir evento' : 'Publicar Nuevo Evento'}
           </Text>
+          {modoRepetir ? (
+            <Text style={styles.pageSubtitle}>
+              Revisá los datos, elegí una nueva fecha y confirmá los precios y cupos antes de publicar.
+            </Text>
+          ) : null}
+          {/*<Text style={styles.pageSubtitle}>
+            Configura los detalles, cupos y categorías comerciales para tu audiencia.
+          </Text>*/}
         </View>
 
         {/* Section 1: Main Info */}
@@ -332,9 +374,9 @@ export default function CrearEventoScreen({ navigation }) {
                 <Text style={styles.imagePickerHint}>Una foto JPEG, PNG o WebP (hasta 5 MB)</Text>
               </View>
             </View>
-            {imagenes.length > 0 ? (
+            {imagenes.length > 0 || imagenExistente ? (
               <View style={styles.selectedImages}>
-                {imagenes.map((imagen) => (
+                {imagenes.length > 0 ? imagenes.map((imagen) => (
                   <View key={imagen.uri} style={styles.selectedImageItem}>
                     <Image source={{ uri: imagen.uri }} style={styles.selectedImagePreview} />
                     <TouchableOpacity
@@ -347,7 +389,20 @@ export default function CrearEventoScreen({ navigation }) {
                       <Ionicons name="close" size={14} color={COLORS.textPrimary} />
                     </TouchableOpacity>
                   </View>
-                ))}
+                )) : (
+                  <View key={imagenExistente} style={styles.selectedImageItem}>
+                    <Image source={{ uri: imagenExistente }} style={styles.selectedImagePreview} />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => handleQuitarImagen(imagenExistente)}
+                      disabled={isPublishing}
+                      accessibilityRole="button"
+                      accessibilityLabel="Quitar foto copiada del evento"
+                    >
+                      <Ionicons name="close" size={14} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             ) : (
               <TouchableOpacity
@@ -382,7 +437,7 @@ export default function CrearEventoScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <Text style={styles.cardSectionSubtitle}>
-            Cada tipo de entrada debe contar con su propio precio y cupo disponible:
+            Todos los campos son obligatorios
           </Text>
 
           {tiposEntrada.map((tipo, idx) => (

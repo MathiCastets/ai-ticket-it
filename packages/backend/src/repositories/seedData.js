@@ -159,7 +159,41 @@ export function createSeedData() {
     tiposEntrada: [teConfPass],
   });
 
-  const eventos = [evento1, evento2, evento3, evento4];
+  const fechaEventoTerminado = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const fechaTextoEventoTerminado = `${fechaEventoTerminado.toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })} • ${fechaEventoTerminado.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })} hs`;
+  const teSonoraTerminado = new TipoEntrada({
+    id: 'te-sonora-aniversario-gen',
+    nombre: 'Entrada General',
+    descripcion: 'Acceso al evento',
+    precio: 12000,
+    cupo: 100,
+    disponibles: 99,
+  });
+  const eventoSonoraTerminado = new Evento({
+    id: 'evt-sonora-aniversario',
+    nombre: 'Noche Aniversario Sonora',
+    destacado: false,
+    fecha: fechaEventoTerminado,
+    fechaTexto: fechaTextoEventoTerminado,
+    apertura: '20:00 hs',
+    ubicacion: 'Teatro Vorterix • Colegiales',
+    direccion: 'Av. Federico Lacroze 3455, CABA',
+    categoria: catRecitales,
+    imagen: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
+    organizador: orgSonora,
+    descripcion: 'Una noche especial para celebrar un nuevo aniversario de Producciones Sonora.',
+    tiposEntrada: [teSonoraTerminado],
+  });
+
+  const eventos = [evento1, evento2, evento3, evento4, eventoSonoraTerminado];
   const fechaCompraConfirmada = new Date(Date.now() - 72 * 60 * 60 * 1000);
   const fechaCompraPendiente = new Date(Date.now() - 36 * 60 * 60 * 1000);
   const fechaCompraUtilizada = new Date(Date.now() - 48 * 60 * 60 * 1000);
@@ -220,7 +254,21 @@ export function createSeedData() {
     mensajes: [],
   });
 
-  const compras = [compra1, compra2, compra3];
+  const compra4 = new Compra({
+    id: 'compra-4',
+    ordenCodigo: '#TK-58317',
+    comprador: compradorMathi,
+    evento: eventoSonoraTerminado,
+    tipoEntrada: teSonoraTerminado,
+    cantidad: 1,
+    total: teSonoraTerminado.precio,
+    estado: EstadoCompra.UTILIZADA,
+    fechaHora: new Date(fechaEventoTerminado.getTime() - 7 * 24 * 60 * 60 * 1000),
+    reseniaRealizada: false,
+    mensajes: [],
+  });
+
+  const compras = [compra1, compra2, compra3, compra4];
 
   return { usuarios, categorias, eventos, compras };
 }

@@ -665,7 +665,7 @@ export const AppProvider = ({ children }) => {
       ...datosEvento,
       id: `evt-${Date.now()}`,
       destacado: false,
-      imagen: imagenes[0]?.uri || '',
+      imagen: imagenes[0]?.uri || datosEvento.imagen || '',
       multimedia: imagenes.map((imagen) => imagen.uri),
       organizador: currentUser.nombre,
       organizadorId: currentUser.id,

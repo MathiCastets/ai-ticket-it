@@ -13,6 +13,19 @@ const crearFechaRelativa = (horasAtras) => {
 const fechaCompraConfirmada = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 const fechaCompraPendiente = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
 const fechaCompraUtilizada = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+const fechaEventoTerminado = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+const fechaTextoEventoTerminado = `${fechaEventoTerminado.toLocaleDateString('es-AR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})} • ${fechaEventoTerminado.toLocaleTimeString('es-AR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})} hs`;
+const fechaCompraEventoTerminado = new Date(
+  fechaEventoTerminado.getTime() - 7 * 24 * 60 * 60 * 1000
+).toISOString();
 
 export const CATEGORIAS = [
   'Todos',
@@ -261,6 +274,34 @@ export const EVENTOS_INICIALES = [
     ],
     reseniasAnteriores: [],
   },
+  {
+    id: 'evt-sonora-aniversario',
+    nombre: 'Noche Aniversario Sonora',
+    destacado: false,
+    fecha: fechaEventoTerminado.toISOString(),
+    fechaTexto: fechaTextoEventoTerminado,
+    apertura: '20:00 hs',
+    ubicacion: 'Teatro Vorterix • Colegiales',
+    direccion: 'Av. Federico Lacroze 3455, CABA',
+    categoria: 'Recitales',
+    imagen: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
+    organizador: 'Producciones Sonora',
+    organizadorId: 'user_org_sonora',
+    organizadorRating: 4.9,
+    totalResenias: 120,
+    descripcion: 'Una noche especial para celebrar un nuevo aniversario de Producciones Sonora.',
+    tiposEntrada: [
+      {
+        id: 'te-sonora-aniversario-gen',
+        nombre: 'Entrada General',
+        descripcion: 'Acceso al evento',
+        precio: 12000,
+        cupo: 100,
+        disponibles: 99,
+      },
+    ],
+    reseniasAnteriores: [],
+  },
 ];
 
 export const COMPRAS_INICIALES = [
@@ -342,6 +383,28 @@ export const COMPRAS_INICIALES = [
     organizadorId: 'user_org_teatros',
     imagen: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=1200&q=80',
     ubicacion: 'Paseo La Plaza • Sala Pablo Neruda',
+    reseniaRealizada: false,
+    mensajes: [],
+  },
+  {
+    id: 'compra-4',
+    ordenCodigo: '#TK-58317',
+    eventoId: 'evt-sonora-aniversario',
+    eventoNombre: 'Noche Aniversario Sonora',
+    eventoFecha: fechaEventoTerminado.toISOString(),
+    eventoFechaTexto: fechaTextoEventoTerminado,
+    fechaHora: fechaCompraEventoTerminado,
+    tipoEntradaId: 'te-sonora-aniversario-gen',
+    tipoEntradaNombre: 'Entrada General',
+    cantidad: 1,
+    total: 12000,
+    estado: 'UTILIZADA',
+    compradorId: 'user_comprador_1',
+    compradorNombre: 'Mathi Castets',
+    organizadorNombre: 'Producciones Sonora',
+    organizadorId: 'user_org_sonora',
+    imagen: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
+    ubicacion: 'Teatro Vorterix • Colegiales',
     reseniaRealizada: false,
     mensajes: [],
   },

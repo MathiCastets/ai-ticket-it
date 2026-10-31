@@ -14,6 +14,18 @@ import { EventoService } from './src/services/EventoService.js';
 async function validarMutacionesAtomicas() {
   const purchaseSeed = createSeedData();
   const ahora = Date.now();
+  const eventoSonoraTerminado = purchaseSeed.eventos.find(
+    (evento) => evento.id === 'evt-sonora-aniversario'
+  );
+  const compraSonoraTerminado = purchaseSeed.compras.find(
+    (compra) => compra.id === 'compra-4'
+  );
+  assert.ok(eventoSonoraTerminado);
+  assert.ok(eventoSonoraTerminado.fecha.getTime() < ahora);
+  assert.equal(eventoSonoraTerminado.organizador.id, 'user_org_sonora');
+  assert.equal(compraSonoraTerminado.comprador.id, 'user_comprador_1');
+  assert.equal(compraSonoraTerminado.evento.id, eventoSonoraTerminado.id);
+  assert.equal(compraSonoraTerminado.estado, 'UTILIZADA');
   const closureSeed = createSeedData();
   const compraParaCierre = closureSeed.compras[0];
   compraParaCierre.evento.fecha = new Date(ahora - 48 * 60 * 60 * 1000);
@@ -323,7 +335,8 @@ async function runTests() {
     data = await res.json();
     assert.equal(res.status, 200, 'Eventos status should be 200');
     assert.ok(data.data.length >= 3, 'Debe haber al menos 3 eventos iniciales');
-    const firstEvent = data.data[0];
+    const firstEvent = data.data.find((evento) => new Date(evento.fecha).getTime() > Date.now());
+    assert.ok(firstEvent, 'Debe haber un evento futuro disponible para probar las compras');
     assert.equal(typeof firstEvent.categoria, 'object', 'categoria debe ser un objeto (Categoria), no un string');
     assert.equal(typeof firstEvent.organizador, 'object', 'organizador debe ser un objeto (Usuario), no un string');
     console.log(`✓ Eventos OK (${data.data.length} eventos, primero: "${firstEvent.nombre}")`);
