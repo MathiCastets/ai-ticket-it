@@ -151,14 +151,17 @@ export class EventoController {
       }
       if (
         typeof puntuacion !== 'number' ||
-        !Number.isInteger(puntuacion) ||
-        puntuacion < 1 ||
+        !Number.isInteger(puntuacion * 2) ||
+        puntuacion < 0.5 ||
         puntuacion > 5
       ) {
-        throw new ValidationError('La puntuación debe ser un número entero entre 1 y 5');
+        throw new ValidationError('La puntuación debe estar entre 0.5 y 5 en incrementos de 0.5');
       }
       if (typeof detalle !== 'string' || !detalle.trim()) {
         throw new ValidationError('El comentario de la reseña es requerido');
+      }
+      if (detalle.length > 250) {
+        throw new ValidationError('El comentario no puede superar los 250 caracteres');
       }
 
       const resenia = await this.eventoService.agregarResenia(id, {

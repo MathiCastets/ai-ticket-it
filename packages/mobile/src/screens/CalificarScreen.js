@@ -15,20 +15,34 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 
+const MAX_REVIEW_LENGTH = 250;
+
 export default function CalificarScreen({ route, navigation }) {
   const { compraId } = route.params;
-  const { compras, calificarEvento } = useApp();
+  const { compras, currentUser, calificarEvento } = useApp();
   const isLoading = useMockLoading();
 
-  const compra = compras.find((c) => c.id === compraId) || compras[0];
+  const compra = compras.find((c) => c.id === compraId);
+  const puedeCalificar = compra?.compradorId === currentUser?.id;
 
   const [puntuacion, setPuntuacion] = useState(5);
   const [comentario, setComentario] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    if (!puedeCalificar) {
+      Alert.alert(
+        'Acceso no disponible',
+        'Esta compra no corresponde al perfil actual.'
+      );
+      return;
+    }
     if (!comentario.trim()) {
       Alert.alert('Falta comentario', 'Por favor ingresá un breve comentario sobre tu experiencia.');
+      return;
+    }
+    if (comentario.length > MAX_REVIEW_LENGTH) {
+      Alert.alert('Reseña demasiado larga', 'La reseña no puede superar los 250 caracteres.');
       return;
     }
 
@@ -55,12 +69,41 @@ export default function CalificarScreen({ route, navigation }) {
       <View style={styles.screenContainer}>
         <Header
           title="Calificar Evento"
-          subtitle={compra.ordenCodigo}
+          subtitle={compra?.ordenCodigo || 'Acceso no disponible'}
           showBack
           onBack={() => navigation.goBack()}
         />
         <View style={styles.loadingContainer}>
           <LoadingSpinner variant="dots" label="Cargando los datos de tu compra..." />
+        </View>
+      </View>
+    );
+  }
+
+  if (!puedeCalificar) {
+    return (
+      <View style={styles.screenContainer}>
+        <Header
+          title="Calificar Evento"
+          subtitle="Acceso no disponible"
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={styles.accessErrorContainer}>
+          <Ionicons name="lock-closed-outline" size={38} color={COLORS.textMuted} />
+          <Text style={styles.accessErrorTitle}>No podés calificar esta compra</Text>
+          <Text style={styles.accessErrorText}>
+            {!compra
+              ? 'No encontramos el ticket solicitado.'
+              : 'Esta compra no corresponde al perfil actual.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.accessBackButton}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+          >
+            <Text style={styles.accessBackButtonText}>Volver</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -89,32 +132,53 @@ export default function CalificarScreen({ route, navigation }) {
 
         {/* Rating Score Selection */}
         <View style={styles.ratingCard}>
-          <Text style={styles.sectionTitle}>Puntuación Numérica</Text>
-          <Text style={styles.sectionSubtitle}>Seleccioná de 1 a 5 estrellas para calificar el show:</Text>
+          <Text style={styles.sectionTitle}>Puntuación</Text>
+          <Text style={styles.sectionSubtitle}>Seleccioná de 0.5 a 5 estrellas para calificar el show:</Text>
 
           <View style={styles.starsRow}>
             {[1, 2, 3, 4, 5].map((star) => (
-              <TouchableOpacity
-                key={star}
-                onPress={() => setPuntuacion(star)}
-                activeOpacity={0.7}
-                style={styles.starTouch}
-              >
-                <Ionicons
-                  name={star <= puntuacion ? 'star' : 'star-outline'}
-                  size={36}
-                  color={star <= puntuacion ? COLORS.statusWarning : COLORS.textMuted}
+              <View key={star} style={styles.starTouch}>
+                <View style={styles.starIconContainer} pointerEvents="none">
+                  <Ionicons name="star-outline" size={36} color={COLORS.textMuted} />
+                  {puntuacion >= star ? (
+                    <Ionicons
+                      name="star"
+                      size={36}
+                      color={COLORS.statusWarning}
+                      style={styles.filledStar}
+                    />
+                  ) : puntuacion === star - 0.5 ? (
+                    <View style={styles.halfStarOverlay}>
+                      <Ionicons name="star" size={36} color={COLORS.statusWarning} />
+                    </View>
+                  ) : null}
+                </View>
+                <TouchableOpacity
+                  style={styles.starHalfTouch}
+                  onPress={() => setPuntuacion(star - 0.5)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Puntuar ${star - 0.5} ${star - 0.5 === 1 ? 'estrella' : 'estrellas'}`}
+                  accessibilityState={{ selected: puntuacion === star - 0.5 }}
                 />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.starHalfTouch, styles.starRightHalfTouch]}
+                  onPress={() => setPuntuacion(star)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Puntuar ${star} ${star === 1 ? 'estrella' : 'estrellas'}`}
+                  accessibilityState={{ selected: puntuacion === star }}
+                />
+              </View>
             ))}
           </View>
 
-          <Text style={styles.scoreNumber}>{puntuacion}.0 / 5.0</Text>
+          <Text style={styles.scoreNumber}>{puntuacion.toFixed(1)} / 5.0</Text>
         </View>
 
         {/* Written Review */}
         <View style={styles.commentCard}>
-          <Text style={styles.sectionTitle}>Tu Comentario Escrito</Text>
+          <Text style={[styles.sectionTitle, styles.commentTitle]}>Contanos que te pareció</Text>
           <Text style={styles.sectionSubtitle}>
             Contanos sobre el sonido, organización, puntualidad y accesos al lugar:
           </Text>
@@ -125,10 +189,12 @@ export default function CalificarScreen({ route, navigation }) {
             placeholderTextColor={COLORS.textMuted}
             value={comentario}
             onChangeText={setComentario}
+            maxLength={MAX_REVIEW_LENGTH}
             multiline
             numberOfLines={5}
             textAlignVertical="top"
           />
+          <Text style={styles.characterCount}>{comentario.length}/{MAX_REVIEW_LENGTH}</Text>
         </View>
 
         {/* Submit Button */}
@@ -171,6 +237,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
+  accessErrorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 10,
+  },
+  accessErrorTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 17,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  accessErrorText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  accessBackButton: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 11,
+    borderRadius: 22,
+    backgroundColor: COLORS.accentElectric,
+  },
+  accessBackButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: 13,
+    fontWeight: '800',
+  },
   eventCard: {
     backgroundColor: COLORS.surfaceCard,
     padding: 16,
@@ -182,6 +279,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: COLORS.textPrimary,
+  },
+  commentTitle: {
+    textAlign: 'center',
   },
   eventInfo: {
     fontSize: 12,
@@ -227,11 +327,43 @@ const styles = StyleSheet.create({
   },
   starsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginVertical: 8,
   },
   starTouch: {
-    padding: 4,
+    width: 40,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  starIconContainer: {
+    width: 36,
+    height: 36,
+    position: 'relative',
+  },
+  filledStar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
+  halfStarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '50%',
+    height: 36,
+    overflow: 'hidden',
+  },
+  starHalfTouch: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: '50%',
+  },
+  starRightHalfTouch: {
+    left: '50%',
   },
   scoreNumber: {
     fontSize: 18,
@@ -256,6 +388,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  characterCount: {
+    alignSelf: 'flex-end',
+    color: COLORS.textMuted,
+    fontSize: 10,
+    marginTop: 5,
   },
   submitBtn: {
     backgroundColor: COLORS.accentElectric,

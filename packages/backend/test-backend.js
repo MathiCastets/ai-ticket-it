@@ -513,7 +513,19 @@ async function runTests() {
     res = await fetch(`${baseUrl}/compras/${compra2.id}/calificar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ puntuacion: 5, comentario: 'Increíble organización y sonido espectacular!' }),
+      body: JSON.stringify({ puntuacion: 4.25, comentario: 'Puntuación inválida' }),
+    });
+    assert.equal(res.status, 400, 'La calificación debe usar incrementos de media estrella');
+    res = await fetch(`${baseUrl}/compras/${compra2.id}/calificar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ puntuacion: 4.5, comentario: 'x'.repeat(251) }),
+    });
+    assert.equal(res.status, 400, 'El comentario no debe superar los 250 caracteres');
+    res = await fetch(`${baseUrl}/compras/${compra2.id}/calificar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ puntuacion: 4.5, comentario: 'Increíble organización y sonido espectacular!' }),
     });
     data = await res.json();
     assert.equal(res.status, 200, 'Calificar status should be 200');
@@ -522,6 +534,7 @@ async function runTests() {
     res = await fetch(`${baseUrl}/eventos/${firstEvent.id}`);
     data = await res.json();
     const resenia = data.data.resenias?.[0];
+    assert.equal(resenia?.puntuacion, 4.5, 'La media estrella debe guardarse correctamente');
     assert.ok(resenia && typeof resenia.comprador === 'object', 'resenia.comprador debe ser objeto (Usuario)');
     assert.ok(resenia && typeof resenia.eventoId === 'string', 'resenia.eventoId debe ser string (evita referencia circular)');
     console.log(`✓ Calificación OK. Reseña: comprador.id="${resenia?.comprador?.id}", eventoId="${resenia?.eventoId}"`);
@@ -571,12 +584,19 @@ async function runTests() {
     res = await fetch(`${baseUrl}/eventos/${firstEvent.id}/resenias`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ compraId: compra3.id, puntuacion: 4, detalle: 'Muy buen evento.' }),
+      body: JSON.stringify({ compraId: compra3.id, puntuacion: 4.5, detalle: 'x'.repeat(251) }),
+    });
+    assert.equal(res.status, 400, 'El comentario de reseña no debe superar los 250 caracteres');
+
+    res = await fetch(`${baseUrl}/eventos/${firstEvent.id}/resenias`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ compraId: compra3.id, puntuacion: 4.5, detalle: 'Muy buen evento.' }),
     });
     data = await res.json();
     assert.equal(res.status, 201, `La ruta de reseñas debe responder 201: ${JSON.stringify(data)}`);
     assert.equal(data.data.eventoId, firstEvent.id);
-    assert.equal(data.data.puntuacion, 4);
+    assert.equal(data.data.puntuacion, 4.5);
     console.log('✓ Ruta de reseñas de evento OK y valida elegibilidad');
 
     // 8. Mensajería — usuario como objeto
