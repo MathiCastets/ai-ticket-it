@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { unlink } from 'node:fs/promises';
+import path from 'node:path';
 import { createApp } from './src/app.js';
+import { UPLOADS_DIRECTORY } from './src/config/uploadConfig.js';
 import { CompraService } from './src/services/CompraService.js';
 import { createSeedData } from './src/repositories/seedData.js';
 import { CompraRepository } from './src/repositories/inMemory/CompraRepository.js';
@@ -231,6 +234,7 @@ async function runTests() {
   const server = app.listen(0);
   const port = server.address().port;
   const baseUrl = `http://127.0.0.1:${port}/api`;
+  let uploadedImagePath;
 
   console.log(`[TEST] Servidor de prueba corriendo en ${baseUrl}`);
 
@@ -594,6 +598,109 @@ async function runTests() {
     assert.equal(typeof data.data.organizador, 'object', 'evento.organizador debe ser objeto (Usuario)');
     console.log(`✓ Crear evento OK (${data.data.id}). organizador normalizado: "${data.data.organizador?.nombre}"`);
 
+    const imageBytes = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    ]);
+    const eventForm = new FormData();
+    eventForm.append(
+      'evento',
+      JSON.stringify({
+        nombre: 'Galería del organizador',
+        categoria: 'Recitales',
+        organizadorId: 'user_org_sonora',
+        fecha: '2026-12-01T22:00:00.000Z',
+        tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+      })
+    );
+    eventForm.append('imagenes', new Blob([imageBytes], { type: 'image/png' }), 'foto.png');
+    res = await fetch(`${baseUrl}/eventos`, { method: 'POST', body: eventForm });
+    data = await res.json();
+    assert.equal(res.status, 201, `El alta multipart debe aceptar fotos: ${JSON.stringify(data)}`);
+    assert.equal(data.data.imagen, data.data.multimedia[0]);
+    assert.match(data.data.imagen, /^\/uploads\/[0-9a-f-]+\.png$/);
+    uploadedImagePath = path.join(UPLOADS_DIRECTORY, path.basename(data.data.imagen));
+
+    res = await fetch(`http://127.0.0.1:${port}${data.data.imagen}`);
+    assert.equal(res.status, 200, 'La imagen cargada debe ser servida por el backend');
+    assert.equal(res.headers.get('content-type'), 'image/png');
+    assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+    assert.deepEqual(Buffer.from(await res.arrayBuffer()), imageBytes);
+    console.log('✓ Fotos de evento validadas, guardadas y disponibles desde /uploads');
+
+    const invalidImageForm = new FormData();
+    invalidImageForm.append(
+      'evento',
+      JSON.stringify({
+        nombre: 'Imagen inválida',
+        categoria: 'Recitales',
+        organizadorId: 'user_org_sonora',
+        fecha: '2026-12-01T22:00:00.000Z',
+        tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+      })
+    );
+    invalidImageForm.append(
+      'imagenes',
+      new Blob([Buffer.from('not an image')], { type: 'image/png' }),
+      'foto.png'
+    );
+    res = await fetch(`${baseUrl}/eventos`, { method: 'POST', body: invalidImageForm });
+    assert.equal(res.status, 400, 'El backend debe rechazar contenido que no sea una imagen real');
+
+    const tooManyImagesForm = new FormData();
+    tooManyImagesForm.append(
+      'evento',
+      JSON.stringify({
+        nombre: 'Demasiadas imágenes',
+        categoria: 'Recitales',
+        organizadorId: 'user_org_sonora',
+        fecha: '2026-12-01T22:00:00.000Z',
+        tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+      })
+    );
+    for (let index = 0; index < 6; index += 1) {
+      tooManyImagesForm.append(
+        'imagenes',
+        new Blob([imageBytes], { type: 'image/png' }),
+        `foto-${index}.png`
+      );
+    }
+    res = await fetch(`${baseUrl}/eventos`, { method: 'POST', body: tooManyImagesForm });
+    assert.equal(res.status, 400, 'El backend debe limitar a cinco fotos por evento');
+
+    const oversizedImageForm = new FormData();
+    oversizedImageForm.append(
+      'evento',
+      JSON.stringify({
+        nombre: 'Imagen demasiado grande',
+        categoria: 'Recitales',
+        organizadorId: 'user_org_sonora',
+        fecha: '2026-12-01T22:00:00.000Z',
+        tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+      })
+    );
+    oversizedImageForm.append(
+      'imagenes',
+      new Blob([Buffer.alloc(5 * 1024 * 1024 + 1, 0)], { type: 'image/png' }),
+      'grande.png'
+    );
+    res = await fetch(`${baseUrl}/eventos`, { method: 'POST', body: oversizedImageForm });
+    assert.equal(res.status, 413, 'El backend debe limitar cada foto a cinco megabytes');
+
+    const buyerImageForm = new FormData();
+    buyerImageForm.append(
+      'evento',
+      JSON.stringify({
+        nombre: 'Compra no organizadora',
+        categoria: 'Recitales',
+        organizadorId: 'user_comprador_1',
+        fecha: '2026-12-01T22:00:00.000Z',
+        tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+      })
+    );
+    buyerImageForm.append('imagenes', new Blob([imageBytes], { type: 'image/png' }), 'foto.png');
+    res = await fetch(`${baseUrl}/eventos`, { method: 'POST', body: buyerImageForm });
+    assert.equal(res.status, 400, 'Un perfil comprador no puede cargar fotos para publicar eventos');
+
     console.log('\n======================================================');
     console.log('🎉 TODOS LOS TESTS DE INTEGRACIÓN PASARON EXITOSAMENTE!');
     console.log('   Entidades normalizadas — sin campos denormalizados.');
@@ -602,6 +709,7 @@ async function runTests() {
     console.error('❌ Error en test:', err);
     process.exitCode = 1;
   } finally {
+    if (uploadedImagePath) await unlink(uploadedImagePath);
     server.close();
   }
 }

@@ -6,6 +6,7 @@ import { categoriaRepository } from '../repositories/inMemory/CategoriaRepositor
 import { EntityNotFoundError } from '../repositories/errors/EntityNotFoundError.js';
 import { ResourceNotFoundError, BusinessRuleError } from './errors/index.js';
 import { compraService } from './CompraService.js';
+import { eventoImageStorage } from './EventoImageStorage.js';
 import { randomUUID } from 'node:crypto';
 
 export class EventoService {
@@ -13,12 +14,14 @@ export class EventoService {
     _eventoRepository = eventoRepository,
     _usuarioRepository = usuarioRepository,
     _categoriaRepository = categoriaRepository,
-    _compraService = compraService
+    _compraService = compraService,
+    _eventoImageStorage = eventoImageStorage
   ) {
     this.eventoRepository    = _eventoRepository;
     this.usuarioRepository   = _usuarioRepository;
     this.categoriaRepository = _categoriaRepository;
     this.compraService       = _compraService;
+    this.eventoImageStorage  = _eventoImageStorage;
   }
 
   async listarEventos(filtros = {}) {
@@ -36,7 +39,17 @@ export class EventoService {
     }
   }
 
-  async crearEvento({ nombre, fecha, organizadorId, categoriaId, tiposEntrada, ...resto }) {
+  async crearEvento({
+    nombre,
+    fecha,
+    organizadorId,
+    categoriaId,
+    tiposEntrada,
+    imagenes = [],
+    multimedia = [],
+    imagen = '',
+    ...resto
+  }) {
     if (typeof nombre !== 'string' || !nombre.trim()) {
       throw new BusinessRuleError('El evento debe tener al menos nombre y fecha');
     }
@@ -111,17 +124,30 @@ export class EventoService {
       throw new BusinessRuleError('Los tipos de entrada del evento deben tener ids únicos');
     }
 
-    const evento = new Evento({
-      ...resto,
-      nombre: nombre.trim(),
-      fecha: fechaEvento,
-      id: `evt-${randomUUID()}`,
-      organizador,
-      categoria,
-      tiposEntrada: tipos,
-    });
+    const uploadedImages = imagenes.length
+      ? await this.eventoImageStorage.guardar(imagenes)
+      : [];
+    try {
+      const eventImages = [...uploadedImages, ...(Array.isArray(multimedia) ? multimedia : [])];
+      const evento = new Evento({
+        ...resto,
+        nombre: nombre.trim(),
+        fecha: fechaEvento,
+        id: `evt-${randomUUID()}`,
+        organizador,
+        categoria,
+        multimedia: eventImages,
+        imagen: imagen || eventImages[0] || '',
+        tiposEntrada: tipos,
+      });
 
-    return await this.eventoRepository.save(evento);
+      return await this.eventoRepository.save(evento);
+    } catch (error) {
+      if (uploadedImages.length) {
+        await this.eventoImageStorage.eliminar(uploadedImages);
+      }
+      throw error;
+    }
   }
 
   async agregarResenia(eventoId, { compraId, puntuacion, detalle }) {

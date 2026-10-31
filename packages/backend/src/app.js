@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { UPLOADS_DIRECTORY } from './config/uploadConfig.js';
 import { env } from './config/env.js';
 import apiRouter from './routes/index.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
@@ -33,6 +34,14 @@ export function createApp() {
         return callback(new Error(`Origen ${origin} no permitido por CORS`));
       },
       credentials: true,
+    })
+  );
+  app.use(
+    '/uploads',
+    express.static(UPLOADS_DIRECTORY, {
+      dotfiles: 'deny',
+      index: false,
+      setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
     })
   );
 

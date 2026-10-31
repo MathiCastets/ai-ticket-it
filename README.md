@@ -15,24 +15,25 @@ ai-ticket-it/
 │   ├── backend/        # Servidor Express.js (Node.js en capas con persistencia en memoria)
 │   │   ├── index.js                    # Arranque del proceso y graceful shutdown
 │   │   ├── test-backend.js             # Suite de tests de integración end-to-end
-│   │   └── src/
-│   │       ├── app.js                  # Configuración de Express (CORS, JSON, routes, errors)
-│   │       ├── config/                 # Variables de entorno y configuración técnica
-│   │       ├── controllers/            # Controladores HTTP (validación y serialización)
-│   │       ├── domain/                 # Modelo y reglas del negocio (Entidades puras, enums y errores)
-│   │       │   ├── entities/           # Evento, TipoEntrada, Compra, Usuario, Categoria, etc.
-│   │       │   ├── enums/              # EstadoCompra (CONFIRMADA, REEMBOLSADA, UTILIZADA, etc.)
-│   │       │   └── errors/             # CupoInsuficienteError, EstadoCompraInvalidoError, etc.
-│   │       ├── middlewares/            # errorHandler (mapeo tipado de códigos HTTP), notFoundHandler
-│   │       ├── repositories/           # Repositorios en memoria (In-Memory persistencia desacoplada)
-│   │       ├── routes/                 # Enrutadores Express (/eventos, /compras, /categorias)
-│   │       └── services/               # Casos de uso y reglas de coordinación (EventoService, CompraService)
+│   │   ├── src/
+│   │   │   ├── app.js                  # Configuración de Express (CORS, JSON, routes, errors)
+│   │   │   ├── config/                 # Variables de entorno y configuración técnica
+│   │   │   ├── controllers/            # Controladores HTTP (validación y serialización)
+│   │   │   ├── domain/                 # Modelo y reglas del negocio (Entidades puras, enums y errores)
+│   │   │   │   ├── entities/           # Evento, TipoEntrada, Compra, Usuario, Categoria, etc.
+│   │   │   │   ├── enums/              # EstadoCompra (CONFIRMADA, REEMBOLSADA, UTILIZADA, etc.)
+│   │   │   │   └── errors/             # CupoInsuficienteError, EstadoCompraInvalidoError, etc.
+│   │   │   ├── middlewares/            # errorHandler (mapeo tipado de códigos HTTP), notFoundHandler
+│   │   │   ├── repositories/           # Repositorios en memoria (In-Memory persistencia desacoplada)
+│   │   │   ├── routes/                 # Enrutadores Express (/eventos, /compras, /categorias)
+│   │   │   └── services/               # Casos de uso y reglas de coordinación (EventoService, CompraService)
+│   │   └── uploads/                    # Fotos de eventos guardadas localmente (ignorado por Git)
 │   │
 │   └── mobile/         # Aplicación Mobile (React Native + Expo SDK 58)
 │       ├── App.js                      # Root container con soporte Responsive Web y Safe Area
 │       └── src/
 │           ├── components/             # Header, Modales, Skeletons, Spinners
-│           ├── context/AppContext.js   # Estado global, sincronización con API y role switcher
+│           ├── context/AppContext.js   # Estado global, sincronización con API y perfiles demo
 │           ├── navigation/             # Tab Navigator (4 tabs) + Stack Navigator
 │           ├── screens/                # Explorar, Detalle, MisTickets, Chat, Calificar, Crear, Panel
 │           ├── services/api.js         # Cliente HTTP hacia la API Express
@@ -107,6 +108,12 @@ npm run test:backend
 ### Modo de datos del Mobile
 
 La app usa el backend por defecto. Para correr Expo Go en un dispositivo físico, copiá [`packages/mobile/.env.example`](./packages/mobile/.env.example) como `packages/mobile/.env.local`, reemplazá `TU_IP_LOCAL` por la IP de tu PC en la red y reiniciá Expo. Para ejecutar la demo sin backend, configurá `EXPO_PUBLIC_USE_MOCK_DATA=true` en ese archivo; en ese modo, las mutaciones se aplican solo localmente.
+
+### Carga de fotos de eventos (API)
+
+El alta `POST /api/eventos` acepta JSON como antes o `multipart/form-data` para incluir fotos. En una solicitud multipart, enviá el evento serializado como JSON en el campo `evento` y adjuntá hasta cinco archivos en campos repetidos `imagenes`. Se aceptan JPEG, PNG y WebP, con un máximo de 5 MB por foto. El backend verifica el contenido del archivo, genera nombres propios y guarda la galería en `packages/backend/uploads/`.
+
+La respuesta mantiene la galería en `data.multimedia` y usa la primera foto cargada como `data.imagen`. Las rutas de imagen son relativas (por ejemplo, `/uploads/<id>.jpg`) y el backend las sirve desde esa ruta; el cliente debe anteponer el origen de la API para mostrarlas. Para cambiar el directorio de almacenamiento se puede definir `UPLOADS_DIRECTORY`. El almacenamiento es local y no durable: los archivos no se suben a un servicio externo ni se comparten entre instancias del servidor.
 
 ---
 

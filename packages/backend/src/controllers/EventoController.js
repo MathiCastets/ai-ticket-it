@@ -38,7 +38,22 @@ export class EventoController {
 
   create = async (req, res, next) => {
     try {
-      const { nombre, fecha, categoria, categoriaId, organizadorId, tiposEntrada } = req.body;
+      let payload = req.body;
+      if (req.is('multipart/form-data')) {
+        try {
+          payload = JSON.parse(req.body.evento);
+        } catch {
+          throw new ValidationError('El campo evento debe contener un objeto JSON válido');
+        }
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+          throw new ValidationError('El campo evento debe contener un objeto JSON');
+        }
+      }
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw new ValidationError('El cuerpo de la solicitud debe ser un objeto JSON');
+      }
+
+      const { nombre, fecha, categoria, categoriaId, organizadorId, tiposEntrada } = payload;
 
       if (typeof nombre !== 'string' || !nombre.trim()) {
         throw new ValidationError('El nombre del evento es requerido');
@@ -71,7 +86,10 @@ export class EventoController {
         throw new ValidationError('Debe incluir al menos un tipo de entrada con su precio y cupo');
       }
 
-      const nuevoEvento = await this.eventoService.crearEvento(req.body);
+      const nuevoEvento = await this.eventoService.crearEvento({
+        ...payload,
+        imagenes: req.files || [],
+      });
       res.status(201).json({ data: nuevoEvento });
     } catch (error) {
       next(error);

@@ -3,8 +3,10 @@ node_modules/
 .env
 .env*.local
 packages/*/.env
+/packages/backend/uploads/
 .expo/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .DS_Store
+.backend-architecture.md
