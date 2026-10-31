@@ -1,8 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { EVENTOS_INICIALES, COMPRAS_INICIALES, USUARIOS } from '../data/mockData';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { CATEGORIAS, EVENTOS_INICIALES, COMPRAS_INICIALES, USUARIOS } from '../data/mockData';
 import { resolverImagen, USE_MOCK_DATA } from '../config/apiConfig';
 import { api } from '../services/api';
 import { isConversationClosed } from '../conversationStatus';
+import { COLORS } from '../theme/colors';
 
 const AppContext = createContext();
 
@@ -105,22 +107,36 @@ const normalizarCompra = (compra) => ({
   ),
 });
 
-const USUARIO_INICIAL_ID = 'user_comprador_1';
+const normalizarUsuario = (usuario) => ({
+  ...usuario,
+  nombreCompleto: `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim(),
+  favoritos: Array.isArray(usuario.favoritos) ? usuario.favoritos : [],
+});
 
 export const AppProvider = ({ children }) => {
-  const [currentUserId, setCurrentUserId] = useState(USUARIO_INICIAL_ID);
-  const [eventos, setEventos] = useState(EVENTOS_INICIALES.map(normalizarEvento));
-  const [compras, setCompras] = useState(COMPRAS_INICIALES.map(normalizarCompra));
-  const initialUser = USUARIOS.find((user) => user.id === USUARIO_INICIAL_ID);
-  const [favoritos, setFavoritos] = useState(initialUser.favoritos);
+  const initialMockUser = USE_MOCK_DATA ? USUARIOS[0] : null;
+  const [currentUserId, setCurrentUserId] = useState(initialMockUser?.id || null);
+  const currentUserIdRef = useRef(initialMockUser?.id || null);
+  const [usuarios, setUsuarios] = useState(USE_MOCK_DATA ? USUARIOS.map(normalizarUsuario) : []);
+  const [categorias, setCategorias] = useState(
+    USE_MOCK_DATA ? CATEGORIAS.filter((categoria) => categoria !== 'Todos') : []
+  );
+  const [eventos, setEventos] = useState(
+    USE_MOCK_DATA ? EVENTOS_INICIALES.map(normalizarEvento) : []
+  );
+  const [compras, setCompras] = useState(
+    USE_MOCK_DATA ? COMPRAS_INICIALES.map(normalizarCompra) : []
+  );
+  const initialUser = initialMockUser;
+  const [favoritos, setFavoritos] = useState(initialUser?.favoritos || []);
   const [favoritosError, setFavoritosError] = useState('');
   const [backendStatus, setBackendStatus] = useState('checking');
   const backendStatusRef = useRef('checking');
   const backendErrorRef = useRef(null);
   const initialSyncPromise = useRef(null);
-  const favoritosRef = useRef(initialUser.favoritos);
+  const favoritosRef = useRef(initialUser?.favoritos || []);
   const favoritosPorUsuarioRef = useRef(
-    new Map(USUARIOS.map((user) => [user.id, user.favoritos || []]))
+    new Map((USE_MOCK_DATA ? USUARIOS : []).map((user) => [user.id, user.favoritos || []]))
   );
   const favoritosQueue = useRef(Promise.resolve());
 
@@ -136,6 +152,7 @@ export const AppProvider = ({ children }) => {
       return false;
     }
 
+    actualizarEstadoBackend('checking');
     let health;
     try {
       health = await api.checkHealth();
@@ -149,7 +166,7 @@ export const AppProvider = ({ children }) => {
 
       actualizarEstadoBackend('offline');
       console.info(
-        '[AI Ticket It Mobile] Backend no disponible; se conservan datos de demostración y se bloquean las mutaciones.',
+        '[AI Ticket It Mobile] Backend no disponible; no se usan datos locales.',
         error.message
       );
       return false;
@@ -162,10 +179,14 @@ export const AppProvider = ({ children }) => {
       return false;
     }
 
+    let usuariosApi;
+    let categoriasApi;
     let eventosApi;
     let comprasApi;
     try {
-      [eventosApi, comprasApi] = await Promise.all([
+      [usuariosApi, categoriasApi, eventosApi, comprasApi] = await Promise.all([
+        api.getUsuarios(),
+        api.getCategorias(),
         api.getEventos(),
         api.getCompras(),
       ]);
@@ -175,15 +196,32 @@ export const AppProvider = ({ children }) => {
       return false;
     }
 
-    if (!Array.isArray(eventosApi) || !Array.isArray(comprasApi)) {
+    if (
+      !Array.isArray(usuariosApi) ||
+      usuariosApi.length === 0 ||
+      !Array.isArray(categoriasApi) ||
+      !Array.isArray(eventosApi) ||
+      !Array.isArray(comprasApi)
+    ) {
       const error = new Error('El backend devolvió un formato de datos inesperado.');
       actualizarEstadoBackend('error', error);
       console.error('[AI Ticket It Mobile]', error.message);
       return false;
     }
 
+    const usuariosNormalizados = usuariosApi.map(normalizarUsuario);
+    const usuarioInicial = usuariosNormalizados.some((user) => user.id === currentUserIdRef.current)
+      ? currentUserIdRef.current
+      : usuariosNormalizados[0].id;
+    currentUserIdRef.current = usuarioInicial;
+    setCurrentUserId(usuarioInicial);
+    setUsuarios(usuariosNormalizados);
+    setCategorias(categoriasApi.map((categoria) => categoria.nombre));
     setEventos(eventosApi.map(normalizarEvento));
     setCompras(comprasApi.map(normalizarCompra));
+    favoritosPorUsuarioRef.current = new Map(
+      usuariosNormalizados.map((user) => [user.id, user.favoritos])
+    );
     actualizarEstadoBackend('connected');
     console.info('[AI Ticket It Mobile] Conectado exitosamente con el backend Express');
     return true;
@@ -194,10 +232,11 @@ export const AppProvider = ({ children }) => {
   }, [sincronizarConBackend]);
 
   const backendDisponible = async () => {
+    if (USE_MOCK_DATA) return false;
     if (backendStatusRef.current === 'checking' && initialSyncPromise.current) {
       await initialSyncPromise.current;
     }
-    if (backendStatusRef.current === 'offline' && !USE_MOCK_DATA) {
+    if (backendStatusRef.current === 'offline') {
       await sincronizarConBackend();
     }
     if (backendStatusRef.current === 'error') {
@@ -206,10 +245,13 @@ export const AppProvider = ({ children }) => {
           'El backend respondió, pero no se pudo completar la sincronización.'
       );
     }
-    if (backendStatusRef.current === 'offline' && !USE_MOCK_DATA) {
+    if (backendStatusRef.current === 'offline') {
       throw new Error('No hay conexión con el backend. Iniciá el servidor e intentá nuevamente.');
     }
-    return backendStatusRef.current === 'connected';
+    if (backendStatusRef.current !== 'connected') {
+      throw new Error('No hay datos del backend disponibles para completar la operación.');
+    }
+    return true;
   };
 
   const guardarEventoServidor = (eventoServidor) => {
@@ -238,15 +280,22 @@ export const AppProvider = ({ children }) => {
     return compra;
   };
 
-  const currentUser = USUARIOS.find((user) => user.id === currentUserId) || USUARIOS[0];
+  const currentUser = usuarios.find((user) => user.id === currentUserId) || usuarios[0] || null;
   const seleccionarUsuario = (usuarioId) => {
-    if (USUARIOS.some((user) => user.id === usuarioId)) {
+    if (usuarios.some((user) => user.id === usuarioId)) {
+      currentUserIdRef.current = usuarioId;
       setCurrentUserId(usuarioId);
     }
   };
 
   useEffect(() => {
     let active = true;
+
+    if (!currentUser) {
+      return () => {
+        active = false;
+      };
+    }
 
     const userFavorites =
       favoritosPorUsuarioRef.current.get(currentUser.id) || currentUser.favoritos || [];
@@ -297,7 +346,7 @@ export const AppProvider = ({ children }) => {
       if (await backendDisponible()) {
         const userFavorites =
           favoritosPorUsuarioRef.current.get(usuarioId) ||
-          USUARIOS.find((user) => user.id === usuarioId)?.favoritos ||
+          usuarios.find((user) => user.id === usuarioId)?.favoritos ||
           [];
         const adding = !userFavorites.includes(eventoId);
         updated = adding
@@ -306,7 +355,7 @@ export const AppProvider = ({ children }) => {
       } else {
         const userFavorites =
           favoritosPorUsuarioRef.current.get(usuarioId) ||
-          USUARIOS.find((user) => user.id === usuarioId)?.favoritos ||
+          usuarios.find((user) => user.id === usuarioId)?.favoritos ||
           [];
         const adding = !userFavorites.includes(eventoId);
         updated = adding
@@ -687,7 +736,8 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider
       value={{
-        usuarios: USUARIOS,
+        usuarios,
+        categorias,
         seleccionarUsuario,
         currentUser,
         currentUserId,
@@ -709,10 +759,68 @@ export const AppProvider = ({ children }) => {
         marcarEntradaUtilizada,
       }}
     >
-      {children}
+      {USE_MOCK_DATA || (backendStatus === 'connected' && currentUser) ? (
+        children
+      ) : (
+        <View style={styles.startupContainer}>
+          {backendStatus === 'checking' ? (
+            <>
+              <ActivityIndicator size="large" color={COLORS.tertiary} />
+              <Text style={styles.startupText}>Conectando con el backend...</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.startupTitle}>No se pudo cargar la aplicación</Text>
+              <Text style={styles.startupText}>
+                {backendErrorRef.current?.message ||
+                  'No hay conexión con el backend. Iniciá el servidor e intentá nuevamente.'}
+              </Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={sincronizarConBackend}
+                accessibilityRole="button"
+              >
+                <Text style={styles.retryButtonText}>Reintentar</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
     </AppContext.Provider>
   );
 };
+
+const styles = StyleSheet.create({
+  startupContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: COLORS.background,
+  },
+  startupTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  startupText: {
+    color: COLORS.textSecondary,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.tertiary,
+  },
+  retryButtonText: {
+    color: COLORS.background,
+    fontWeight: '700',
+  },
+});
 
 export const useApp = () => {
   const context = useContext(AppContext);

@@ -13,14 +13,13 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
-import { CATEGORIAS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
 
 export default function CrearEventoScreen({ navigation }) {
-  const { crearEvento } = useApp();
+  const { crearEvento, categorias } = useApp();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPickingImages, setIsPickingImages] = useState(false);
   const [imagenes, setImagenes] = useState([]);
@@ -260,7 +259,7 @@ export default function CrearEventoScreen({ navigation }) {
               style={errores.categoria && styles.catScrollError}
               contentContainerStyle={styles.catChipsRow}
             >
-              {CATEGORIAS.filter((c) => c !== 'Todos').map((cat) => {
+              {categorias.map((cat) => {
                 const isSelected = categoria === cat;
                 return (
                   <TouchableOpacity

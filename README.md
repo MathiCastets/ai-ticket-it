@@ -107,7 +107,7 @@ npm run test:backend
 
 ### Modo de datos del Mobile
 
-La app usa el backend por defecto. Para correr Expo Go en un dispositivo físico, copiá [`packages/mobile/.env.example`](./packages/mobile/.env.example) como `packages/mobile/.env.local`, reemplazá `TU_IP_LOCAL` por la IP de tu PC en la red y reiniciá Expo. Para ejecutar la demo sin backend, configurá `EXPO_PUBLIC_USE_MOCK_DATA=true` en ese archivo; en ese modo, las mutaciones se aplican solo localmente.
+La app usa exclusivamente los datos servidos por el backend por defecto, que se inicializan desde `seedData`. Si el backend no está disponible, la app informa el error y no muestra ni modifica datos locales. Para correr Expo Go en un dispositivo físico, copiá [`packages/mobile/.env.example`](./packages/mobile/.env.example) como `packages/mobile/.env.local`, reemplazá `TU_IP_LOCAL` por la IP de tu PC en la red y reiniciá Expo. Los mocks del frontend se habilitan únicamente para pruebas aisladas de la interfaz configurando `EXPO_PUBLIC_USE_MOCK_DATA=true`; en ese modo, las mutaciones se aplican solo localmente.
 
 ### Carga de fotos de eventos (API)
 

@@ -309,6 +309,15 @@ async function runTests() {
     assert.ok(Array.isArray(data.data) && data.data.length > 0, 'Categorias debería tener datos');
     console.log(`✓ Categorias OK (${data.data.length} encontradas)`);
 
+    // 2. Usuarios — perfiles expuestos desde seedData sin datos privados
+    res = await fetch(`${baseUrl}/usuarios`);
+    data = await res.json();
+    assert.equal(res.status, 200, 'Usuarios status should be 200');
+    assert.ok(Array.isArray(data.data) && data.data.length > 0, 'Usuarios debería tener datos');
+    assert.ok(data.data.some((usuario) => usuario.id === 'user_comprador_1'));
+    assert.ok(data.data.every((usuario) => !('email' in usuario)));
+    console.log(`✓ Usuarios OK (${data.data.length} encontrados)`);
+
     // 3. Eventos — verificar normalización (categoria y organizador son objetos)
     res = await fetch(`${baseUrl}/eventos`);
     data = await res.json();

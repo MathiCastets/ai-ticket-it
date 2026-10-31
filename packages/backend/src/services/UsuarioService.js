@@ -15,6 +15,22 @@ export class UsuarioService {
     return [...usuario.favoritos];
   }
 
+  async listarUsuarios() {
+    const usuarios = await this.usuarioRepository.findAll();
+    return usuarios.map(
+      ({ id, nombre, apellido, rol, avatar, favoritos, rating, totalResenias }) => ({
+        id,
+        nombre,
+        apellido,
+        rol,
+        avatar,
+        favoritos: [...favoritos],
+        rating,
+        totalResenias,
+      })
+    );
+  }
+
   async agregarFavorito(usuarioId, eventoId) {
     const usuario = await this.usuarioRepository.findById(usuarioId);
     await this.eventoRepository.findById(eventoId);

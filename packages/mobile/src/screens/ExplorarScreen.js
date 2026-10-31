@@ -2,14 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
-import { CATEGORIAS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { EventListSkeleton } from '../components/loading/Skeletons';
 
 export default function ExplorarScreen({ navigation }) {
-  const { eventos, favoritos, favoritosError, toggleFavorito } = useApp();
+  const { eventos, categorias, favoritos, favoritosError, toggleFavorito } = useApp();
   const isLoading = useMockLoading();
 
   const [searchText, setSearchText] = useState('');
@@ -85,7 +84,7 @@ export default function ExplorarScreen({ navigation }) {
 
         {/* Categories Horizontal Scroll */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
-          {CATEGORIAS.map((cat) => {
+          {['Todos', ...categorias].map((cat) => {
             const isSelected = selectedCategoria === cat;
             return (
               <TouchableOpacity key={cat} style={[styles.categoryChip, isSelected && styles.categoryChipSelected]} onPress={() => setSelectedCategoria(cat)} activeOpacity={0.75}>

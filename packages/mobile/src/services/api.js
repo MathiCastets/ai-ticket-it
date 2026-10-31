@@ -89,6 +89,9 @@ export const api = {
   // Health
   checkHealth: () => request('/health'),
 
+  // Usuarios
+  getUsuarios: () => request('/usuarios'),
+
   // Categorías
   getCategorias: () => request('/categorias'),
 

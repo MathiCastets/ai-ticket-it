@@ -6,6 +6,15 @@ export class UsuarioController {
     this.usuarioService = _usuarioService;
   }
 
+  getAll = async (_req, res, next) => {
+    try {
+      const usuarios = await this.usuarioService.listarUsuarios();
+      res.status(200).json({ data: usuarios });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   getFavorites = async (req, res, next) => {
     try {
       const { id } = req.params;
