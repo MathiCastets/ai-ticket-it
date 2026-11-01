@@ -307,6 +307,16 @@ export default function MensajesInboxScreen({ navigation }) {
                     {compraReferencia.eventoNombre || compraReferencia.evento?.nombre}
                   </Text>
 
+                  {!variasCompras ? (
+                    <Text style={styles.purchaseRef} numberOfLines={1}>
+                      {compraReferencia.ordenCodigo || compraReferencia.id} ·{' '}
+                      {compraReferencia.tipoEntradaNombre ||
+                        compraReferencia.tipoEntrada?.nombre ||
+                        'Entrada'}{' '}
+                      x{compraReferencia.cantidad || 1}
+                    </Text>
+                  ) : null}
+
                   <Text style={styles.lastMessageText} numberOfLines={1}>
                     {variasCompras
                       ? `${grupo.compras.length} compras`
@@ -360,7 +370,9 @@ export default function MensajesInboxScreen({ navigation }) {
                       >
                         <View style={styles.orderRowContent}>
                           <Text style={styles.orderTitle}>
-                            {compra.ordenCodigo} · {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre || 'Entrada'}
+                            {compra.ordenCodigo || compra.id} ·{' '}
+                            {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre || 'Entrada'} x
+                            {compra.cantidad || 1}
                           </Text>
                           <Text style={styles.orderPreview} numberOfLines={1}>
                             {ultimoMensaje
@@ -633,10 +645,16 @@ const styles = StyleSheet.create({
     color: COLORS.tertiary,
     marginTop: 1,
   },
+  purchaseRef: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
   lastMessageText: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    marginTop: 3,
+    marginTop: 2,
   },
   unreadBadge: {
     width: 22,
