@@ -64,7 +64,10 @@ const normalizarEvento = (evento) => {
     organizador: organizadorObj?.nombre || evento.organizador || evento.organizadorNombre || '',
     organizadorObj,
     organizadorId: organizadorObj?.id || evento.organizadorId || '',
-    organizadorRating: evento.organizadorRating ?? organizadorObj?.rating ?? 5,
+    organizadorRating:
+      evento.organizadorRating !== undefined
+        ? evento.organizadorRating
+        : organizadorObj?.rating ?? 5,
     reseniasAnteriores: (evento.reseniasAnteriores || evento.resenias || []).map(normalizarResenia),
   };
 };
@@ -664,7 +667,20 @@ export const AppProvider = ({ children }) => {
 
     if (await backendDisponible()) {
       const compraServidor = await api.calificarCompra(compraId, { puntuacion, comentario });
-      return { success: true, compra: guardarCompraServidor(compraServidor) };
+      const compraGuardada = guardarCompraServidor(compraServidor);
+      try {
+        const eventosActualizados = await api.getEventos();
+        if (!Array.isArray(eventosActualizados)) {
+          throw new Error('El backend devolvió un listado de eventos inválido.');
+        }
+        setEventos(eventosActualizados.map(normalizarEvento));
+      } catch (error) {
+        console.error(
+          '[AI Ticket It Mobile] La reseña se guardó, pero no se pudo actualizar el promedio del organizador.',
+          error
+        );
+      }
+      return { success: true, compra: compraGuardada };
     }
 
     const compra = compras.find((item) => item.id === compraId);
@@ -689,14 +705,41 @@ export const AppProvider = ({ children }) => {
       )
     );
     setEventos((prev) =>
-      prev.map((evento) =>
-        evento.id === compra.eventoId
-          ? {
-              ...evento,
-              reseniasAnteriores: [nuevaResenia, ...(evento.reseniasAnteriores || [])],
-            }
-          : evento
-      )
+      {
+        const eventosDelOrganizador = prev.filter(
+          (evento) => evento.organizadorId === compra.organizadorId
+        );
+        const resumenAnterior = eventosDelOrganizador[0];
+        const cantidadAnterior = Number(resumenAnterior?.totalResenias) || 0;
+        const promedioAnterior = Number(resumenAnterior?.organizadorRating);
+        const nuevoTotal = cantidadAnterior + 1;
+        const nuevoPromedio =
+          cantidadAnterior > 0 && Number.isFinite(promedioAnterior)
+            ? Number(
+                (
+                  (promedioAnterior * cantidadAnterior + Number(puntuacion)) /
+                  nuevoTotal
+                ).toFixed(1)
+              )
+            : Number(puntuacion);
+
+        return prev.map((evento) => {
+          if (evento.organizadorId !== compra.organizadorId) return evento;
+          return {
+            ...evento,
+            organizadorRating: nuevoPromedio,
+            totalResenias: nuevoTotal,
+            ...(evento.id === compra.eventoId
+              ? {
+                  reseniasAnteriores: [
+                    nuevaResenia,
+                    ...(evento.reseniasAnteriores || []),
+                  ],
+                }
+              : {}),
+          };
+        });
+      }
     );
     return { success: true };
   };

@@ -251,11 +251,21 @@ export default function ExplorarScreen({ navigation }) {
                   </View>
                   <View style={styles.eventFooter}>
                     <View style={styles.eventOrganizer}>
-                      <Ionicons name="star" size={12} color={COLORS.statusWarning} />
-                      <Text style={styles.eventRating}>{item.organizadorRating}</Text>
+                      <Ionicons name="business-outline" size={13} color={COLORS.tertiary} />
                       <Text style={styles.eventOrganizerName} numberOfLines={1}>
                         {getOrg(item.organizador)}
                       </Text>
+                      <Text style={styles.eventOrganizerSeparator}>•</Text>
+                      {item.totalResenias > 0 && Number.isFinite(Number(item.organizadorRating)) ? (
+                        <>
+                          <Ionicons name="star" size={12} color={COLORS.statusWarning} />
+                          <Text style={styles.eventRating}>
+                            {Number(item.organizadorRating).toFixed(1)}
+                          </Text>
+                        </>
+                      ) : (
+                        <Text style={styles.eventNewLabel}>Nuevo</Text>
+                      )}
                     </View>
                     <View style={styles.eventPriceBadge}>
                       <Text style={styles.eventPrice}>
@@ -568,16 +578,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    minWidth: 0,
   },
   eventRating: {
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.textPrimary,
+    flexShrink: 0,
   },
   eventOrganizerName: {
+    minWidth: 0,
     flexShrink: 1,
     fontSize: 11,
     color: COLORS.textSecondary,
+  },
+  eventOrganizerSeparator: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    flexShrink: 0,
+  },
+  eventNewLabel: {
+    color: COLORS.badgeCyanGlow,
+    fontSize: 11,
+    fontWeight: '700',
+    flexShrink: 0,
   },
   eventPrice: {
     fontSize: 10,

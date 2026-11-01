@@ -1,9 +1,37 @@
 import { eventoService } from '../services/EventoService.js';
 import { ValidationError } from './errors/ValidationError.js';
 
-const serializarEventoSinResenias = (evento) => {
+const obtenerResumenesOrganizadores = (eventos) => {
+  const resumenes = new Map();
+  for (const evento of eventos) {
+    const organizadorId = evento.organizador?.id || evento.organizadorId;
+    if (!organizadorId) continue;
+
+    const resumen = resumenes.get(organizadorId) || { suma: 0, total: 0 };
+    for (const resenia of evento.resenias || []) {
+      const puntuacion = Number(resenia.puntuacion);
+      if (!Number.isFinite(puntuacion)) continue;
+      resumen.suma += puntuacion;
+      resumen.total += 1;
+    }
+    resumenes.set(organizadorId, resumen);
+  }
+
+  return resumenes;
+};
+
+const serializarEventoSinResenias = (evento, resumenes) => {
   const serializado = typeof evento.toJSON === 'function' ? evento.toJSON() : evento;
-  return { ...serializado, resenias: [] };
+  const organizadorId = serializado.organizador?.id || serializado.organizadorId;
+  const resumen = resumenes.get(organizadorId);
+  const totalResenias = resumen?.total || 0;
+  return {
+    ...serializado,
+    organizadorRating:
+      totalResenias > 0 ? Number((resumen.suma / totalResenias).toFixed(1)) : null,
+    totalResenias,
+    resenias: [],
+  };
 };
 
 export class EventoController {
@@ -24,8 +52,20 @@ export class EventoController {
       if (sortBy && !['fecha', 'precio', 'rating'].includes(sortBy)) {
         throw new ValidationError('sortBy debe ser fecha, precio o rating');
       }
-      const eventos = await this.eventoService.listarEventos({ categoria, search, sortBy });
-      res.status(200).json({ data: eventos.map(serializarEventoSinResenias) });
+      const [eventos, todosLosEventos] = await Promise.all([
+        this.eventoService.listarEventos({ categoria, search, sortBy }),
+        this.eventoService.listarEventos(),
+      ]);
+      const resumenes = obtenerResumenesOrganizadores(todosLosEventos);
+      const eventosSerializados = eventos.map((evento) =>
+        serializarEventoSinResenias(evento, resumenes)
+      );
+      if (sortBy === 'rating') {
+        eventosSerializados.sort(
+          (a, b) => (b.organizadorRating ?? -1) - (a.organizadorRating ?? -1)
+        );
+      }
+      res.status(200).json({ data: eventosSerializados });
     } catch (error) {
       next(error);
     }
@@ -35,7 +75,9 @@ export class EventoController {
     try {
       const { id } = req.params;
       const evento = await this.eventoService.obtenerPorId(id);
-      res.status(200).json({ data: serializarEventoSinResenias(evento) });
+      const todosLosEventos = await this.eventoService.listarEventos();
+      const resumenes = obtenerResumenesOrganizadores(todosLosEventos);
+      res.status(200).json({ data: serializarEventoSinResenias(evento, resumenes) });
     } catch (error) {
       next(error);
     }

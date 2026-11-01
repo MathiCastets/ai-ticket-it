@@ -338,6 +338,8 @@ async function runTests() {
     const firstEvent = data.data.find((evento) => new Date(evento.fecha).getTime() > Date.now());
     assert.ok(firstEvent, 'Debe haber un evento futuro disponible para probar las compras');
     assert.deepEqual(firstEvent.resenias, [], 'Los eventos no deben incluir reseñas completas sin paginar');
+    assert.equal(firstEvent.totalResenias, 0, 'Un organizador nuevo debe indicar que no tiene reseñas');
+    assert.equal(firstEvent.organizadorRating, null, 'Un organizador sin reseñas no debe tener rating artificial');
     assert.equal(typeof firstEvent.categoria, 'object', 'categoria debe ser un objeto (Categoria), no un string');
     assert.equal(typeof firstEvent.organizador, 'object', 'organizador debe ser un objeto (Usuario), no un string');
     console.log(`✓ Eventos OK (${data.data.length} eventos, primero: "${firstEvent.nombre}")`);
@@ -543,6 +545,11 @@ async function runTests() {
     assert.equal(data.data.total, 1, 'El total de reseñas del organizador debe ser correcto');
     assert.equal(data.data.promedio, 4.5, 'El promedio del organizador debe ser correcto');
     assert.equal(data.data.totalPages, 1, 'La paginación debe informar el total de páginas');
+    res = await fetch(`${baseUrl}/eventos`);
+    data = await res.json();
+    const eventoActualizado = data.data.find((evento) => evento.id === firstEvent.id);
+    assert.equal(eventoActualizado.organizadorRating, 4.5, 'La tarjeta debe recibir el promedio real del organizador');
+    assert.equal(eventoActualizado.totalResenias, 1, 'La tarjeta debe recibir el total de reseñas del organizador');
     res = await fetch(`${baseUrl}/eventos/${firstEvent.id}`);
     data = await res.json();
     assert.deepEqual(data.data.resenias, [], 'El detalle de evento no debe transportar reseñas sin paginar');
@@ -600,13 +607,18 @@ async function runTests() {
     res = await fetch(`${baseUrl}/eventos/${firstEvent.id}/resenias`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ compraId: compra3.id, puntuacion: 4.5, detalle: 'Muy buen evento.' }),
+      body: JSON.stringify({ compraId: compra3.id, puntuacion: 4, detalle: 'Muy buen evento.' }),
     });
     data = await res.json();
     assert.equal(res.status, 201, `La ruta de reseñas debe responder 201: ${JSON.stringify(data)}`);
     assert.equal(data.data.eventoId, firstEvent.id);
-    assert.equal(data.data.puntuacion, 4.5);
+    assert.equal(data.data.puntuacion, 4);
     console.log('✓ Ruta de reseñas de evento OK y valida elegibilidad');
+    res = await fetch(`${baseUrl}/eventos`);
+    data = await res.json();
+    const eventoConDosResenias = data.data.find((evento) => evento.id === firstEvent.id);
+    assert.equal(eventoConDosResenias.totalResenias, 2);
+    assert.equal(eventoConDosResenias.organizadorRating, 4.3);
 
     res = await fetch(
       `${baseUrl}/usuarios/${firstEvent.organizador.id}/resenias?page=1&limit=1`
