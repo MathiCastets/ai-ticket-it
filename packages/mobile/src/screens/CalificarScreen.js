@@ -28,6 +28,7 @@ export default function CalificarScreen({ route, navigation }) {
   const [puntuacion, setPuntuacion] = useState(5);
   const [comentario, setComentario] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reseniaPublicada, setReseniaPublicada] = useState(false);
 
   const handleSubmit = async () => {
     if (!puedeCalificar) {
@@ -54,9 +55,7 @@ export default function CalificarScreen({ route, navigation }) {
         comentario: comentario.trim(),
       });
       if (!res.success) throw new Error(res.error || 'No se pudo publicar la reseña.');
-      Alert.alert('¡Gracias!', 'Tu reseña ha sido publicada y ayudará a futuros compradores.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      setReseniaPublicada(true);
     } catch (error) {
       Alert.alert('No se pudo publicar la reseña', error.message);
     } finally {
@@ -103,6 +102,39 @@ export default function CalificarScreen({ route, navigation }) {
             accessibilityRole="button"
           >
             <Text style={styles.accessBackButtonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  if (reseniaPublicada || compra.reseniaRealizada) {
+    return (
+      <View style={styles.screenContainer}>
+        <Header
+          title="Calificar Evento"
+          subtitle={compra.ordenCodigo}
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={styles.successContainer}>
+          <View style={styles.successIcon}>
+            <Ionicons name="checkmark" size={34} color={COLORS.statusSuccess} />
+          </View>
+          <Text style={styles.successTitle}>
+            {reseniaPublicada ? '¡Reseña publicada!' : 'Ya calificaste este evento'}
+          </Text>
+          <Text style={styles.successText}>
+            {reseniaPublicada
+              ? 'Gracias por compartir tu experiencia. Tu opinión ayudará a otros compradores.'
+              : 'Gracias por compartir tu experiencia con otros compradores.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.successButton}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+          >
+            <Text style={styles.successButtonText}>Volver a Mis Tickets</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -264,6 +296,46 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentElectric,
   },
   accessBackButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  successIcon: {
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 32,
+    backgroundColor: 'rgba(0, 245, 160, 0.15)',
+    marginBottom: 16,
+  },
+  successTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  successText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  successButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 22,
+    backgroundColor: COLORS.accentElectric,
+  },
+  successButtonText: {
     color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: '800',

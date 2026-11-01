@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
@@ -35,7 +36,6 @@ export default function MisTicketsScreen({ navigation }) {
 
   const [activeTab, setActiveTab] = useState('todas'); // 'todas' | 'confirmadas' | 'pendientes' | 'historial'
   const [busqueda, setBusqueda] = useState('');
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todas');
   const [sortDirection, setSortDirection] = useState('desc');
   const [selectedCompraQR, setSelectedCompraQR] = useState(null);
   const [selectedCompraCancel, setSelectedCompraCancel] = useState(null);
@@ -48,15 +48,6 @@ export default function MisTicketsScreen({ navigation }) {
       compra.categoria || compra.evento?.categoria || evento?.categoria
     );
   };
-  const categoriasDisponibles = [
-    'Todas',
-    ...new Set(
-      comprasDelUsuario
-        .map(obtenerCategoriaCompra)
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b, 'es'))
-    ),
-  ];
   const textoBusqueda = normalizarTexto(busqueda.trim());
   const filteredCompras = comprasDelUsuario
     .filter((compra) => {
@@ -69,19 +60,11 @@ export default function MisTicketsScreen({ navigation }) {
         return false;
       }
 
-      const categoria = obtenerCategoriaCompra(compra);
-      if (
-        categoriaSeleccionada !== 'Todas' &&
-        normalizarTexto(categoria) !== normalizarTexto(categoriaSeleccionada)
-      ) {
-        return false;
-      }
-
       if (!textoBusqueda) return true;
       return normalizarTexto(
         `${compra.eventoNombre || compra.evento?.nombre || ''} ${
           compra.ubicacion || compra.evento?.ubicacion || ''
-        } ${categoria}`
+        } ${obtenerCategoriaCompra(compra)}`
       ).includes(textoBusqueda);
     })
     .sort((compraA, compraB) => {
@@ -193,28 +176,6 @@ export default function MisTicketsScreen({ navigation }) {
               </TouchableOpacity>
             ) : null}
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryFilters}
-          >
-            {categoriasDisponibles.map((categoria) => {
-              const activa = categoriaSeleccionada === categoria;
-              return (
-                <TouchableOpacity
-                  key={categoria}
-                  style={[styles.categoryChip, activa && styles.categoryChipActive]}
-                  onPress={() => setCategoriaSeleccionada(categoria)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: activa }}
-                >
-                  <Text style={[styles.categoryChipText, activa && styles.categoryChipTextActive]}>
-                    {categoria}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
           <View style={styles.sortSection}>
             <Text style={styles.eventCount}>
               {filteredCompras.length} {filteredCompras.length === 1 ? 'ticket' : 'tickets'}
@@ -270,7 +231,11 @@ export default function MisTicketsScreen({ navigation }) {
                       source={compra.imagen || compra.evento?.imagen ? { uri: compra.imagen || compra.evento?.imagen } : null}
                       style={styles.cardImage}
                     />
-                    <View style={styles.cardImageOverlay} />
+                    <LinearGradient
+                      colors={['rgba(15, 8, 29, 0.65)', 'rgba(15, 8, 29, 0)']}
+                      style={styles.cardImageScrim}
+                      pointerEvents="none"
+                    />
 
                     {/* Top Badges */}
                     <View style={styles.cardTopRow}>
@@ -281,16 +246,16 @@ export default function MisTicketsScreen({ navigation }) {
                       <Text style={styles.orderCode}>{compra.ordenCodigo}</Text>
                     </View>
 
-                    {/* Countdown Pill (Key TP Requirement) */}
-                    {isConfirmada && (
-                      <View style={styles.countdownPill}>
-                        <Ionicons name="time" size={14} color={COLORS.badgeCyanGlow} />
-                        <Text style={styles.countdownText}>
-                          {dias > 0 ? `¡Faltan ${dias} días para el evento!` : '¡El evento es hoy!'}
-                        </Text>
-                      </View>
-                    )}
                   </View>
+
+                  {isConfirmada ? (
+                    <View style={styles.countdownBar}>
+                      <Ionicons name="time" size={14} color={COLORS.badgeCyanGlow} />
+                      <Text style={styles.countdownText}>
+                        {dias > 0 ? `¡Faltan ${dias} días para el evento!` : '¡El evento es hoy!'}
+                      </Text>
+                    </View>
+                  ) : null}
 
                   {/* Card Content */}
                   <View style={styles.cardBody}>
@@ -318,12 +283,12 @@ export default function MisTicketsScreen({ navigation }) {
                       {/* View QR (if Confirmada) */}
                       {isConfirmada && (
                         <TouchableOpacity
-                          style={styles.actionBtnSecondary}
+                          style={styles.actionBtnQr}
                           onPress={() => setSelectedCompraQR(compra)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="qr-code-outline" size={15} color={COLORS.badgeCyanGlow} />
-                          <Text style={styles.actionBtnSecondaryText}>Ver QR</Text>
+                          <Ionicons name="qr-code-outline" size={15} color={COLORS.background} />
+                          <Text style={styles.actionBtnQrText}>Ver QR</Text>
                         </TouchableOpacity>
                       )}
 
@@ -344,24 +309,37 @@ export default function MisTicketsScreen({ navigation }) {
                           onPress={() => setSelectedCompraCancel(compra)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="close-circle-outline" size={15} color={COLORS.statusDanger} />
-                          <Text style={styles.actionBtnCancelText}>Cancelar</Text>
+                          <Text style={styles.actionBtnCancelText}>
+                            <Ionicons name="close-circle-outline" size={15} color={COLORS.statusDanger} />
+                            {' '}Cancelar
+                          </Text>
                         </TouchableOpacity>
                       )}
 
                       {/* Rate event if UTILIZADA (TP Requirement) */}
-                      {isUtilizada && (
-                        <TouchableOpacity
-                          style={styles.actionBtnRate}
-                          onPress={() => navigation.navigate('Calificar', { compraId: compra.id })}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="star" size={14} color={COLORS.statusWarning} />
-                          <Text style={styles.actionBtnRateText}>
-                            {compra.reseniaRealizada ? 'Ver Calificación' : 'Calificar Evento'}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                      {isUtilizada &&
+                        (compra.reseniaRealizada ? (
+                          <View style={styles.ratedChip}>
+                            <View style={styles.ratedIconCircle}>
+                              <Ionicons
+                                name="checkmark"
+                                size={10}
+                                color={COLORS.badgeCyanGlow}
+                                style={styles.ratedCheckIcon}
+                              />
+                            </View>
+                            <Text style={styles.ratedChipText}>Calificada</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            style={styles.actionBtnRate}
+                            onPress={() => navigation.navigate('Calificar', { compraId: compra.id })}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="star" size={14} color={COLORS.statusWarning} />
+                            <Text style={styles.actionBtnRateText}>Calificar Evento</Text>
+                          </TouchableOpacity>
+                        ))}
 
                     </View>
                   </View>
@@ -525,30 +503,6 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontSize: 13,
   },
-  categoryFilters: {
-    gap: 8,
-  },
-  categoryChip: {
-    minHeight: 34,
-    justifyContent: 'center',
-    paddingHorizontal: 13,
-    borderRadius: 17,
-    backgroundColor: COLORS.surfaceCard,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  categoryChipActive: {
-    backgroundColor: COLORS.accentElectric,
-    borderColor: COLORS.accentElectric,
-  },
-  categoryChipText: {
-    color: COLORS.badgeCyanGlow,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  categoryChipTextActive: {
-    color: COLORS.textPrimary,
-  },
   sortSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -659,9 +613,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  cardImageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 8, 29, 0.4)',
+  cardImageScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 72,
   },
   cardTopRow: {
     position: 'absolute',
@@ -679,6 +636,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
+  },
+  ratedIconCircle: {
+    width: 16,
+    height: 16,
+    borderWidth: 2,
+    borderColor: COLORS.badgeCyanGlow,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  ratedCheckIcon: {
+    lineHeight: 12,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
   statusDot: {
     width: 6,
@@ -699,24 +671,20 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
   },
-  countdownPill: {
-    position: 'absolute',
-    bottom: 8,
-    left: 10,
+  countdownBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(59, 30, 109, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(32, 217, 249, 0.4)',
+    minHeight: 30,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(0, 210, 242, 0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 210, 242, 0.18)',
   },
   countdownText: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: COLORS.badgeCyanGlow,
   },
   cardBody: {
     padding: 14,
@@ -754,19 +722,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
-  actionBtnSecondary: {
+  actionBtnQr: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: COLORS.surfaceContainerLow,
+    backgroundColor: COLORS.badgeCyanGlow,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 10,
   },
-  actionBtnSecondaryText: {
+  actionBtnQrText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.badgeCyanGlow,
+    fontWeight: '800',
+    color: COLORS.background,
   },
   actionBtnChat: {
     flexDirection: 'row',
@@ -809,6 +777,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.statusWarning,
+  },
+  ratedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0, 210, 242, 0.14)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  ratedChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.badgeCyanGlow,
   },
   actionSpinner: {
     width: 18,

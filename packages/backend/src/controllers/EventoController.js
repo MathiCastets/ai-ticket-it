@@ -1,6 +1,11 @@
 import { eventoService } from '../services/EventoService.js';
 import { ValidationError } from './errors/ValidationError.js';
 
+const serializarEventoSinResenias = (evento) => {
+  const serializado = typeof evento.toJSON === 'function' ? evento.toJSON() : evento;
+  return { ...serializado, resenias: [] };
+};
+
 export class EventoController {
   constructor(_eventoService = eventoService) {
     this.eventoService = _eventoService;
@@ -20,7 +25,7 @@ export class EventoController {
         throw new ValidationError('sortBy debe ser fecha, precio o rating');
       }
       const eventos = await this.eventoService.listarEventos({ categoria, search, sortBy });
-      res.status(200).json({ data: eventos });
+      res.status(200).json({ data: eventos.map(serializarEventoSinResenias) });
     } catch (error) {
       next(error);
     }
@@ -30,7 +35,7 @@ export class EventoController {
     try {
       const { id } = req.params;
       const evento = await this.eventoService.obtenerPorId(id);
-      res.status(200).json({ data: evento });
+      res.status(200).json({ data: serializarEventoSinResenias(evento) });
     } catch (error) {
       next(error);
     }

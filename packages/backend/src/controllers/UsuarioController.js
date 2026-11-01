@@ -25,6 +25,30 @@ export class UsuarioController {
     }
   };
 
+  getReviews = async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const page = req.query.page === undefined ? 1 : Number(req.query.page);
+      const limit = req.query.limit === undefined ? 5 : Number(req.query.limit);
+      if (
+        (req.query.page !== undefined &&
+          (typeof req.query.page !== 'string' || !Number.isInteger(page) || page < 1)) ||
+        (req.query.limit !== undefined &&
+          (typeof req.query.limit !== 'string' ||
+            !Number.isInteger(limit) ||
+            limit < 1 ||
+            limit > 20))
+      ) {
+        throw new ValidationError('page debe ser positivo y limit debe estar entre 1 y 20');
+      }
+
+      const reviews = await this.usuarioService.obtenerResenias(id, { page, limit });
+      res.status(200).json({ data: reviews });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   addFavorite = async (req, res, next) => {
     try {
       const { id, eventoId } = req.params;

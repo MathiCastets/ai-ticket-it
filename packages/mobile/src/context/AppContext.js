@@ -254,6 +254,61 @@ export const AppProvider = ({ children }) => {
     return true;
   };
 
+  const obtenerReseniasOrganizador = useCallback(
+    async (organizadorId, { page = 1, limit = 5 } = {}) => {
+      let resultado;
+      if (USE_MOCK_DATA) {
+        const resenias = eventos
+          .filter((evento) => evento.organizadorId === organizadorId)
+          .flatMap((evento) =>
+            (evento.reseniasAnteriores || evento.resenias || []).map((resenia) => ({
+              ...resenia,
+              eventoNombre: evento.nombre,
+            }))
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.fechaHora || b.fecha).getTime() -
+              new Date(a.fechaHora || a.fecha).getTime()
+          );
+        const offset = (page - 1) * limit;
+        resultado = {
+          resenias: resenias.slice(offset, offset + limit),
+          total: resenias.length,
+          page,
+          limit,
+          totalPages: Math.ceil(resenias.length / limit),
+          promedio:
+            resenias.length > 0
+              ? Number(
+                  (
+                    resenias.reduce((suma, resenia) => suma + Number(resenia.puntuacion), 0) /
+                    resenias.length
+                  ).toFixed(1)
+                )
+              : null,
+        };
+      } else {
+        resultado = await api.getReseniasOrganizador(organizadorId, { page, limit });
+      }
+
+      if (
+        !Array.isArray(resultado.resenias) ||
+        !Number.isInteger(resultado.total) ||
+        !Number.isInteger(resultado.page) ||
+        !Number.isInteger(resultado.totalPages) ||
+        (resultado.promedio !== null && !Number.isFinite(resultado.promedio))
+      ) {
+        throw new Error('El backend devolvió un formato de reseñas inesperado.');
+      }
+      return {
+        ...resultado,
+        resenias: resultado.resenias.map(normalizarResenia),
+      };
+    },
+    [eventos]
+  );
+
   const guardarEventoServidor = (eventoServidor) => {
     if (!eventoServidor?.id) return;
     const evento = normalizarEvento(eventoServidor);
@@ -747,6 +802,7 @@ export const AppProvider = ({ children }) => {
         favoritosError,
         backendConectado: backendStatus === 'connected',
         sincronizarConBackend,
+        obtenerReseniasOrganizador,
         toggleFavorito,
         getDiasRestantes,
         comprarEntrada,

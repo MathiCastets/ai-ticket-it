@@ -337,6 +337,7 @@ async function runTests() {
     assert.ok(data.data.length >= 3, 'Debe haber al menos 3 eventos iniciales');
     const firstEvent = data.data.find((evento) => new Date(evento.fecha).getTime() > Date.now());
     assert.ok(firstEvent, 'Debe haber un evento futuro disponible para probar las compras');
+    assert.deepEqual(firstEvent.resenias, [], 'Los eventos no deben incluir reseñas completas sin paginar');
     assert.equal(typeof firstEvent.categoria, 'object', 'categoria debe ser un objeto (Categoria), no un string');
     assert.equal(typeof firstEvent.organizador, 'object', 'organizador debe ser un objeto (Usuario), no un string');
     console.log(`✓ Eventos OK (${data.data.length} eventos, primero: "${firstEvent.nombre}")`);
@@ -530,14 +531,22 @@ async function runTests() {
     data = await res.json();
     assert.equal(res.status, 200, 'Calificar status should be 200');
     assert.equal(data.data.reseniaRealizada, true, 'reseniaRealizada should be true');
-    // Verificar que reseña tiene objetos normalizados
-    res = await fetch(`${baseUrl}/eventos/${firstEvent.id}`);
+    // Las reseñas se consultan paginadas por organizador, no embebidas en cada evento.
+    res = await fetch(
+      `${baseUrl}/usuarios/${firstEvent.organizador.id}/resenias?page=1&limit=1`
+    );
     data = await res.json();
     const resenia = data.data.resenias?.[0];
     assert.equal(resenia?.puntuacion, 4.5, 'La media estrella debe guardarse correctamente');
-    assert.ok(resenia && typeof resenia.comprador === 'object', 'resenia.comprador debe ser objeto (Usuario)');
+    assert.ok(resenia && typeof resenia.comprador === 'object', 'La reseña debe incluir el nombre del comprador');
     assert.ok(resenia && typeof resenia.eventoId === 'string', 'resenia.eventoId debe ser string (evita referencia circular)');
-    console.log(`✓ Calificación OK. Reseña: comprador.id="${resenia?.comprador?.id}", eventoId="${resenia?.eventoId}"`);
+    assert.equal(data.data.total, 1, 'El total de reseñas del organizador debe ser correcto');
+    assert.equal(data.data.promedio, 4.5, 'El promedio del organizador debe ser correcto');
+    assert.equal(data.data.totalPages, 1, 'La paginación debe informar el total de páginas');
+    res = await fetch(`${baseUrl}/eventos/${firstEvent.id}`);
+    data = await res.json();
+    assert.deepEqual(data.data.resenias, [], 'El detalle de evento no debe transportar reseñas sin paginar');
+    console.log(`✓ Calificación OK. Reseña de "${resenia?.comprador?.nombre}", eventoId="${resenia?.eventoId}"`);
 
     // La ruta alternativa también exige una compra utilizada del mismo evento.
     res = await fetch(`${baseUrl}/eventos/${firstEvent.id}/resenias`, {
@@ -598,6 +607,24 @@ async function runTests() {
     assert.equal(data.data.eventoId, firstEvent.id);
     assert.equal(data.data.puntuacion, 4.5);
     console.log('✓ Ruta de reseñas de evento OK y valida elegibilidad');
+
+    res = await fetch(
+      `${baseUrl}/usuarios/${firstEvent.organizador.id}/resenias?page=1&limit=1`
+    );
+    data = await res.json();
+    assert.equal(data.data.total, 2, 'El total debe agregar reseñas de todos los eventos del organizador');
+    assert.equal(data.data.totalPages, 2, 'Las reseñas deben paginarse');
+    const primeraResenia = data.data.resenias[0];
+    res = await fetch(
+      `${baseUrl}/usuarios/${firstEvent.organizador.id}/resenias?page=2&limit=1`
+    );
+    data = await res.json();
+    assert.equal(data.data.resenias.length, 1, 'La segunda página debe devolver solo su límite');
+    assert.notEqual(data.data.resenias[0].id, primeraResenia.id, 'Las páginas no deben repetir reseñas');
+    res = await fetch(
+      `${baseUrl}/usuarios/${firstEvent.organizador.id}/resenias?page=0&limit=1`
+    );
+    assert.equal(res.status, 400, 'La paginación debe rechazar números de página inválidos');
 
     // 8. Mensajería — usuario como objeto
     res = await fetch(`${baseUrl}/compras/${compra2.id}/mensajes`, {
