@@ -2,6 +2,8 @@ import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { EventoController } from '../../src/controllers/EventoController.js';
 import { ValidationError } from '../../src/controllers/errors/ValidationError.js';
 import { ForbiddenError } from '../../src/services/errors/index.js';
+import { Evento } from '../../src/domain/entities/Evento.js';
+import { Usuario } from '../../src/domain/entities/Usuario.js';
 
 describe('EventoController', () => {
   let mockEventoService;
@@ -57,6 +59,32 @@ describe('EventoController', () => {
         })
       );
     });
+
+    test('la respuesta de getAll no expone el email del organizador (Ley 25.326)', async () => {
+      const organizador = new Usuario({
+        id: 'org-priv',
+        nombre: 'Teatro',
+        rol: 'organizador',
+        email: 'secreto.organizador@teatro.com',
+      });
+      const evento = new Evento({
+        id: 'e-priv',
+        nombre: 'Concierto',
+        fecha: new Date('2026-12-15T20:00:00Z'),
+        organizador,
+      });
+
+      mockEventoService.listarEventos.mockResolvedValue([evento]);
+      const req = { query: {} };
+
+      await controller.getAll(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      const jsonLlamada = res.json.mock.calls[0][0];
+      const resString = JSON.stringify(jsonLlamada);
+      expect(resString).not.toContain('secreto.organizador@teatro.com');
+      expect(jsonLlamada.data[0].organizador?.email).toBeUndefined();
+    });
   });
 
   describe('getById', () => {
@@ -73,6 +101,34 @@ describe('EventoController', () => {
 
       expect(mockEventoService.obtenerPorId).toHaveBeenCalledWith('e1');
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('la respuesta de getById no expone el email del organizador (Ley 25.326)', async () => {
+      const organizador = new Usuario({
+        id: 'org-priv',
+        nombre: 'Teatro Colón',
+        rol: 'organizador',
+        email: 'entradas.privadas@teatrocolon.org.ar',
+      });
+      const evento = new Evento({
+        id: 'e-priv-id',
+        nombre: 'Ópera',
+        fecha: new Date('2026-12-15T20:00:00Z'),
+        organizador,
+      });
+
+      mockEventoService.obtenerPorId.mockResolvedValue(evento);
+      const req = { params: { id: 'e-priv-id' } };
+
+      await controller.getById(req, res, next);
+
+      expect(mockEventoService.obtenerPorId).toHaveBeenCalledWith('e-priv-id');
+      expect(mockEventoService.listarEventos).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      const jsonLlamada = res.json.mock.calls[0][0];
+      const resString = JSON.stringify(jsonLlamada);
+      expect(resString).not.toContain('entradas.privadas@teatrocolon.org.ar');
+      expect(jsonLlamada.data.organizador?.email).toBeUndefined();
     });
   });
 

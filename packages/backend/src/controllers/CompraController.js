@@ -3,6 +3,9 @@ import { mensajeService } from '../services/MensajeService.js';
 import { ValidationError } from './errors/ValidationError.js';
 import { ForbiddenError } from '../services/errors/index.js';
 
+const serializarCompra = (compra) =>
+  typeof compra?.toJSON === 'function' ? compra.toJSON() : compra;
+
 export class CompraController {
   constructor(
     _compraService = compraService,
@@ -55,7 +58,7 @@ export class CompraController {
         }
       }
 
-      res.status(200).json({ data: compras });
+      res.status(200).json({ data: compras.map(serializarCompra) });
     } catch (error) {
       next(error);
     }
@@ -74,7 +77,7 @@ export class CompraController {
           throw new ForbiddenError('No tienes permiso para ver esta compra');
         }
       }
-      res.status(200).json({ data: compra });
+      res.status(200).json({ data: serializarCompra(compra) });
     } catch (error) {
       next(error);
     }
@@ -107,7 +110,7 @@ export class CompraController {
         cantidad,
       });
 
-      res.status(201).json({ data: compra });
+      res.status(201).json({ data: serializarCompra(compra) });
     } catch (error) {
       next(error);
     }
@@ -127,7 +130,7 @@ export class CompraController {
         quien
       );
       res.status(200).json({
-        data: compraCancelada,
+        data: serializarCompra(compraCancelada),
         message: 'Compra cancelada y reembolsada exitosamente',
       });
     } catch (error) {
@@ -149,7 +152,7 @@ export class CompraController {
         quien
       );
       res.status(200).json({
-        data: compraUtilizada,
+        data: serializarCompra(compraUtilizada),
         message: 'Entrada acreditada y marcada como UTILIZADA',
       });
     } catch (error) {
@@ -188,7 +191,7 @@ export class CompraController {
       );
 
       res.status(200).json({
-        data: compraCalificada,
+        data: serializarCompra(compraCalificada),
         message: 'Reseña registrada con éxito',
       });
     } catch (error) {
@@ -217,7 +220,7 @@ export class CompraController {
 
       const mensaje = await this.mensajeService.enviarMensaje(id, { usuarioId: finalUsuarioId, texto });
 
-      res.status(201).json({ data: mensaje });
+      res.status(201).json({ data: typeof mensaje?.toJSON === 'function' ? mensaje.toJSON() : mensaje });
     } catch (error) {
       next(error);
     }

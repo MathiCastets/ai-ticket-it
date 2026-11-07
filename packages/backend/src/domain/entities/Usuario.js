@@ -45,4 +45,18 @@ export class Usuario {
   tieneFavorito(eventoId) {
     return this.favoritos.includes(eventoId);
   }
+
+  toJSON() {
+    return {
+      id: this.id,
+      nombre: this.nombre,
+      apellido: this.apellido,
+      rol: this.rol,
+      avatar: this.avatar,
+      favoritos: [...this.favoritos],
+      rating: this.rating,
+      totalResenias: this.totalResenias,
+      nombreCompleto: this.nombreCompleto,
+    };
+  }
 }

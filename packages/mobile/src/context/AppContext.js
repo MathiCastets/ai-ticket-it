@@ -151,6 +151,7 @@ export const AppProvider = ({ children }) => {
   const [compras, setCompras] = useState(
     USE_MOCK_DATA ? COMPRAS_INICIALES.map(normalizarCompra) : []
   );
+  const [comprasCargandoUsuarioId, setComprasCargandoUsuarioId] = useState(null);
   const initialUser = initialMockUser;
   const [favoritos, setFavoritos] = useState(initialUser?.favoritos || []);
   const [favoritosError, setFavoritosError] = useState('');
@@ -380,13 +381,21 @@ export const AppProvider = ({ children }) => {
       setCurrentUserId(usuarioId);
       api.setAuthUserId(usuarioId);
       if (backendStatus === 'connected') {
+        setComprasCargandoUsuarioId(usuarioId);
         try {
           const comprasActualizadas = await api.getCompras();
-          if (Array.isArray(comprasActualizadas)) {
+          if (
+            currentUserIdRef.current === usuarioId &&
+            Array.isArray(comprasActualizadas)
+          ) {
             setCompras(comprasActualizadas.map(normalizarCompra));
           }
         } catch (error) {
           console.error('[AI Ticket It Mobile] No se pudieron sincronizar las compras del usuario seleccionado.', error);
+        } finally {
+          setComprasCargandoUsuarioId((cargandoUsuarioId) =>
+            cargandoUsuarioId === usuarioId ? null : cargandoUsuarioId
+          );
         }
       }
     }
@@ -887,6 +896,7 @@ export const AppProvider = ({ children }) => {
         currentUserId,
         eventos,
         compras,
+        comprasCargando: comprasCargandoUsuarioId === currentUserId,
         favoritos,
         favoritosError,
         backendConectado: backendStatus === 'connected',

@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Alert,
   Modal,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,9 +17,11 @@ import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
 import AccessDeniedView from '../components/AccessDeniedView';
+import { useNotification } from '../components/NotificationProvider';
 
 export default function CrearEventoScreen({ navigation, route }) {
   const { crearEvento, categorias, currentUser } = useApp();
+  const { notify } = useNotification();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPickingImages, setIsPickingImages] = useState(false);
   const [imagenes, setImagenes] = useState([]);
@@ -110,7 +111,11 @@ export default function CrearEventoScreen({ navigation, route }) {
 
   const handleRemoveTipo = (id) => {
     if (tiposEntrada.length <= 1) {
-      Alert.alert('Atención', 'El evento debe contar al menos con un tipo de entrada.');
+      notify({
+        title: 'No se puede quitar la entrada',
+        message: 'El evento debe contar al menos con un tipo de entrada.',
+        type: 'warning',
+      });
       return;
     }
     setTiposEntrada((prev) => prev.filter((t) => t.id !== id));
@@ -161,10 +166,11 @@ export default function CrearEventoScreen({ navigation, route }) {
         }
 
         if (rejectedAssets.length) {
-          Alert.alert(
-            'La foto no se pudo agregar',
-            'Se aceptan imágenes JPEG, PNG o WebP de hasta 5 MB.'
-          );
+          notify({
+            title: 'La foto no se pudo agregar',
+            message: 'Se aceptan imágenes JPEG, PNG o WebP de hasta 5 MB.',
+            type: 'warning',
+          });
         }
         if (validAssets.length) {
           setImagenes([validAssets[0]]);
@@ -172,7 +178,11 @@ export default function CrearEventoScreen({ navigation, route }) {
         }
       }
     } catch (error) {
-      Alert.alert('No se pudieron seleccionar las fotos', error.message);
+      notify({
+        title: 'No se pudieron seleccionar las fotos',
+        message: error.message,
+        type: 'error',
+      });
     } finally {
       setIsPickingImages(false);
     }

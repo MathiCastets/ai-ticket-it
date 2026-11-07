@@ -218,10 +218,7 @@ export default function DateTimeSelector({
                 return (
                   <TouchableOpacity
                     key={`day-${indice}`}
-                    style={[
-                      styles.calendarDay,
-                      seleccionado && styles.calendarDaySelected,
-                    ]}
+                    style={styles.calendarDay}
                     disabled={dia === null || pasado}
                     onPress={() => {
                       setFechaBorrador(fechaDia);
@@ -238,15 +235,22 @@ export default function DateTimeSelector({
                     accessibilityState={{ selected: seleccionado, disabled: !!pasado }}
                   >
                     {dia !== null ? (
-                      <Text
+                      <View
                         style={[
-                          styles.calendarDayText,
-                          pasado && styles.calendarDayPastText,
-                          seleccionado && styles.calendarDayTextSelected,
+                          styles.dayCircle,
+                          seleccionado && styles.dayCircleSelected,
                         ]}
                       >
-                        {dia}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.calendarDayText,
+                            pasado && styles.calendarDayPastText,
+                            seleccionado && styles.calendarDayTextSelected,
+                          ]}
+                        >
+                          {dia}
+                        </Text>
+                      </View>
                     ) : null}
                   </TouchableOpacity>
                 );
@@ -386,15 +390,36 @@ const styles = StyleSheet.create({
   },
   calendarDay: {
     width: '14.2857%',
-    aspectRatio: 1,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
   },
-  calendarDaySelected: { backgroundColor: COLORS.accentElectric },
-  calendarDayText: { color: COLORS.textSecondary, fontSize: 12 },
-  calendarDayPastText: { color: COLORS.textMuted, opacity: 0.4 },
-  calendarDayTextSelected: { color: COLORS.textPrimary, fontWeight: '800' },
+  dayCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCircleSelected: {
+    backgroundColor: COLORS.accentElectric,
+  },
+  calendarDayText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
+  calendarDayPastText: {
+    color: COLORS.textMuted,
+    opacity: 0.4,
+  },
+  calendarDayTextSelected: {
+    color: COLORS.textPrimary,
+    fontWeight: '800',
+  },
   timeLabel: {
     color: COLORS.textSecondary,
     fontSize: 12,

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationBar } from 'expo-navigation-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from './src/context/AppContext';
+import NotificationProvider from './src/components/NotificationProvider';
 import AppNavigator from './src/navigation/AppNavigator';
 import { COLORS } from './src/theme/colors';
 
@@ -15,7 +16,9 @@ export default function App() {
           <AppProvider>
             <StatusBar style="light" backgroundColor="#0F081D" translucent />
             {Platform.OS === 'android' && <NavigationBar style="light" hidden={true} />}
-            <AppNavigator />
+            <NotificationProvider>
+              <AppNavigator />
+            </NotificationProvider>
           </AppProvider>
         </View>
       </View>

@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { Compra } from '../../src/domain/entities/Compra.js';
+import { Compra, TRANSICIONES_PERMITIDAS } from '../../src/domain/entities/Compra.js';
 import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
@@ -105,16 +105,86 @@ describe('Compra', () => {
     });
   });
 
-  describe('actualizarEstado', () => {
-    test('cambia el estado y agrega al historial', () => {
-      const compra = crearCompra({ estado: EstadoCompra.CONFIRMADA });
-      compra.actualizarEstado(EstadoCompra.UTILIZADA, 'Staff');
-      expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
-      expect(compra.historialCambios).toHaveLength(1);
-      expect(compra.historialCambios[0].estado).toBe(EstadoCompra.UTILIZADA);
+  describe('actualizarEstado y máquina de estados', () => {
+    test('expone el mapa constante de transiciones permitidas', () => {
+      expect(TRANSICIONES_PERMITIDAS).toBeDefined();
+      expect(TRANSICIONES_PERMITIDAS[EstadoCompra.PENDIENTE]).toEqual([
+        EstadoCompra.CONFIRMADA,
+        EstadoCompra.CANCELADA,
+      ]);
+      expect(TRANSICIONES_PERMITIDAS[EstadoCompra.CONFIRMADA]).toEqual([
+        EstadoCompra.UTILIZADA,
+        EstadoCompra.REEMBOLSADA,
+        EstadoCompra.CANCELADA,
+      ]);
+      expect(TRANSICIONES_PERMITIDAS[EstadoCompra.UTILIZADA]).toEqual([]);
+      expect(TRANSICIONES_PERMITIDAS[EstadoCompra.CANCELADA]).toEqual([]);
+      expect(TRANSICIONES_PERMITIDAS[EstadoCompra.REEMBOLSADA]).toEqual([]);
     });
 
-    test('no agrega al historial si el estado es el mismo', () => {
+    test('permite transición de PENDIENTE a CONFIRMADA', () => {
+      const compra = crearCompra({ estado: EstadoCompra.PENDIENTE });
+      compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Pasarela de pago');
+      expect(compra.estado).toBe(EstadoCompra.CONFIRMADA);
+      expect(compra.historialCambios).toHaveLength(1);
+    });
+
+    test('permite transición de PENDIENTE a CANCELADA', () => {
+      const compra = crearCompra({ estado: EstadoCompra.PENDIENTE });
+      compra.actualizarEstado(EstadoCompra.CANCELADA, 'Comprador');
+      expect(compra.estado).toBe(EstadoCompra.CANCELADA);
+      expect(compra.historialCambios).toHaveLength(1);
+    });
+
+    test('rechaza transición de PENDIENTE a UTILIZADA', () => {
+      const compra = crearCompra({ estado: EstadoCompra.PENDIENTE });
+      expect(() => compra.actualizarEstado(EstadoCompra.UTILIZADA, 'Puerta')).toThrow(
+        EstadoCompraInvalidoError
+      );
+    });
+
+    test('rechaza transición de PENDIENTE a REEMBOLSADA', () => {
+      const compra = crearCompra({ estado: EstadoCompra.PENDIENTE });
+      expect(() => compra.actualizarEstado(EstadoCompra.REEMBOLSADA, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
+    });
+
+    test('permite transiciones desde CONFIRMADA a UTILIZADA, REEMBOLSADA y CANCELADA', () => {
+      const c1 = crearCompra({ estado: EstadoCompra.CONFIRMADA });
+      c1.actualizarEstado(EstadoCompra.UTILIZADA, 'Staff');
+      expect(c1.estado).toBe(EstadoCompra.UTILIZADA);
+
+      const c2 = crearCompra({ estado: EstadoCompra.CONFIRMADA });
+      c2.actualizarEstado(EstadoCompra.REEMBOLSADA, 'Admin');
+      expect(c2.estado).toBe(EstadoCompra.REEMBOLSADA);
+
+      const c3 = crearCompra({ estado: EstadoCompra.CONFIRMADA });
+      c3.actualizarEstado(EstadoCompra.CANCELADA, 'Organizador');
+      expect(c3.estado).toBe(EstadoCompra.CANCELADA);
+    });
+
+    test('rechaza transición desde CONFIRMADA a PENDIENTE', () => {
+      const compra = crearCompra({ estado: EstadoCompra.CONFIRMADA });
+      expect(() => compra.actualizarEstado(EstadoCompra.PENDIENTE, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
+    });
+
+    test('rechaza cualquier transición desde el estado terminal UTILIZADA', () => {
+      const compra = crearCompra({ estado: EstadoCompra.UTILIZADA });
+      expect(() => compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Staff')).toThrow(
+        EstadoCompraInvalidoError
+      );
+      expect(() => compra.actualizarEstado(EstadoCompra.CANCELADA, 'Staff')).toThrow(
+        EstadoCompraInvalidoError
+      );
+      expect(() => compra.actualizarEstado(EstadoCompra.REEMBOLSADA, 'Staff')).toThrow(
+        EstadoCompraInvalidoError
+      );
+    });
+
+    test('no agrega al historial si el estado es el mismo (idempotencia)', () => {
       const compra = crearCompra({ estado: EstadoCompra.CONFIRMADA });
       compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Sistema');
       expect(compra.historialCambios).toHaveLength(0);
@@ -122,17 +192,29 @@ describe('Compra', () => {
 
     test('lanza error si el estado nuevo no es válido', () => {
       const compra = crearCompra();
-      expect(() => compra.actualizarEstado('INVENTADO', 'Sistema')).toThrow(EstadoCompraInvalidoError);
+      expect(() => compra.actualizarEstado('INVENTADO', 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
     });
 
-    test('lanza error al intentar cambiar desde estado CANCELADA', () => {
+    test('lanza error al intentar cambiar desde estado terminal CANCELADA', () => {
       const compra = crearCompra({ estado: EstadoCompra.CANCELADA });
-      expect(() => compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Sistema')).toThrow(EstadoCompraInvalidoError);
+      expect(() => compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
+      expect(() => compra.actualizarEstado(EstadoCompra.REEMBOLSADA, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
     });
 
-    test('lanza error al intentar cambiar desde estado REEMBOLSADA', () => {
+    test('lanza error al intentar cambiar desde estado terminal REEMBOLSADA', () => {
       const compra = crearCompra({ estado: EstadoCompra.REEMBOLSADA });
-      expect(() => compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Sistema')).toThrow(EstadoCompraInvalidoError);
+      expect(() => compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
+      expect(() => compra.actualizarEstado(EstadoCompra.CANCELADA, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
     });
   });
 
@@ -259,6 +341,44 @@ describe('Compra', () => {
       const json = compra.toJSON();
       expect(json.eventoFecha).toBeDefined();
       expect(json.eventoFechaTexto).toBeUndefined();
+    });
+
+    test('no expone el email del comprador ni del organizador en toJSON', () => {
+      const comprador = new Usuario({
+        id: 'u-priv',
+        nombre: 'Comprador',
+        email: 'comprador.secreto@example.com',
+      });
+      const organizador = new Usuario({
+        id: 'org-priv',
+        nombre: 'Organizador',
+        rol: 'organizador',
+        email: 'organizador.secreto@example.com',
+      });
+      const evento = new Evento({
+        id: 'evt-priv',
+        nombre: 'Evento Privacidad',
+        fecha: new Date(Date.now() + 86400000),
+        organizador,
+        tiposEntrada: [new TipoEntrada({ id: 't1', nombre: 'General', precio: 100, cupo: 10 })],
+      });
+      const compra = new Compra({
+        id: 'c-priv',
+        comprador,
+        evento,
+        tipoEntrada: evento.tiposEntrada[0],
+      });
+
+      const json = compra.toJSON();
+      expect(json.comprador.email).toBeUndefined();
+      expect('email' in json.comprador).toBe(false);
+      expect(json.evento.organizador.email).toBeUndefined();
+      expect('email' in json.evento.organizador).toBe(false);
+
+      const str = JSON.stringify(compra);
+      expect(str).not.toContain('comprador.secreto@example.com');
+      expect(str).not.toContain('organizador.secreto@example.com');
+      expect(str).not.toContain('"email"');
     });
   });
 });

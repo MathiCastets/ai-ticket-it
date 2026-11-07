@@ -116,6 +116,28 @@ describe('CompraService', () => {
       ).rejects.toThrow(ResourceNotFoundError);
     });
 
+    test('lanza BusinessRuleError si se intenta comprar para un evento que ya ocurrió', async () => {
+      const eventoPasado = new Evento({
+        id: 'evt-pasado',
+        nombre: 'Evento Pasado',
+        fecha: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        organizador,
+        tiposEntrada: [new TipoEntrada({ id: 'te-pasado', nombre: 'General', precio: 5000, cupo: 20 })],
+      });
+      await eventoRepo.save(eventoPasado);
+
+      await expect(
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-pasado',
+          tipoEntradaId: 'te-pasado',
+          cantidad: 1,
+        })
+      ).rejects.toThrow(BusinessRuleError);
+
+      expect(eventoPasado.tiposEntrada[0].disponibles).toBe(20);
+    });
+
     test('lanza error si no hay cupo suficiente', async () => {
       crearContexto({ disponibles: 1 });
       compraRepo = new CompraRepository([]);

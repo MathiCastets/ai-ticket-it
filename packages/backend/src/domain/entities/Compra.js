@@ -7,6 +7,21 @@ import {
 
 const MARGEN_CIERRE_CONVERSACION_MS = 48 * 60 * 60 * 1000;
 
+export const TRANSICIONES_PERMITIDAS = Object.freeze({
+  [EstadoCompra.PENDIENTE]: Object.freeze([
+    EstadoCompra.CONFIRMADA,
+    EstadoCompra.CANCELADA,
+  ]),
+  [EstadoCompra.CONFIRMADA]: Object.freeze([
+    EstadoCompra.UTILIZADA,
+    EstadoCompra.REEMBOLSADA,
+    EstadoCompra.CANCELADA,
+  ]),
+  [EstadoCompra.UTILIZADA]: Object.freeze([]),
+  [EstadoCompra.CANCELADA]: Object.freeze([]),
+  [EstadoCompra.REEMBOLSADA]: Object.freeze([]),
+});
+
 export class Compra {
   constructor({
     id,
@@ -53,18 +68,19 @@ export class Compra {
     this.reseniaRealizada = Boolean(reseniaRealizada);
   }
 
-  // Método explícito del diagrama de clases
+  // Método explícito del diagrama de clases con máquina de estados
   actualizarEstado(nuevoEstado, quien, motivo = '') {
     if (!EstadosValidos.includes(nuevoEstado)) {
       throw new EstadoCompraInvalidoError(this.estado, nuevoEstado);
     }
     if (this.estado === nuevoEstado) return;
 
-    if (this.estado === EstadoCompra.CANCELADA || this.estado === EstadoCompra.REEMBOLSADA) {
+    const permitidos = TRANSICIONES_PERMITIDAS[this.estado] || [];
+    if (!permitidos.includes(nuevoEstado)) {
       throw new EstadoCompraInvalidoError(
         this.estado,
         nuevoEstado,
-        'Una compra cancelada o reembolsada no puede cambiar de estado'
+        `Transición no permitida desde '${this.estado}' hacia '${nuevoEstado}'`
       );
     }
 
@@ -137,17 +153,32 @@ export class Compra {
   }
 
   toJSON() {
+    let compradorJson = this.comprador;
+    if (typeof this.comprador?.toJSON === 'function') {
+      compradorJson = this.comprador.toJSON();
+    } else if (typeof this.comprador === 'object' && this.comprador !== null) {
+      const { email: _email, ...resto } = this.comprador;
+      compradorJson = resto;
+    }
+
+    const eventoJson = typeof this.evento?.toJSON === 'function' ? this.evento.toJSON() : this.evento;
+    const tipoEntradaJson =
+      typeof this.tipoEntrada?.toJSON === 'function' ? this.tipoEntrada.toJSON() : this.tipoEntrada;
+    const mensajesJson = this.mensajes.map((m) =>
+      typeof m?.toJSON === 'function' ? m.toJSON() : m
+    );
+
     return {
       id: this.id,
       ordenCodigo: this.ordenCodigo,
-      comprador: this.comprador,
-      evento: this.evento,
-      tipoEntrada: this.tipoEntrada,
+      comprador: compradorJson,
+      evento: eventoJson,
+      tipoEntrada: tipoEntradaJson,
       cantidad: this.cantidad,
       total: this.total,
       estado: this.estado,
       fechaHora: this.fechaHora,
-      mensajes: this.mensajes,
+      mensajes: mensajesJson,
       historialCambios: this.historialCambios,
       reseniaRealizada: this.reseniaRealizada,
       // Helpers calculados para serialización REST / compatibilidad de vistas

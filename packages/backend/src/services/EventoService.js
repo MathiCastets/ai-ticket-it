@@ -167,6 +167,12 @@ export class EventoService {
     if (!fecha || Number.isNaN(fechaEvento.getTime())) {
       throw new BusinessRuleError('La fecha del evento no es válida');
     }
+    if (fechaEvento.getTime() <= Date.now()) {
+      throw new BusinessRuleError(
+        'La fecha y hora del evento deben ser posteriores al momento actual.',
+        'FECHA_PASADA'
+      );
+    }
     if (!Array.isArray(tiposEntrada) || tiposEntrada.length === 0) {
       throw new BusinessRuleError('El evento debe ofrecer al menos un tipo de entrada con su precio y cupo');
     }

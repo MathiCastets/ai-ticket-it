@@ -55,6 +55,57 @@ describe('App HTTP Integration Tests', () => {
       }
     });
 
+    test('GET /eventos y GET /eventos/:id no exponen emails de organizadores (Ley 25.326)', async () => {
+      const resList = await fetch(`${baseUrl}/eventos`);
+      const rawTextList = await resList.text();
+      expect(resList.status).toBe(200);
+      expect(rawTextList).not.toContain('@example.com');
+      expect(rawTextList).not.toContain('@festivalba.com');
+      expect(rawTextList).not.toContain('@teatrocolon.org.ar');
+
+      const dataList = JSON.parse(rawTextList);
+      expect(dataList.data.length).toBeGreaterThan(0);
+      for (const ev of dataList.data) {
+        expect(ev.organizador?.email).toBeUndefined();
+      }
+
+      const primerEventoId = dataList.data[0].id;
+      const resDetalle = await fetch(`${baseUrl}/eventos/${primerEventoId}`);
+      const rawTextDetalle = await resDetalle.text();
+      expect(resDetalle.status).toBe(200);
+      expect(rawTextDetalle).not.toContain('@example.com');
+      expect(rawTextDetalle).not.toContain('@teatrocolon.org.ar');
+      const dataDetalle = JSON.parse(rawTextDetalle);
+      expect(dataDetalle.data.organizador?.email).toBeUndefined();
+    });
+
+    test('GET /compras y GET /compras/:id no exponen emails de compradores ni organizadores (Ley 25.326)', async () => {
+      const resCompras = await fetch(`${baseUrl}/compras`, {
+        headers: { 'X-User-Id': 'user_comprador_1' },
+      });
+      const rawTextCompras = await resCompras.text();
+      expect(resCompras.status).toBe(200);
+      expect(rawTextCompras).not.toContain('@example.com');
+      expect(rawTextCompras).not.toContain('lucia.gomez@');
+      expect(rawTextCompras).not.toContain('carlos.rodriguez@');
+
+      const dataCompras = JSON.parse(rawTextCompras);
+      expect(dataCompras.data.length).toBeGreaterThan(0);
+      const primeraCompra = dataCompras.data[0];
+      expect(primeraCompra.comprador?.email).toBeUndefined();
+
+      const resDetalle = await fetch(`${baseUrl}/compras/${primeraCompra.id}`, {
+        headers: { 'X-User-Id': 'user_comprador_1' },
+      });
+      const rawTextDetalle = await resDetalle.text();
+      expect(resDetalle.status).toBe(200);
+      expect(rawTextDetalle).not.toContain('@example.com');
+      expect(rawTextDetalle).not.toContain('lucia.gomez@');
+      const dataDetalle = JSON.parse(rawTextDetalle);
+      expect(dataDetalle.data.comprador?.email).toBeUndefined();
+      expect(dataDetalle.data.evento?.organizador?.email).toBeUndefined();
+    });
+
     test('Gestión de favoritos en /usuarios/:id/favoritos', async () => {
       const resInicial = await fetch(`${baseUrl}/usuarios/user_comprador_1/favoritos`);
       const dataInicial = await resInicial.json();
@@ -379,6 +430,49 @@ describe('App HTTP Integration Tests', () => {
         },
       });
       expect(res.status).toBe(403);
+    });
+  });
+
+  describe('Reglas de Negocio Estrictas (Fase 5)', () => {
+    test('Rechaza con 400 si se intenta comprar entrada de un evento que ya ocurrió', async () => {
+      const res = await fetch(`${baseUrl}/compras`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
+        body: JSON.stringify({
+          compradorId: 'user_comprador_1',
+          eventoId: 'evt-sonora-aniversario', // Evento en el pasado según seedData
+          tipoEntradaId: 't-sonora-gen',
+          cantidad: 1,
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error.code).toBe('EVENTO_PASADO');
+    });
+
+    test('Rechaza con 400 si un organizador intenta crear un evento con fecha en el pasado', async () => {
+      const res = await fetch(`${baseUrl}/eventos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_org_sonora',
+        },
+        body: JSON.stringify({
+          nombre: 'Festival en el pasado',
+          fecha: new Date(Date.now() - 3600000).toISOString(),
+          categoriaId: 'cat-recitales',
+          organizadorId: 'user_org_sonora',
+          tiposEntrada: [{ nombre: 'General', precio: 5000, cupo: 100 }],
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error.message).toContain('posteriores al momento actual');
     });
   });
 });

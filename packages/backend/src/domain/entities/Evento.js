@@ -73,6 +73,14 @@ export class Evento {
   }
 
   toJSON() {
+    let organizadorJson = this.organizador;
+    if (typeof this.organizador?.toJSON === 'function') {
+      organizadorJson = this.organizador.toJSON();
+    } else if (typeof this.organizador === 'object' && this.organizador !== null) {
+      const { email: _email, ...resto } = this.organizador;
+      organizadorJson = resto;
+    }
+
     return {
       id: this.id,
       nombre: this.nombre,
@@ -86,13 +94,16 @@ export class Evento {
       multimedia: this.multimedia,
       imagen: this.imagen,
       destacado: this.destacado,
-      organizador: this.organizador,
-      organizadorNombre: typeof this.organizador === 'object' && this.organizador !== null ? this.organizador.nombre : (this.organizador || ''),
+      organizador: organizadorJson,
+      organizadorNombre:
+        typeof this.organizador === 'object' && this.organizador !== null
+          ? this.organizador.nombreCompleto || this.organizador.nombre
+          : this.organizador || '',
       organizadorId: typeof this.organizador === 'object' && this.organizador !== null ? this.organizador.id : '',
       organizadorRating: this.organizadorRating,
       totalResenias: this.totalResenias,
-      tiposEntrada: this.tiposEntrada,
-      resenias: this.resenias,
+      tiposEntrada: this.tiposEntrada.map((t) => (typeof t?.toJSON === 'function' ? t.toJSON() : t)),
+      resenias: this.resenias.map((r) => (typeof r?.toJSON === 'function' ? r.toJSON() : r)),
     };
   }
 }

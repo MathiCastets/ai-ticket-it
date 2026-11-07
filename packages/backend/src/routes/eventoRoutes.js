@@ -9,6 +9,5 @@ router.get('/', eventoController.getAll);
 router.get('/:id', eventoController.getById);
 router.post('/', authHandler, receiveEventImages, eventoController.create);
 router.put('/:id', authHandler, receiveEventImages, eventoController.update);
-router.post('/:id/resenias', authHandler, eventoController.addReview);
 
 export default router;

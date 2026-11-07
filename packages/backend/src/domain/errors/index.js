@@ -14,9 +14,9 @@ export class CupoInsuficienteError extends DomainError {
 }
 
 export class EstadoCompraInvalidoError extends DomainError {
-  constructor(estadoActual, nuevoEstado) {
+  constructor(estadoActual, nuevoEstado, detalle = null) {
     super(
-      `Transición de estado no permitida desde '${estadoActual}' hacia '${nuevoEstado}'`,
+      detalle || `Transición de estado no permitida desde '${estadoActual}' hacia '${nuevoEstado}'`,
       'TRANSICION_ESTADO_INVALIDA'
     );
     this.estadoActual = estadoActual;

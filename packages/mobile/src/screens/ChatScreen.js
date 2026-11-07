@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Platform,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +19,7 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
+import { useNotification } from '../components/NotificationProvider';
 
 const obtenerFechaMensaje = (mensaje) => {
   if (!mensaje.enviado) return null;
@@ -44,6 +44,7 @@ const CHAT_INPUT_MAX_HEIGHT = CHAT_INPUT_LINE_HEIGHT * 4 + CHAT_INPUT_VERTICAL_P
 export default function ChatScreen({ route, navigation }) {
   const { compraId } = route.params;
   const { compras, enviarMensaje, marcarMensajesLeidos, currentUser } = useApp();
+  const { notify } = useNotification();
   const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom > 0 ? insets.bottom : 10;
@@ -83,9 +84,13 @@ export default function ChatScreen({ route, navigation }) {
     if (!compra) return;
 
     marcarMensajesLeidos(compraId).catch((error) => {
-      Alert.alert('No se pudieron marcar los mensajes como leídos', error.message);
+      notify({
+        title: 'No se pudieron marcar los mensajes como leídos',
+        message: error.message,
+        type: 'error',
+      });
     });
-  }, [Boolean(compra), compraId, currentUser.id, marcarMensajesLeidos]);
+  }, [Boolean(compra), compraId, currentUser.id, marcarMensajesLeidos, notify]);
 
   useEffect(() => {
     if (isLoading) return undefined;
@@ -123,7 +128,7 @@ export default function ChatScreen({ route, navigation }) {
       setChatInputHeight(CHAT_INPUT_MIN_HEIGHT);
       desplazarAlUltimoMensaje();
     } catch (error) {
-      Alert.alert('No se pudo enviar el mensaje', error.message);
+      notify({ title: 'No se pudo enviar el mensaje', message: error.message, type: 'error' });
     } finally {
       setIsSending(false);
     }

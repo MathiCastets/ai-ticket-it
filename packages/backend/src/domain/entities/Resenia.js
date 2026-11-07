@@ -26,4 +26,28 @@ export class Resenia {
     this.puntuacion = puntuacion;
     this.fechaHora  = fechaHora ? new Date(fechaHora) : new Date();
   }
+
+  toJSON() {
+    let compradorJson = this.comprador;
+    if (typeof this.comprador?.toJSON === 'function') {
+      compradorJson = this.comprador.toJSON();
+    } else if (typeof this.comprador === 'object' && this.comprador !== null) {
+      const { email: _email, ...resto } = this.comprador;
+      compradorJson = resto;
+    }
+
+    return {
+      id: this.id,
+      comprador: compradorJson,
+      compradorId: typeof this.comprador === 'object' && this.comprador !== null ? this.comprador.id : this.comprador,
+      compradorNombre:
+        typeof this.comprador === 'object' && this.comprador !== null
+          ? this.comprador.nombreCompleto || this.comprador.nombre
+          : '',
+      eventoId: this.eventoId,
+      detalle: this.detalle,
+      puntuacion: this.puntuacion,
+      fechaHora: this.fechaHora,
+    };
+  }
 }

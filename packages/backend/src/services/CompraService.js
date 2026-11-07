@@ -102,6 +102,13 @@ export class CompraService {
         throw error;
       }
 
+      if (evento.fecha.getTime() < Date.now()) {
+        throw new BusinessRuleError(
+          'No se pueden adquirir entradas para un evento que ya ha transcurrido',
+          'EVENTO_PASADO'
+        );
+      }
+
       const tipoEntrada = evento.obtenerTipoEntrada(tipoEntradaId);
       if (!tipoEntrada) {
         throw new ResourceNotFoundError('TipoEntrada', tipoEntradaId);
