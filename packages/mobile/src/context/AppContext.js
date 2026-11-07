@@ -59,7 +59,7 @@ export const formatearFechaEvento = (fecha) => {
     minute: '2-digit',
     hour12: false,
   });
-  return `${diaMesAnio} â€¢ ${horaMin} hs`;
+  return `${diaMesAnio} • ${horaMin} hs`;
 };
 
 const normalizarEvento = (evento) => {
@@ -184,7 +184,7 @@ export const AppProvider = ({ children }) => {
       const backendRespondio = Boolean(error.status) || error.name === 'AbortError';
       if (backendRespondio) {
         actualizarEstadoBackend('error', error);
-        console.error('[AI Ticket It Mobile] FallÃ³ el health check del backend.', error);
+        console.error('[AI Ticket It Mobile] Falló el health check del backend.', error);
         return false;
       }
 
@@ -197,7 +197,7 @@ export const AppProvider = ({ children }) => {
     }
 
     if (health?.status !== 'ok') {
-      const error = new Error('El backend respondiÃ³ con un estado de salud invÃ¡lido.');
+      const error = new Error('El backend respondió con un estado de salud inválido.');
       actualizarEstadoBackend('error', error);
       console.error('[AI Ticket It Mobile]', error.message);
       return false;
@@ -280,14 +280,14 @@ export const AppProvider = ({ children }) => {
     if (backendStatusRef.current === 'error') {
       throw new Error(
         backendErrorRef.current?.message ||
-          'El backend respondiÃ³, pero no se pudo completar la sincronizaciÃ³n.'
+          'El backend respondió, pero no se pudo completar la sincronización.'
       );
     }
     if (backendStatusRef.current === 'offline') {
-      throw new Error('No hay conexiÃ³n con el backend. IniciÃ¡ el servidor e intentÃ¡ nuevamente.');
+      throw new Error('No hay conexión con el backend. Iniciá el servidor e intentá nuevamente.');
     }
     if (backendStatusRef.current !== 'connected') {
-      throw new Error('No hay datos del backend disponibles para completar la operaciÃ³n.');
+      throw new Error('No hay datos del backend disponibles para completar la operación.');
     }
     return true;
   };
@@ -337,7 +337,7 @@ export const AppProvider = ({ children }) => {
         !Number.isInteger(resultado.totalPages) ||
         (resultado.promedio !== null && !Number.isFinite(resultado.promedio))
       ) {
-        throw new Error('El backend devolviÃ³ un formato de reseÃ±as inesperado.');
+        throw new Error('El backend devolvió un formato de reseñas inesperado.');
       }
       return {
         ...resultado,
@@ -359,7 +359,7 @@ export const AppProvider = ({ children }) => {
 
   const guardarCompraServidor = (compraServidor) => {
     if (!compraServidor?.id) {
-      throw new Error('El backend no devolviÃ³ la compra actualizada.');
+      throw new Error('El backend no devolvió la compra actualizada.');
     }
     const compra = normalizarCompra(compraServidor);
     setCompras((prev) =>
@@ -422,7 +422,7 @@ export const AppProvider = ({ children }) => {
     request
       .then((ids) => {
         if (!Array.isArray(ids)) {
-          throw new Error('El backend devolviÃ³ un formato de favoritos inesperado.');
+          throw new Error('El backend devolvió un formato de favoritos inesperado.');
         }
         favoritosPorUsuarioRef.current.set(currentUser.id, ids);
         if (active) {
@@ -468,7 +468,7 @@ export const AppProvider = ({ children }) => {
       }
 
       if (!Array.isArray(updated)) {
-        throw new Error('El backend devolviÃ³ un formato de favoritos inesperado.');
+        throw new Error('El backend devolvió un formato de favoritos inesperado.');
       }
       favoritosPorUsuarioRef.current.set(usuarioId, updated);
       if (currentUserId === usuarioId) {
@@ -500,7 +500,7 @@ export const AppProvider = ({ children }) => {
 
   const comprarEntrada = async ({ eventoId, tipoEntradaId, cantidad }) => {
     if (currentUser.rol !== 'comprador') {
-      return { success: false, error: 'SeleccionÃ¡ un perfil comprador para realizar una compra.' };
+      return { success: false, error: 'Seleccioná un perfil comprador para realizar una compra.' };
     }
     if (await backendDisponible()) {
       const compraServidor = await api.crearCompra({
@@ -518,7 +518,7 @@ export const AppProvider = ({ children }) => {
     const tipo = evento.tiposEntrada.find((item) => item.id === tipoEntradaId);
     if (!tipo) return { success: false, error: 'Tipo de entrada no encontrado' };
     if (!Number.isSafeInteger(cantidad) || cantidad <= 0) {
-      return { success: false, error: 'La cantidad debe ser un nÃºmero entero positivo.' };
+      return { success: false, error: 'La cantidad debe ser un número entero positivo.' };
     }
     if (tipo.disponibles < cantidad) {
       return { success: false, error: 'No hay cupo suficiente disponible' };
@@ -576,7 +576,7 @@ export const AppProvider = ({ children }) => {
       const compraServidor = await api.cancelarCompra(compraId, 'Comprador');
       return {
         success: true,
-        mensaje: 'Compra cancelada y reembolsada con Ã©xito',
+        mensaje: 'Compra cancelada y reembolsada con éxito',
         compra: guardarCompraServidor(compraServidor),
       };
     }
@@ -609,7 +609,7 @@ export const AppProvider = ({ children }) => {
         item.id === compraId ? { ...item, estado: 'REEMBOLSADA' } : item
       )
     );
-    return { success: true, mensaje: 'Compra cancelada y reembolsada con Ã©xito' };
+    return { success: true, mensaje: 'Compra cancelada y reembolsada con éxito' };
   };
 
   const enviarMensaje = async (compraId, texto) => {
@@ -619,15 +619,15 @@ export const AppProvider = ({ children }) => {
       (compraActual.compradorId !== currentUser.id &&
         compraActual.organizadorId !== currentUser.id)
     ) {
-      throw new Error('Esta conversaciÃ³n no pertenece al usuario seleccionado.');
+      throw new Error('Esta conversación no pertenece al usuario seleccionado.');
     }
 
     const textoLimpio = texto.trim();
     if (!textoLimpio) {
-      throw new Error('El mensaje no puede estar vacÃ­o.');
+      throw new Error('El mensaje no puede estar vacío.');
     }
     if (isConversationClosed(compraActual)) {
-      throw new Error('Esta conversaciÃ³n se encuentra cerrada.');
+      throw new Error('Esta conversación se encuentra cerrada.');
     }
 
     if (await backendDisponible()) {
@@ -672,7 +672,7 @@ export const AppProvider = ({ children }) => {
       (compraActual.compradorId !== currentUser.id &&
         compraActual.organizadorId !== currentUser.id)
     ) {
-      throw new Error('Esta conversaciÃ³n no pertenece al usuario seleccionado.');
+      throw new Error('Esta conversación no pertenece al usuario seleccionado.');
     }
 
     const mensajesNoLeidos = (compraActual.mensajes || []).some(
@@ -717,12 +717,12 @@ export const AppProvider = ({ children }) => {
       try {
         const eventosActualizados = await api.getEventos();
         if (!Array.isArray(eventosActualizados)) {
-          throw new Error('El backend devolviÃ³ un listado de eventos invÃ¡lido.');
+          throw new Error('El backend devolvió un listado de eventos inválido.');
         }
         setEventos(eventosActualizados.map(normalizarEvento));
       } catch (error) {
         console.error(
-          '[AI Ticket It Mobile] La reseÃ±a se guardÃ³, pero no se pudo actualizar el promedio del organizador.',
+          '[AI Ticket It Mobile] La reseña se guardó, pero no se pudo actualizar el promedio del organizador.',
           error
         );
       }
@@ -792,7 +792,7 @@ export const AppProvider = ({ children }) => {
 
   const crearEvento = async (nuevoEvento) => {
     if (currentUser.rol !== 'organizador') {
-      return { success: false, error: 'SeleccionÃ¡ un perfil organizador para publicar un evento.' };
+      return { success: false, error: 'Seleccioná un perfil organizador para publicar un evento.' };
     }
     const { imagenes = [], ...datosEvento } = nuevoEvento;
     if (await backendDisponible()) {
@@ -862,7 +862,7 @@ export const AppProvider = ({ children }) => {
     }
 
     if (await backendDisponible()) {
-      const compraServidor = await api.marcarUtilizada(compra.id, 'AcreditaciÃ³n en Puerta');
+      const compraServidor = await api.marcarUtilizada(compra.id, 'Acreditación en Puerta');
       return { success: true, compra: guardarCompraServidor(compraServidor) };
     }
     if (compra.estado !== 'CONFIRMADA') {
@@ -915,10 +915,10 @@ export const AppProvider = ({ children }) => {
             </>
           ) : (
             <>
-              <Text style={styles.startupTitle}>No se pudo cargar la aplicaciÃ³n</Text>
+              <Text style={styles.startupTitle}>No se pudo cargar la aplicación</Text>
               <Text style={styles.startupText}>
                 {backendErrorRef.current?.message ||
-                  'No hay conexiÃ³n con el backend. IniciÃ¡ el servidor e intentÃ¡ nuevamente.'}
+                  'No hay conexión con el backend. Iniciá el servidor e intentá nuevamente.'}
               </Text>
               <TouchableOpacity
                 style={styles.retryButton}

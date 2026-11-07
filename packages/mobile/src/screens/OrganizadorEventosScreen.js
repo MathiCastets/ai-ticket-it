@@ -18,6 +18,7 @@ import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import useMockLoading from '../hooks/useMockLoading';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
+import AccessDeniedView from '../components/AccessDeniedView';
 
 const crearFormulario = (evento) => ({
   nombre: evento.nombre || '',
@@ -126,6 +127,18 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
     if (evento) abrirEdicion(evento);
     navigation.setParams({ editEventoId: undefined });
   }, [route?.params?.editEventoId, eventos, navigation]);
+
+  if (currentUser?.rol !== 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Panel de Eventos"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver a Explorar"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
 
   const cerrarEdicion = () => {
     if (isSaving || isPickingImage) return;

@@ -17,9 +17,10 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { EventListSkeleton } from '../components/loading/Skeletons';
+import AccessDeniedView from '../components/AccessDeniedView';
 
 export default function ExplorarScreen({ navigation }) {
-  const { eventos, categorias, favoritos, favoritosError, toggleFavorito } = useApp();
+  const { eventos, categorias, favoritos, favoritosError, toggleFavorito, currentUser } = useApp();
   const isLoading = useMockLoading();
 
   const [searchText, setSearchText] = useState('');
@@ -83,6 +84,18 @@ export default function ExplorarScreen({ navigation }) {
 
     return result;
   }, [eventos, favoritos, soloFavoritos, selectedCategoria, searchText, selectedSort, sortDirection]);
+
+  if (currentUser?.rol === 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Explorar Eventos"
+        headerSubtitle="Acceso Restringido"
+        actionText="Ir a Mis Eventos"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
 
   const handleToggleFavorito = async (eventoId) => {
     try {

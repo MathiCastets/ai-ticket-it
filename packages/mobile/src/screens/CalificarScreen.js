@@ -14,6 +14,7 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
 
 const MAX_REVIEW_LENGTH = 250;
 
@@ -29,6 +30,30 @@ export default function CalificarScreen({ route, navigation }) {
   const [comentario, setComentario] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reseniaPublicada, setReseniaPublicada] = useState(false);
+
+  if (currentUser?.rol !== 'comprador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Calificar Evento"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver"
+        onBack={() => navigation.goBack()}
+        navigation={navigation}
+      />
+    );
+  }
+
+  if (!compra || !puedeCalificar) {
+    return (
+      <AccessDeniedView
+        headerTitle="Calificar Evento"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver a Mis Tickets"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
 
   const handleSubmit = async () => {
     if (!puedeCalificar) {

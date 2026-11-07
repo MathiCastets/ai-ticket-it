@@ -103,7 +103,7 @@ export const api = {
   getReseniasOrganizador: (organizadorId, { page = 1, limit = 5 } = {}) =>
     request(`/usuarios/${organizadorId}/resenias?page=${page}&limit=${limit}`),
 
-  // CategorÃ­as
+  // Categorías
   getCategorias: () => request('/categorias'),
 
   // Eventos
@@ -188,7 +188,7 @@ export const api = {
       body: JSON.stringify({ quien }),
     }),
 
-  marcarUtilizada: (id, quien = 'AcreditaciÃ³n en Puerta') =>
+  marcarUtilizada: (id, quien = 'Acreditación en Puerta') =>
     request(`/compras/${id}/acreditar`, {
       method: 'POST',
       body: JSON.stringify({ quien }),
@@ -200,7 +200,7 @@ export const api = {
       body: JSON.stringify({ puntuacion, comentario }),
     }),
 
-  // MensajerÃ­a vinculada a compra
+  // Mensajería vinculada a compra
   getMensajes: (compraId) => request(`/compras/${compraId}/mensajes`),
 
   enviarMensaje: (compraId, { usuarioId, texto }) =>

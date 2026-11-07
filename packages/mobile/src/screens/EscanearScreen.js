@@ -12,8 +12,9 @@ import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
 
-export default function EscanearScreen() {
+export default function EscanearScreen({ navigation }) {
   const { compras, currentUser, marcarEntradaUtilizada } = useApp();
   const [codigo, setCodigo] = useState('');
   const [compraEncontrada, setCompraEncontrada] = useState(null);
@@ -25,6 +26,18 @@ export default function EscanearScreen() {
     () => compras.filter((compra) => compra.organizadorId === currentUser.id),
     [compras, currentUser.id]
   );
+
+  if (currentUser?.rol !== 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Acreditación"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver al Inicio"
+        onBack={() => navigation?.navigate?.('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
 
   const buscarEntrada = () => {
     Keyboard.dismiss();

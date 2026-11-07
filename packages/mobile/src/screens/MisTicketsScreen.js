@@ -18,6 +18,7 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { TicketListSkeleton } from '../components/loading/Skeletons';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
 
 const normalizarTexto = (texto) =>
   String(texto || '')
@@ -40,6 +41,18 @@ export default function MisTicketsScreen({ navigation }) {
   const [selectedCompraQR, setSelectedCompraQR] = useState(null);
   const [selectedCompraCancel, setSelectedCompraCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
+
+  if (currentUser?.rol === 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Mis Tickets"
+        headerSubtitle="Acceso Restringido"
+        actionText="Ir a Eventos"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
 
   const comprasDelUsuario = compras.filter((compra) => compra.compradorId === currentUser.id);
   const obtenerCategoriaCompra = (compra) => {

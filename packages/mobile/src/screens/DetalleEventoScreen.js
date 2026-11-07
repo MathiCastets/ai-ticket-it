@@ -19,6 +19,7 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { EventDetailSkeleton } from '../components/loading/Skeletons';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
 
 export default function DetalleEventoScreen({ route, navigation }) {
   const { eventoId } = route.params;
@@ -29,6 +30,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
     toggleFavorito,
     comprarEntrada,
     obtenerReseniasOrganizador,
+    currentUser,
   } = useApp();
   const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
@@ -94,6 +96,18 @@ export default function DetalleEventoScreen({ route, navigation }) {
     };
   }, [organizadorId, obtenerReseniasOrganizador]);
 
+
+  if (currentUser?.rol === 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Detalle de Evento"
+        headerSubtitle="Acceso Restringido"
+        actionText="Ir a Mis Eventos"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
   const selectedTipo = evento.tiposEntrada?.find((t) => t.id === selectedTipoId);
   const total = selectedTipo ? selectedTipo.precio * cantidad : 0;
   const handleToggleFavorito = () => toggleFavorito(evento.id).catch(() => {});

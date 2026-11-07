@@ -12,12 +12,17 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
 
 export default function PanelVentasScreen({ route, navigation }) {
   const { eventos, compras, currentUser } = useApp();
   const isLoading = useMockLoading();
   const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser?.id);
   const [ahora, setAhora] = useState(Date.now());
+
+  const eventoSolicitado = route?.params?.eventoId
+    ? eventos.find((e) => e.id === route.params.eventoId)
+    : null;
 
   useEffect(() => {
     const intervalId = setInterval(() => setAhora(Date.now()), 60000);
@@ -70,30 +75,25 @@ export default function PanelVentasScreen({ route, navigation }) {
 
   if (currentUser?.rol !== 'organizador') {
     return (
-      <View style={styles.screenContainer}>
-        <Header
-          title="AI Ticket It"
-          subtitle="Acceso no disponible"
-          showBack
-          onBack={() => navigation.goBack()}
-        />
-        <View style={styles.accessErrorContainer}>
-          <View style={styles.accessErrorIcon}>
-            <Ionicons name="lock-closed-outline" size={30} color={COLORS.statusWarning} />
-          </View>
-          <Text style={styles.accessErrorTitle}>Acceso restringido</Text>
-          <Text style={styles.accessErrorText}>
-            El panel de ventas está disponible únicamente para perfiles organizadores.
-          </Text>
-          <TouchableOpacity
-            style={styles.accessBackButton}
-            onPress={() => navigation.goBack()}
-            accessibilityRole="button"
-          >
-            <Text style={styles.accessBackButtonText}>Volver</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <AccessDeniedView
+        headerTitle="Panel de Ventas"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver"
+        onBack={() => navigation.goBack()}
+        navigation={navigation}
+      />
+    );
+  }
+
+  if (eventoSolicitado && eventoSolicitado.organizadorId !== currentUser?.id) {
+    return (
+      <AccessDeniedView
+        headerTitle="Panel de Ventas"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver a Mis Eventos"
+        onBack={() => navigation.goBack()}
+        navigation={navigation}
+      />
     );
   }
 

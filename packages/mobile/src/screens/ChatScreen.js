@@ -19,6 +19,7 @@ import { isConversationClosed, useConversationStatusTime } from '../conversation
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
 
 const obtenerFechaMensaje = (mensaje) => {
   if (!mensaje.enviado) return null;
@@ -79,10 +80,12 @@ export default function ChatScreen({ route, navigation }) {
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
+    if (!compra) return;
+
     marcarMensajesLeidos(compraId).catch((error) => {
       Alert.alert('No se pudieron marcar los mensajes como leídos', error.message);
     });
-  }, [compraId, currentUser.id, marcarMensajesLeidos]);
+  }, [Boolean(compra), compraId, currentUser.id, marcarMensajesLeidos]);
 
   useEffect(() => {
     if (isLoading) return undefined;
@@ -128,19 +131,13 @@ export default function ChatScreen({ route, navigation }) {
 
   if (!compra) {
     return (
-      <View style={styles.screenContainer}>
-        <Header
-          title="Chat de Compra"
-          subtitle="Acceso no disponible"
-          showBack
-          onBack={() => navigation.goBack()}
-        />
-        <View style={styles.emptyAccess}>
-          <Ionicons name="lock-closed-outline" size={34} color={COLORS.textMuted} />
-          <Text style={styles.emptyChatText}>Esta conversación no pertenece al perfil actual.</Text>
-          <Text style={styles.emptyChatSub}>Proba a iniciar sesión con otra cuenta.</Text>
-        </View>
-      </View>
+      <AccessDeniedView
+        headerTitle="Chat de Compra"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver a Mensajes"
+        onBack={() => navigation.goBack()}
+        navigation={navigation}
+      />
     );
   }
 

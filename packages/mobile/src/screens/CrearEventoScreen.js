@@ -17,9 +17,10 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
+import AccessDeniedView from '../components/AccessDeniedView';
 
 export default function CrearEventoScreen({ navigation, route }) {
-  const { crearEvento, categorias } = useApp();
+  const { crearEvento, categorias, currentUser } = useApp();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPickingImages, setIsPickingImages] = useState(false);
   const [imagenes, setImagenes] = useState([]);
@@ -66,6 +67,29 @@ export default function CrearEventoScreen({ navigation, route }) {
     setResultadoPublicacion(null);
     navigation.setParams({ duplicateEvento: undefined });
   }, [navigation, route?.params?.duplicateEvento]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      if (isPublishing || isPickingImages) return;
+      reiniciarFormulario();
+      setResultadoPublicacion(null);
+      navigation.setParams({ duplicateEvento: undefined });
+    });
+
+    return unsubscribe;
+  }, [isPickingImages, isPublishing, navigation]);
+
+  if (currentUser?.rol !== 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Crear Evento"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver al Inicio"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
 
   const cambiarCampo = (setter, key, value) => {
     setter(value);
@@ -172,17 +196,6 @@ export default function CrearEventoScreen({ navigation, route }) {
     setErrores({});
     setModoDuplicar(false);
   };
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('blur', () => {
-      if (isPublishing || isPickingImages) return;
-      reiniciarFormulario();
-      setResultadoPublicacion(null);
-      navigation.setParams({ duplicateEvento: undefined });
-    });
-
-    return unsubscribe;
-  }, [isPickingImages, isPublishing, navigation]);
 
   const cerrarResultado = () => setResultadoPublicacion(null);
 
