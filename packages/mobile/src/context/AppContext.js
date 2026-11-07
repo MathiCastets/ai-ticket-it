@@ -45,6 +45,23 @@ const normalizarResenia = (resenia) => ({
       : 'Reciente'),
 });
 
+export const formatearFechaEvento = (fecha) => {
+  if (!fecha) return '';
+  const fechaObj = fecha instanceof Date ? fecha : new Date(fecha);
+  if (Number.isNaN(fechaObj.getTime())) return String(fecha);
+  const diaMesAnio = fechaObj.toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const horaMin = fechaObj.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${diaMesAnio} • ${horaMin} hs`;
+};
+
 const normalizarEvento = (evento) => {
   const categoriaObj =
     typeof evento.categoria === 'object' && evento.categoria !== null
@@ -68,6 +85,7 @@ const normalizarEvento = (evento) => {
       evento.organizadorRating !== undefined
         ? evento.organizadorRating
         : organizadorObj?.rating ?? 5,
+    fechaTexto: evento.fechaTexto || formatearFechaEvento(evento.fecha),
     reseniasAnteriores: (evento.reseniasAnteriores || evento.resenias || []).map(normalizarResenia),
   };
 };
@@ -78,7 +96,10 @@ const normalizarCompra = (compra) => ({
   eventoId: compra.eventoId || compra.evento?.id || '',
   eventoNombre: compra.eventoNombre || compra.evento?.nombre || '',
   eventoFecha: compra.eventoFecha || compra.evento?.fecha || '',
-  eventoFechaTexto: compra.eventoFechaTexto || compra.evento?.fechaTexto || '',
+  eventoFechaTexto:
+    compra.eventoFechaTexto ||
+    compra.evento?.fechaTexto ||
+    formatearFechaEvento(compra.eventoFecha || compra.evento?.fecha),
   tipoEntradaId: compra.tipoEntradaId || compra.tipoEntrada?.id || '',
   tipoEntradaNombre: compra.tipoEntradaNombre || compra.tipoEntrada?.nombre || '',
   compradorId: compra.compradorId || compra.comprador?.id || '',

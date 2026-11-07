@@ -131,7 +131,7 @@ describe('TipoEntrada', () => {
 
     test('no modifica disponibles si lanza error', () => {
       const te = crearTipoValido({ cupo: 10, disponibles: 2 });
-      try { te.descontarCupo(10); } catch (_) { /* esperado */ }
+      try { te.descontarCupo(10); } catch { /* esperado */ }
       expect(te.disponibles).toBe(2);
     });
   });

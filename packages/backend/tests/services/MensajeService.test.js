@@ -2,7 +2,6 @@ import { describe, test, expect, beforeEach } from '@jest/globals';
 import { MensajeService } from '../../src/services/MensajeService.js';
 import { CompraRepository } from '../../src/repositories/inMemory/CompraRepository.js';
 import { UsuarioRepository } from '../../src/repositories/inMemory/UsuarioRepository.js';
-import { EventoRepository } from '../../src/repositories/inMemory/EventoRepository.js';
 import { Compra } from '../../src/domain/entities/Compra.js';
 import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
@@ -75,10 +74,10 @@ describe('MensajeService', () => {
         service.enviarMensaje('compra-1', { usuarioId: 'otro-1', texto: 'Mensaje no autorizado' })
       ).rejects.toThrow(BusinessRuleError);
 
-      const error = await service.enviarMensaje('compra-1', {
+      await service.enviarMensaje('compra-1', {
         usuarioId: 'comp-1',
         texto: 'Autorizado',
-      }).catch((e) => e);
+      });
       expect(compra.mensajes.some((m) => m.mensaje === 'Mensaje no autorizado')).toBe(false);
     });
 

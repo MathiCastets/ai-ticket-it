@@ -14,7 +14,7 @@ ai-ticket-it/
 ├── packages/
 │   ├── backend/        # Servidor Express.js (Node.js en capas con persistencia en memoria)
 │   │   ├── index.js                    # Arranque del proceso y graceful shutdown
-│   │   ├── test-backend.js             # Suite de tests de integración end-to-end
+│   │   ├── tests/                      # Suite de tests modular por capas (Jest)
 │   │   ├── src/
 │   │   │   ├── app.js                  # Configuración de Express (CORS, JSON, routes, errors)
 │   │   │   ├── config/                 # Variables de entorno y configuración técnica

@@ -5,8 +5,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --testPathPatterns=tests/ --no-coverage",
-    "test:legacy": "node test-backend.js"
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --testPathPatterns=tests/ --no-coverage"
   },
   "keywords": [],
   "author": "",

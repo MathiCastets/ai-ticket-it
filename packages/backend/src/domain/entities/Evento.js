@@ -7,7 +7,6 @@ export class Evento {
     descripcion = '',
     categoria,      // Categoria (referencia directa o string para compatibilidad)
     fecha,
-    fechaTexto = '',
     apertura = '',
     ubicacion = '',
     direccion = '',
@@ -27,7 +26,6 @@ export class Evento {
     this.descripcion = descripcion;
     this.categoria   = categoria;   // Categoria
     this.fecha       = new Date(fecha);
-    this.fechaTexto  = fechaTexto || this.fecha.toLocaleDateString('es-AR');
     this.apertura    = apertura;
     this.ubicacion   = ubicacion;
     this.direccion   = direccion;
@@ -82,7 +80,6 @@ export class Evento {
       categoria: this.categoria,
       categoriaNombre: typeof this.categoria === 'object' && this.categoria !== null ? this.categoria.nombre : (this.categoria || ''),
       fecha: this.fecha,
-      fechaTexto: this.fechaTexto,
       apertura: this.apertura,
       ubicacion: this.ubicacion,
       direccion: this.direccion,

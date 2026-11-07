@@ -156,7 +156,6 @@ export class Compra {
       eventoId: this.evento?.id,
       eventoNombre: this.evento?.nombre,
       eventoFecha: this.evento?.fecha,
-      eventoFechaTexto: this.evento?.fechaTexto,
       tipoEntradaId: this.tipoEntrada?.id,
       tipoEntradaNombre: this.tipoEntrada?.nombre,
       organizadorId: this.evento?.organizador?.id || '',

@@ -39,9 +39,11 @@ describe('Evento', () => {
       expect(evento.id.startsWith('evt-')).toBe(true);
     });
 
-    test('convierte la fecha a objeto Date', () => {
+    test('convierte la fecha a objeto Date y no expone fechaTexto', () => {
       const evento = crearEvento();
       expect(evento.fecha).toBeInstanceOf(Date);
+      expect(evento.fechaTexto).toBeUndefined();
+      expect(evento.toJSON().fechaTexto).toBeUndefined();
     });
 
     test('inicializa resenias como arreglo vacío por defecto', () => {

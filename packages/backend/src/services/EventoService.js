@@ -49,7 +49,6 @@ export class EventoService {
       direccion,
       imagen,
       fecha,
-      fechaTexto,
       imagenes = [],
     }
   ) {
@@ -81,9 +80,6 @@ export class EventoService {
         throw new BusinessRuleError('La fecha y hora del evento deben ser posteriores al momento actual.');
       }
     }
-    if (fechaTexto !== undefined && typeof fechaTexto !== 'string') {
-      throw new BusinessRuleError('La fecha formateada debe ser un texto');
-    }
     if (!Array.isArray(imagenes) || imagenes.length > 1) {
       throw new BusinessRuleError('Cada evento puede tener una sola imagen');
     }
@@ -94,7 +90,6 @@ export class EventoService {
       ubicacion: evento.ubicacion,
       direccion: evento.direccion,
       fecha: evento.fecha,
-      fechaTexto: evento.fechaTexto,
       imagen: evento.imagen,
       multimedia: evento.multimedia,
     };
@@ -108,7 +103,6 @@ export class EventoService {
     if (ubicacion !== undefined) evento.ubicacion = ubicacion.trim();
     if (direccion !== undefined) evento.direccion = direccion.trim();
     if (fecha !== undefined) evento.fecha = new Date(fecha);
-    if (fechaTexto !== undefined) evento.fechaTexto = fechaTexto.trim();
     if (imagenesSubidas.length) {
       evento.imagen = imagenesSubidas[0];
       evento.multimedia = imagenesSubidas;

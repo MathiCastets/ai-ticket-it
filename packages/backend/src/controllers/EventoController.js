@@ -165,7 +165,6 @@ export class EventoController {
         direccion,
         imagen,
         fecha,
-        fechaTexto,
       } = payload;
       if (typeof organizadorId !== 'string' || !organizadorId.trim()) {
         throw new ValidationError('organizadorId es requerido para modificar el evento');
@@ -179,7 +178,6 @@ export class EventoController {
         direccion,
         imagen,
         fecha,
-        fechaTexto,
         imagenes: req.files || [],
       });
       res.status(200).json({ data: evento });

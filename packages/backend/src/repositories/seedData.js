@@ -6,6 +6,12 @@ import { Compra } from '../domain/entities/Compra.js';
 import { Mensaje } from '../domain/entities/Mensaje.js';
 import { EstadoCompra } from '../domain/enums/EstadoCompra.js';
 
+function crearFechaRelativa(diasOffset, horas = 20, minutos = 0) {
+  const fecha = new Date(Date.now() + diasOffset * 24 * 60 * 60 * 1000);
+  fecha.setHours(horas, minutos, 0, 0);
+  return fecha;
+}
+
 export function createSeedData() {
   // 1. Usuarios
   const compradorMathi = new Usuario({
@@ -94,13 +100,13 @@ export function createSeedData() {
 
   const teConfPass  = new TipoEntrada({ id: 'te-conf-pass', nombre: 'Pase General', descripcion: 'Acceso a todas las charlas y coffee breaks', precio: 6000, cupo: 400, disponibles: 400 });
 
-  // 4. Eventos — organizador y categoria como objetos referenciados
+  // 4. Eventos — organizador y categoria como objetos referenciados con fechas dinámicas
+  const fechaEvento1 = crearFechaRelativa(5, 20, 0);
   const evento1 = new Evento({
     id: 'evt-utn-2026',
     nombre: 'Festival de Música UTN 2026',
     destacado: true,
-    fecha: '2026-11-10T20:00:00',
-    fechaTexto: '10 de Noviembre 2026 • 20:00 hs',
+    fecha: fechaEvento1,
     apertura: '18:30 hs',
     ubicacion: 'Estadio Obras Sanitarias / Predio UTN',
     direccion: 'Av. del Libertador 7395, Núñez, CABA',
@@ -111,12 +117,12 @@ export function createSeedData() {
     tiposEntrada: [teGen1, teVip1, teLounge1],
   });
 
+  const fechaEvento2 = crearFechaRelativa(12, 23, 0);
   const evento2 = new Evento({
     id: 'evt-electro-2',
     nombre: 'Noche Electrónica Underground',
     destacado: false,
-    fecha: '2026-11-18T23:00:00',
-    fechaTexto: '18 de Noviembre 2026 • 23:00 hs',
+    fecha: fechaEvento2,
     apertura: '22:00 hs',
     ubicacion: 'Club Niceto • Palermo',
     direccion: 'Niceto Vega 5510, Palermo, CABA',
@@ -127,12 +133,12 @@ export function createSeedData() {
     tiposEntrada: [teUnderGen, teUnderVip],
   });
 
+  const fechaEvento3 = crearFechaRelativa(-4, 20, 30);
   const evento3 = new Evento({
     id: 'evt-teatro-3',
     nombre: 'Obra: El Método Grönholm',
     destacado: false,
-    fecha: '2026-11-22T20:30:00',
-    fechaTexto: '22 de Noviembre 2026 • 20:30 hs',
+    fecha: fechaEvento3,
     apertura: '20:00 hs',
     ubicacion: 'Paseo La Plaza • Sala Pablo Neruda',
     direccion: 'Av. Corrientes 1660, San Nicolás, CABA',
@@ -143,12 +149,12 @@ export function createSeedData() {
     tiposEntrada: [teTeatroPlatea, teTeatroPullman],
   });
 
+  const fechaEvento4 = crearFechaRelativa(30, 9, 0);
   const evento4 = new Evento({
     id: 'evt-conf-4',
     nombre: 'DevFest & Cloud Summit 2026',
     destacado: false,
-    fecha: '2026-12-05T09:00:00',
-    fechaTexto: '5 de Diciembre 2026 • 09:00 hs',
+    fecha: fechaEvento4,
     apertura: '08:00 hs',
     ubicacion: 'Centro de Convenciones Buenos Aires',
     direccion: 'Av. Figueroa Alcorta 2099, Recoleta, CABA',
@@ -160,15 +166,6 @@ export function createSeedData() {
   });
 
   const fechaEventoTerminado = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const fechaTextoEventoTerminado = `${fechaEventoTerminado.toLocaleDateString('es-AR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })} • ${fechaEventoTerminado.toLocaleTimeString('es-AR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })} hs`;
   const teSonoraTerminado = new TipoEntrada({
     id: 'te-sonora-aniversario-gen',
     nombre: 'Entrada General',
@@ -182,7 +179,6 @@ export function createSeedData() {
     nombre: 'Noche Aniversario Sonora',
     destacado: false,
     fecha: fechaEventoTerminado,
-    fechaTexto: fechaTextoEventoTerminado,
     apertura: '20:00 hs',
     ubicacion: 'Teatro Vorterix • Colegiales',
     direccion: 'Av. Federico Lacroze 3455, CABA',
@@ -196,7 +192,7 @@ export function createSeedData() {
   const eventos = [evento1, evento2, evento3, evento4, eventoSonoraTerminado];
   const fechaCompraConfirmada = new Date(Date.now() - 72 * 60 * 60 * 1000);
   const fechaCompraPendiente = new Date(Date.now() - 36 * 60 * 60 * 1000);
-  const fechaCompraUtilizada = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const fechaCompraUtilizada = new Date(fechaEvento3.getTime() - 48 * 60 * 60 * 1000);
 
   // 5. Compras — comprador, evento y tipoEntrada como referencias directas
   const compra1 = new Compra({

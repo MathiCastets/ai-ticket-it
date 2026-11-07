@@ -12,7 +12,18 @@ const crearFechaRelativa = (horasAtras) => {
 
 const fechaCompraConfirmada = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 const fechaCompraPendiente = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
-const fechaCompraUtilizada = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+const fechaEventoTeatro = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
+fechaEventoTeatro.setHours(20, 30, 0, 0);
+const fechaTextoEventoTeatro = `${fechaEventoTeatro.toLocaleDateString('es-AR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})} • ${fechaEventoTeatro.toLocaleTimeString('es-AR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})} hs`;
+const fechaCompraUtilizada = new Date(fechaEventoTeatro.getTime() - 48 * 60 * 60 * 1000).toISOString();
 const fechaEventoTerminado = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 const fechaTextoEventoTerminado = `${fechaEventoTerminado.toLocaleDateString('es-AR', {
   day: 'numeric',
@@ -206,8 +217,8 @@ export const EVENTOS_INICIALES = [
     id: 'evt-teatro-3',
     nombre: 'Obra: El Método Grönholm',
     destacado: false,
-    fecha: '2026-11-22T20:30:00',
-    fechaTexto: '22 de Noviembre 2026 • 20:30 hs',
+    fecha: fechaEventoTeatro.toISOString(),
+    fechaTexto: fechaTextoEventoTeatro,
     apertura: '20:00 hs',
     ubicacion: 'Paseo La Plaza • Sala Pablo Neruda',
     direccion: 'Av. Corrientes 1660, San Nicolás, CABA',
@@ -369,8 +380,8 @@ export const COMPRAS_INICIALES = [
     ordenCodigo: '#TK-10492',
     eventoId: 'evt-teatro-3',
     eventoNombre: 'Obra: El Método Grönholm',
-    eventoFecha: '2026-10-15T20:30:00',
-    eventoFechaTexto: '15 de Octubre 2026 • 20:30 hs',
+    eventoFecha: fechaEventoTeatro.toISOString(),
+    eventoFechaTexto: fechaTextoEventoTeatro,
     fechaHora: fechaCompraUtilizada,
     tipoEntradaId: 'te-teatro-platea',
     tipoEntradaNombre: 'Platea Baja',
@@ -378,7 +389,7 @@ export const COMPRAS_INICIALES = [
     total: 24000,
     estado: 'UTILIZADA',
     compradorId: 'user_comprador_2',
-    compradorNombre: 'Mathi Castets',
+    compradorNombre: 'Lucía Fernández',
     organizadorNombre: 'Teatros Porteños',
     organizadorId: 'user_org_teatros',
     imagen: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=1200&q=80',

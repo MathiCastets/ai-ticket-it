@@ -21,10 +21,6 @@ describe('Compra', () => {
     });
   }
 
-  function crearTipoEntrada(overrides = {}) {
-    return new TipoEntrada({ id: 'te-1', nombre: 'General', precio: 10000, cupo: 100, ...overrides });
-  }
-
   function crearCompra(overrides = {}) {
     const evento = crearEvento();
     return new Compra({
@@ -254,6 +250,15 @@ describe('Compra', () => {
         tipoEntrada: eventoTerminado.tiposEntrada[0],
       });
       expect(compra.diasFaltantes()).toBe(0);
+    });
+  });
+
+  describe('toJSON', () => {
+    test('serializa la compra con eventoFecha y sin eventoFechaTexto desnormalizado', () => {
+      const compra = crearCompra();
+      const json = compra.toJSON();
+      expect(json.eventoFecha).toBeDefined();
+      expect(json.eventoFechaTexto).toBeUndefined();
     });
   });
 });

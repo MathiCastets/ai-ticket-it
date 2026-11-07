@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach } from '@jest/globals';
 import { CompraService } from '../../src/services/CompraService.js';
 import { CompraRepository } from '../../src/repositories/inMemory/CompraRepository.js';
 import { EventoRepository } from '../../src/repositories/inMemory/EventoRepository.js';
@@ -8,7 +8,6 @@ import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
 import { EstadoCompra } from '../../src/domain/enums/EstadoCompra.js';
 import { ResourceNotFoundError, BusinessRuleError } from '../../src/services/errors/index.js';
-import { Compra } from '../../src/domain/entities/Compra.js';
 
 describe('CompraService', () => {
   let compraRepo;
