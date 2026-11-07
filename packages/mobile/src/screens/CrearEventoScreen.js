@@ -27,7 +27,7 @@ export default function CrearEventoScreen({ navigation, route }) {
   const [errores, setErrores] = useState({});
   const [resultadoPublicacion, setResultadoPublicacion] = useState(null);
   const [fechaEvento, setFechaEvento] = useState(null);
-  const [modoRepetir, setModoRepetir] = useState(false);
+  const [modoDuplicar, setModoDuplicar] = useState(false);
 
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState('');
@@ -40,10 +40,10 @@ export default function CrearEventoScreen({ navigation, route }) {
   ]);
 
   useEffect(() => {
-    const evento = route?.params?.repeatEvento;
+    const evento = route?.params?.duplicateEvento;
     if (!evento) return;
 
-    setModoRepetir(true);
+    setModoDuplicar(true);
     setNombre(evento.nombre || '');
     setCategoria(evento.categoria || '');
     setFechaEvento(null);
@@ -64,8 +64,8 @@ export default function CrearEventoScreen({ navigation, route }) {
     );
     setErrores({});
     setResultadoPublicacion(null);
-    navigation.setParams({ repeatEvento: undefined });
-  }, [navigation, route?.params?.repeatEvento]);
+    navigation.setParams({ duplicateEvento: undefined });
+  }, [navigation, route?.params?.duplicateEvento]);
 
   const cambiarCampo = (setter, key, value) => {
     setter(value);
@@ -170,8 +170,19 @@ export default function CrearEventoScreen({ navigation, route }) {
     setImagenExistente('');
     setTiposEntrada([{ id: String(Date.now()), nombre: '', precio: '', cupo: '' }]);
     setErrores({});
-    setModoRepetir(false);
+    setModoDuplicar(false);
   };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      if (isPublishing || isPickingImages) return;
+      reiniciarFormulario();
+      setResultadoPublicacion(null);
+      navigation.setParams({ duplicateEvento: undefined });
+    });
+
+    return unsubscribe;
+  }, [isPickingImages, isPublishing, navigation]);
 
   const cerrarResultado = () => setResultadoPublicacion(null);
 
@@ -263,11 +274,11 @@ export default function CrearEventoScreen({ navigation, route }) {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerTitleBox}>
           <Text style={styles.pageTitle}>
-            {modoRepetir ? 'Repetir evento' : 'Publicar Nuevo Evento'}
+            {modoDuplicar ? 'Duplicar evento' : 'Publicar Nuevo Evento'}
           </Text>
-          {modoRepetir ? (
+          {modoDuplicar ? (
             <Text style={styles.pageSubtitle}>
-              Revisá los datos, elegí una nueva fecha y confirmá los precios y cupos antes de publicar.
+              Se creará un evento independiente. Elegí una nueva fecha y revisá los precios y cupos antes de publicar.
             </Text>
           ) : null}
           {/*<Text style={styles.pageSubtitle}>

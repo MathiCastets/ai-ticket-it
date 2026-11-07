@@ -464,33 +464,31 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
                         <Text style={styles.primaryButtonText}>Ventas</Text>
                       </TouchableOpacity>
                     </View>
-                    {estado === 'terminados' ? (
-                      <TouchableOpacity
-                        style={styles.repeatButton}
-                        onPress={() =>
-                          navigation.navigate('OrganizarTab', {
-                            repeatEvento: {
-                              nombre: evento.nombre,
-                              categoria: evento.categoria,
-                              ubicacion: evento.ubicacion,
-                              direccion: evento.direccion,
-                              descripcion: evento.descripcion,
-                              imagen: evento.imagen || evento.multimedia?.[0] || '',
-                              tiposEntrada: (evento.tiposEntrada || []).map((tipo) => ({
-                                nombre: tipo.nombre,
-                                precio: tipo.precio,
-                                cupo: tipo.cupo,
-                              })),
-                            },
-                          })
-                        }
-                        accessibilityRole="button"
-                        accessibilityLabel={`Repetir ${evento.nombre}`}
-                      >
-                        <Feather name="copy" size={14} color={COLORS.tertiary} />
-                        <Text style={styles.repeatButtonText}>Repetir evento</Text>
-                      </TouchableOpacity>
-                    ) : null}
+                    <TouchableOpacity
+                      style={styles.repeatButton}
+                      onPress={() =>
+                        navigation.navigate('OrganizarTab', {
+                          duplicateEvento: {
+                            nombre: evento.nombre,
+                            categoria: evento.categoria,
+                            ubicacion: evento.ubicacion,
+                            direccion: evento.direccion,
+                            descripcion: evento.descripcion,
+                            imagen: evento.imagen || evento.multimedia?.[0] || '',
+                            tiposEntrada: (evento.tiposEntrada || []).map((tipo) => ({
+                              nombre: tipo.nombre,
+                              precio: tipo.precio,
+                              cupo: tipo.cupo,
+                            })),
+                          },
+                        })
+                      }
+                      accessibilityRole="button"
+                      accessibilityLabel={`Duplicar ${evento.nombre}`}
+                    >
+                      <Feather name="copy" size={14} color={COLORS.tertiary} />
+                      <Text style={styles.repeatButtonText}>Duplicar evento</Text>
+                    </TouchableOpacity>
                   </View>
                 );
               })}

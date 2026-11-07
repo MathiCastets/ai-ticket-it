@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Alert,
 } from 'react-native';
@@ -47,6 +48,15 @@ export default function ChatScreen({ route, navigation }) {
   const bottomInset = insets.bottom > 0 ? insets.bottom : 10;
   const messagesScrollRef = useRef(null);
   const chatInputRef = useRef(null);
+  const keyboardVisibleRef = useRef(false);
+
+  const desplazarAlUltimoMensaje = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        messagesScrollRef.current?.scrollToEnd({ animated: true });
+      });
+    });
+  }, []);
 
   const compra = compras.find(
     (item) =>
@@ -84,6 +94,23 @@ export default function ChatScreen({ route, navigation }) {
     return () => cancelAnimationFrame(frame);
   }, [compraId, isLoading]);
 
+  useEffect(() => {
+    const eventoMostrar = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const eventoOcultar = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const mostrarSuscripcion = Keyboard.addListener(eventoMostrar, () => {
+      keyboardVisibleRef.current = true;
+      desplazarAlUltimoMensaje();
+    });
+    const ocultarSuscripcion = Keyboard.addListener(eventoOcultar, () => {
+      keyboardVisibleRef.current = false;
+    });
+
+    return () => {
+      mostrarSuscripcion.remove();
+      ocultarSuscripcion.remove();
+    };
+  }, [desplazarAlUltimoMensaje]);
+
   const handleEnviar = async () => {
     if (!compra || conversacionCerrada || !nuevoTexto.trim()) return;
     setIsSending(true);
@@ -91,6 +118,7 @@ export default function ChatScreen({ route, navigation }) {
       await enviarMensaje(compra.id, nuevoTexto);
       setNuevoTexto('');
       setChatInputHeight(CHAT_INPUT_MIN_HEIGHT);
+      desplazarAlUltimoMensaje();
     } catch (error) {
       Alert.alert('No se pudo enviar el mensaje', error.message);
     } finally {
@@ -119,7 +147,7 @@ export default function ChatScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.screenContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <Header
         title="Chat de Compra"
@@ -156,6 +184,9 @@ export default function ChatScreen({ route, navigation }) {
       <ScrollView
         ref={messagesScrollRef}
         style={styles.messagesScroll}
+        onContentSizeChange={() => {
+          if (keyboardVisibleRef.current) desplazarAlUltimoMensaje();
+        }}
         contentContainerStyle={[
           styles.messagesContent,
           isLoading && styles.loadingMessagesContent,
