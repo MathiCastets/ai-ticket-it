@@ -19,3 +19,20 @@ export class BusinessRuleError extends ServiceError {
     super(message, code);
   }
 }
+
+export class UnauthorizedError extends Error {
+  constructor(message = 'Acceso no autorizado', code = 'UNAUTHORIZED') {
+    super(message);
+    this.name = 'UnauthorizedError';
+    this.code = code;
+    this.status = 401;
+  }
+}
+
+export class ForbiddenError extends BusinessRuleError {
+  constructor(message = 'Acceso prohibido', code = 'FORBIDDEN') {
+    super(message, code);
+    this.name = 'ForbiddenError';
+    this.status = 403;
+  }
+}

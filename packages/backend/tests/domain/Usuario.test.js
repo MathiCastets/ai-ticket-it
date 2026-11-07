@@ -93,4 +93,30 @@ describe('Usuario', () => {
       expect(u.tieneFavorito('evt-inexistente')).toBe(false);
     });
   });
+
+  describe('toJSON y privacidad (Ley 25.326)', () => {
+    test('toJSON retorna los atributos del usuario pero omite email', () => {
+      const u = crearUsuario({
+        id: 'u-priv',
+        nombre: 'Privado',
+        apellido: 'Test',
+        email: 'secreto@example.com',
+      });
+      const json = u.toJSON();
+
+      expect(json.id).toBe('u-priv');
+      expect(json.nombre).toBe('Privado');
+      expect(json.nombreCompleto).toBe('Privado Test');
+      expect(json.email).toBeUndefined();
+      expect('email' in json).toBe(false);
+    });
+
+    test('JSON.stringify no incluye el campo email', () => {
+      const u = crearUsuario({ email: 'secreto@example.com' });
+      const str = JSON.stringify(u);
+
+      expect(str).not.toContain('secreto@example.com');
+      expect(str).not.toContain('"email"');
+    });
+  });
 });

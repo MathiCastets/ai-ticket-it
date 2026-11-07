@@ -174,4 +174,47 @@ describe('Evento', () => {
       expect(evento.resenias[1]).toBe(resenia1);
     });
   });
+
+  describe('toJSON y privacidad', () => {
+    test('no expone el email del organizador en toJSON ni en JSON.stringify', () => {
+      const organizador = new Usuario({
+        id: 'org-test',
+        nombre: 'Organizador Privado',
+        rol: 'organizador',
+        email: 'organizador.oculto@example.com',
+      });
+      const evento = crearEvento({ organizador });
+
+      const json = evento.toJSON();
+      expect(json.organizador.email).toBeUndefined();
+      expect('email' in json.organizador).toBe(false);
+
+      const str = JSON.stringify(evento);
+      expect(str).not.toContain('organizador.oculto@example.com');
+      expect(str).not.toContain('"email"');
+    });
+
+    test('no expone el email del comprador en las reseñas asociadas', () => {
+      const comprador = new Usuario({
+        id: 'comp-priv',
+        nombre: 'Comprador Privado',
+        email: 'comprador.oculto@example.com',
+      });
+      const evento = crearEvento();
+      evento.agregarResenia(
+        new Resenia({
+          comprador,
+          eventoId: evento.id,
+          puntuacion: 5,
+          detalle: 'Todo excelente',
+        })
+      );
+
+      const json = evento.toJSON();
+      expect(json.resenias[0].comprador.email).toBeUndefined();
+
+      const str = JSON.stringify(evento);
+      expect(str).not.toContain('comprador.oculto@example.com');
+    });
+  });
 });

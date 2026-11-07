@@ -6,7 +6,7 @@ import { compraRepository } from '../repositories/inMemory/CompraRepository.js';
 import { eventoRepository } from '../repositories/inMemory/EventoRepository.js';
 import { usuarioRepository } from '../repositories/inMemory/UsuarioRepository.js';
 import { EntityNotFoundError } from '../repositories/errors/EntityNotFoundError.js';
-import { ResourceNotFoundError, BusinessRuleError } from './errors/index.js';
+import { ResourceNotFoundError, BusinessRuleError, ForbiddenError } from './errors/index.js';
 
 export class CompraService {
   constructor(
@@ -67,6 +67,10 @@ export class CompraService {
     return await this.compraRepository.findByEventoId(eventoId);
   }
 
+  async listarPorOrganizador(organizadorId) {
+    return await this.compraRepository.findByOrganizadorId(organizadorId);
+  }
+
   async listarTodas() {
     return await this.compraRepository.findAll();
   }
@@ -96,6 +100,13 @@ export class CompraService {
           throw new ResourceNotFoundError('Evento', eventoId);
         }
         throw error;
+      }
+
+      if (evento.fecha.getTime() < Date.now()) {
+        throw new BusinessRuleError(
+          'No se pueden adquirir entradas para un evento que ya ha transcurrido',
+          'EVENTO_PASADO'
+        );
       }
 
       const tipoEntrada = evento.obtenerTipoEntrada(tipoEntradaId);
@@ -133,11 +144,39 @@ export class CompraService {
     });
   }
 
-  async cancelarCompra(compraId, quien = 'Comprador') {
+  async cancelarCompra(compraId, actor = null, quien = null) {
+    let actorObj = null;
+    let quienTexto = quien;
+    if (typeof actor === 'string') {
+      quienTexto = actor;
+    } else if (actor && typeof actor === 'object') {
+      actorObj = actor;
+      if (!quienTexto) {
+        quienTexto = actor.nombreCompleto || actor.nombre || 'Comprador';
+      }
+    }
+    if (!quienTexto) {
+      quienTexto = 'Comprador';
+    }
+
     return this.#serializarMutacion(async () => {
       const compra = await this.obtenerPorId(compraId);
+
+      if (actorObj && actorObj.id) {
+        const actorId = actorObj.id;
+        const esDuenio = compra.comprador?.id === actorId;
+        const organizadorId = compra.evento?.organizador?.id || compra.evento?.organizadorId;
+        const esOrganizador = organizadorId === actorId;
+        if (!esDuenio && !esOrganizador) {
+          throw new ForbiddenError(
+            'Solo el comprador o el organizador del evento pueden cancelar esta compra',
+            'CANCELACION_NO_AUTORIZADA'
+          );
+        }
+      }
+
       if (!compra.puedeCancelarse().puede) {
-        compra.cancelarParaReembolso(quien);
+        compra.cancelarParaReembolso(quienTexto);
       }
 
       const tipoEntrada = compra.evento.obtenerTipoEntrada(compra.tipoEntrada.id);
@@ -153,7 +192,7 @@ export class CompraService {
       const historialAntes = [...compra.historialCambios];
 
       try {
-        compra.cancelarParaReembolso(quien);
+        compra.cancelarParaReembolso(quienTexto);
         tipoEntrada.restituirCupo(compra.cantidad);
         await this.eventoRepository.save(compra.evento);
         await this.compraRepository.save(compra);
@@ -174,12 +213,39 @@ export class CompraService {
     });
   }
 
-  async marcarUtilizada(compraId, quien = 'Acreditación en Puerta') {
+  async marcarUtilizada(compraId, actor = null, quien = null) {
+    let actorObj = null;
+    let quienTexto = quien;
+    if (typeof actor === 'string') {
+      quienTexto = actor;
+    } else if (actor && typeof actor === 'object') {
+      actorObj = actor;
+      if (!quienTexto) {
+        quienTexto = actor.nombreCompleto || actor.nombre || 'Acreditación en Puerta';
+      }
+    }
+    if (!quienTexto) {
+      quienTexto = 'Acreditación en Puerta';
+    }
+
     return this.#serializarMutacion(async () => {
       const compra = await this.obtenerPorId(compraId);
+
+      if (actorObj && actorObj.id) {
+        const actorId = actorObj.id;
+        const organizadorId = compra.evento?.organizador?.id || compra.evento?.organizadorId;
+        const esOrganizador = organizadorId === actorId;
+        if (!esOrganizador) {
+          throw new ForbiddenError(
+            'Solo el organizador del evento puede acreditar entradas',
+            'ACREDITACION_NO_AUTORIZADA'
+          );
+        }
+      }
+
       const estadoAntes = compra.estado;
       const historialAntes = [...compra.historialCambios];
-      compra.marcarComoUtilizada(quien);
+      compra.marcarComoUtilizada(quienTexto);
       try {
         return await this.compraRepository.save(compra);
       } catch (error) {
@@ -194,9 +260,19 @@ export class CompraService {
     });
   }
 
-  async calificarCompra(compraId, { puntuacion, comentario }) {
+  async calificarCompra(compraId, { puntuacion, comentario }, actor = null) {
     return this.#serializarMutacion(async () => {
       const compra = await this.obtenerPorId(compraId);
+
+      if (actor && typeof actor === 'object' && actor.id) {
+        const esDuenio = compra.comprador?.id === actor.id;
+        if (!esDuenio) {
+          throw new ForbiddenError(
+            'Solo el comprador de la entrada puede calificar el evento',
+            'CALIFICACION_NO_AUTORIZADA'
+          );
+        }
+      }
 
       if (compra.estado !== EstadoCompra.UTILIZADA) {
         throw new BusinessRuleError(
@@ -237,7 +313,6 @@ export class CompraService {
         );
       }
     });
-
   }
 }
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -18,6 +17,8 @@ import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import useMockLoading from '../hooks/useMockLoading';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
+import AccessDeniedView from '../components/AccessDeniedView';
+import { useNotification } from '../components/NotificationProvider';
 
 const crearFormulario = (evento) => ({
   nombre: evento.nombre || '',
@@ -44,6 +45,7 @@ const obtenerEstadoEvento = (evento, ahora) => {
 
 export default function OrganizadorEventosScreen({ navigation, route }) {
   const { eventos, categorias, currentUser, actualizarEvento } = useApp();
+  const { notify } = useNotification();
   const isLoading = useMockLoading();
   const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
   const [eventoEditando, setEventoEditando] = useState(null);
@@ -127,6 +129,18 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
     navigation.setParams({ editEventoId: undefined });
   }, [route?.params?.editEventoId, eventos, navigation]);
 
+  if (currentUser?.rol !== 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Panel de Eventos"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver a Explorar"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
+
   const cerrarEdicion = () => {
     if (isSaving || isPickingImage) return;
     setEventoEditando(null);
@@ -155,10 +169,11 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
         !mimeType || ['image/jpeg', 'image/png', 'image/webp'].includes(mimeType);
       const tamanioValido = !imagen.fileSize || imagen.fileSize <= 5 * 1024 * 1024;
       if (!formatoValido || !tamanioValido) {
-        Alert.alert(
-          'La foto no se pudo agregar',
-          'Se aceptan imágenes JPEG, PNG o WebP de hasta 5 MB.'
-        );
+        notify({
+          title: 'La foto no se pudo agregar',
+          message: 'Se aceptan imágenes JPEG, PNG o WebP de hasta 5 MB.',
+          type: 'warning',
+        });
         return;
       }
 
@@ -169,7 +184,7 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
         quitarImagen: false,
       }));
     } catch (error) {
-      Alert.alert('No se pudo seleccionar la foto', error.message);
+      notify({ title: 'No se pudo seleccionar la foto', message: error.message, type: 'error' });
     } finally {
       setIsPickingImage(false);
     }
@@ -177,7 +192,11 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
 
   const guardarCambios = async () => {
     if (!formulario.nombre.trim()) {
-      Alert.alert('Falta el nombre', 'El evento debe tener un nombre.');
+      notify({
+        title: 'Falta el nombre',
+        message: 'El evento debe tener un nombre.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -200,7 +219,11 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
       setEventoEditando(null);
       setFormulario(null);
     } catch (error) {
-      Alert.alert('No se pudieron guardar los cambios', error.message);
+      notify({
+        title: 'No se pudieron guardar los cambios',
+        message: error.message,
+        type: 'error',
+      });
     } finally {
       setIsSaving(false);
     }

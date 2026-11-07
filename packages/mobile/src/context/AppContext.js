@@ -151,6 +151,7 @@ export const AppProvider = ({ children }) => {
   const [compras, setCompras] = useState(
     USE_MOCK_DATA ? COMPRAS_INICIALES.map(normalizarCompra) : []
   );
+  const [comprasCargandoUsuarioId, setComprasCargandoUsuarioId] = useState(null);
   const initialUser = initialMockUser;
   const [favoritos, setFavoritos] = useState(initialUser?.favoritos || []);
   const [favoritosError, setFavoritosError] = useState('');
@@ -208,11 +209,10 @@ export const AppProvider = ({ children }) => {
     let eventosApi;
     let comprasApi;
     try {
-      [usuariosApi, categoriasApi, eventosApi, comprasApi] = await Promise.all([
+      [usuariosApi, categoriasApi, eventosApi] = await Promise.all([
         api.getUsuarios(),
         api.getCategorias(),
         api.getEventos(),
-        api.getCompras(),
       ]);
     } catch (error) {
       actualizarEstadoBackend('error', error);
@@ -224,8 +224,7 @@ export const AppProvider = ({ children }) => {
       !Array.isArray(usuariosApi) ||
       usuariosApi.length === 0 ||
       !Array.isArray(categoriasApi) ||
-      !Array.isArray(eventosApi) ||
-      !Array.isArray(comprasApi)
+      !Array.isArray(eventosApi)
     ) {
       const error = new Error('El backend devolvió un formato de datos inesperado.');
       actualizarEstadoBackend('error', error);
@@ -239,6 +238,22 @@ export const AppProvider = ({ children }) => {
       : usuariosNormalizados[0].id;
     currentUserIdRef.current = usuarioInicial;
     setCurrentUserId(usuarioInicial);
+    api.setAuthUserId(usuarioInicial);
+
+    try {
+      comprasApi = await api.getCompras();
+    } catch (error) {
+      actualizarEstadoBackend('error', error);
+      console.error('[AI Ticket It Mobile] No se pudieron sincronizar las compras iniciales.', error);
+      return false;
+    }
+
+    if (!Array.isArray(comprasApi)) {
+      const error = new Error('El backend devolvió un formato de compras inesperado.');
+      actualizarEstadoBackend('error', error);
+      console.error('[AI Ticket It Mobile]', error.message);
+      return false;
+    }
     setUsuarios(usuariosNormalizados);
     setCategorias(categoriasApi.map((categoria) => categoria.nombre));
     setEventos(eventosApi.map(normalizarEvento));
@@ -360,10 +375,29 @@ export const AppProvider = ({ children }) => {
   };
 
   const currentUser = usuarios.find((user) => user.id === currentUserId) || usuarios[0] || null;
-  const seleccionarUsuario = (usuarioId) => {
+  const seleccionarUsuario = async (usuarioId) => {
     if (usuarios.some((user) => user.id === usuarioId)) {
       currentUserIdRef.current = usuarioId;
       setCurrentUserId(usuarioId);
+      api.setAuthUserId(usuarioId);
+      if (backendStatus === 'connected') {
+        setComprasCargandoUsuarioId(usuarioId);
+        try {
+          const comprasActualizadas = await api.getCompras();
+          if (
+            currentUserIdRef.current === usuarioId &&
+            Array.isArray(comprasActualizadas)
+          ) {
+            setCompras(comprasActualizadas.map(normalizarCompra));
+          }
+        } catch (error) {
+          console.error('[AI Ticket It Mobile] No se pudieron sincronizar las compras del usuario seleccionado.', error);
+        } finally {
+          setComprasCargandoUsuarioId((cargandoUsuarioId) =>
+            cargandoUsuarioId === usuarioId ? null : cargandoUsuarioId
+          );
+        }
+      }
     }
   };
 
@@ -862,6 +896,7 @@ export const AppProvider = ({ children }) => {
         currentUserId,
         eventos,
         compras,
+        comprasCargando: comprasCargandoUsuarioId === currentUserId,
         favoritos,
         favoritosError,
         backendConectado: backendStatus === 'connected',

@@ -6,7 +6,6 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Alert,
   useWindowDimensions,
   Platform,
 } from 'react-native';
@@ -19,6 +18,8 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { EventDetailSkeleton } from '../components/loading/Skeletons';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
+import { useNotification } from '../components/NotificationProvider';
 
 export default function DetalleEventoScreen({ route, navigation }) {
   const { eventoId } = route.params;
@@ -29,7 +30,9 @@ export default function DetalleEventoScreen({ route, navigation }) {
     toggleFavorito,
     comprarEntrada,
     obtenerReseniasOrganizador,
+    currentUser,
   } = useApp();
+  const { notify } = useNotification();
   const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -94,6 +97,18 @@ export default function DetalleEventoScreen({ route, navigation }) {
     };
   }, [organizadorId, obtenerReseniasOrganizador]);
 
+
+  if (currentUser?.rol === 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Detalle de Evento"
+        headerSubtitle="Acceso Restringido"
+        actionText="Ir a Mis Eventos"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
   const selectedTipo = evento.tiposEntrada?.find((t) => t.id === selectedTipoId);
   const total = selectedTipo ? selectedTipo.precio * cantidad : 0;
   const handleToggleFavorito = () => toggleFavorito(evento.id).catch(() => {});
@@ -103,7 +118,11 @@ export default function DetalleEventoScreen({ route, navigation }) {
     if (cantidad < selectedTipo.disponibles) {
       setCantidad((prev) => prev + 1);
     } else {
-      Alert.alert('Límite alcanzado', `Solo quedan ${selectedTipo.disponibles} entradas disponibles para este tipo.`);
+      notify({
+        title: 'Límite alcanzado',
+        message: `Solo quedan ${selectedTipo.disponibles} entradas disponibles para este tipo.`,
+        type: 'warning',
+      });
     }
   };
 
@@ -125,7 +144,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
       if (!res.success) throw new Error(res.error || 'No se pudo completar la compra.');
       setCompraExitosa(true);
     } catch (error) {
-      Alert.alert('Error en la compra', error.message);
+      notify({ title: 'Error en la compra', message: error.message, type: 'error' });
     } finally {
       setIsBuying(false);
     }
@@ -532,7 +551,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
               style={styles.modalActionBtn}
               onPress={() => {
                 setCompraExitosa(false);
-                navigation.navigate('TicketsTab');
+                navigation.navigate('MainTabs', { screen: 'TicketsTab' });
               }}
               activeOpacity={0.85}
             >

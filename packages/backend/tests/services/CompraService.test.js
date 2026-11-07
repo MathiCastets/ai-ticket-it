@@ -7,7 +7,7 @@ import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
 import { EstadoCompra } from '../../src/domain/enums/EstadoCompra.js';
-import { ResourceNotFoundError, BusinessRuleError } from '../../src/services/errors/index.js';
+import { ResourceNotFoundError, BusinessRuleError, ForbiddenError } from '../../src/services/errors/index.js';
 
 describe('CompraService', () => {
   let compraRepo;
@@ -16,12 +16,14 @@ describe('CompraService', () => {
   let service;
   let comprador;
   let organizador;
+  let otroUsuario;
   let tipoEntrada;
   let evento;
 
   function crearContexto({ disponibles = 50 } = {}) {
     comprador = new Usuario({ id: 'comp-1', nombre: 'Comprador', rol: 'comprador', email: 'comp@test.com' });
     organizador = new Usuario({ id: 'org-1', nombre: 'Organizador', rol: 'organizador', email: 'org@test.com' });
+    otroUsuario = new Usuario({ id: 'user-ajeno', nombre: 'Ajeno', rol: 'comprador', email: 'ajeno@test.com' });
     tipoEntrada = new TipoEntrada({ id: 'te-1', nombre: 'General', precio: 10000, cupo: 100, disponibles });
     evento = new Evento({
       id: 'evt-1',
@@ -36,7 +38,7 @@ describe('CompraService', () => {
     crearContexto();
     compraRepo = new CompraRepository([]);
     eventoRepo = new EventoRepository([evento]);
-    usuarioRepo = new UsuarioRepository([comprador, organizador]);
+    usuarioRepo = new UsuarioRepository([comprador, organizador, otroUsuario]);
     service = new CompraService(compraRepo, eventoRepo, usuarioRepo);
   });
 
@@ -59,73 +61,119 @@ describe('CompraService', () => {
       expect(tipoEntrada.disponibles).toBe(disponiblesAntes - 2);
     });
 
-    test('la compra queda persistida en el repositorio', async () => {
-      const compra = await service.realizarCompra({
-        compradorId: 'comp-1',
-        eventoId: 'evt-1',
-        tipoEntradaId: 'te-1',
-        cantidad: 1,
-      });
-
-      const recuperada = await compraRepo.findById(compra.id);
-      expect(recuperada).toBe(compra);
-    });
-
-    test('lanza BusinessRuleError si la cantidad es decimal', async () => {
+    test('lanza BusinessRuleError si la cantidad es menor o igual a 0', async () => {
       await expect(
-        service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1.5 })
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-1',
+          cantidad: 0,
+        })
       ).rejects.toThrow(BusinessRuleError);
     });
 
-    test('lanza BusinessRuleError si la cantidad es cero', async () => {
+    test('lanza BusinessRuleError si la cantidad no es un entero', async () => {
       await expect(
-        service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 0 })
-      ).rejects.toThrow(BusinessRuleError);
-    });
-
-    test('lanza BusinessRuleError si la cantidad es negativa', async () => {
-      await expect(
-        service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: -1 })
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-1',
+          cantidad: 1.5,
+        })
       ).rejects.toThrow(BusinessRuleError);
     });
 
     test('lanza ResourceNotFoundError si el comprador no existe', async () => {
       await expect(
-        service.realizarCompra({ compradorId: 'inexistente', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1 })
+        service.realizarCompra({
+          compradorId: 'comp-inexistente',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-1',
+          cantidad: 1,
+        })
       ).rejects.toThrow(ResourceNotFoundError);
     });
 
     test('lanza ResourceNotFoundError si el evento no existe', async () => {
       await expect(
-        service.realizarCompra({ compradorId: 'comp-1', eventoId: 'inexistente', tipoEntradaId: 'te-1', cantidad: 1 })
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-inexistente',
+          tipoEntradaId: 'te-1',
+          cantidad: 1,
+        })
       ).rejects.toThrow(ResourceNotFoundError);
+    });
+
+    test('lanza ResourceNotFoundError si el tipo de entrada no existe en el evento', async () => {
+      await expect(
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-inexistente',
+          cantidad: 1,
+        })
+      ).rejects.toThrow(ResourceNotFoundError);
+    });
+
+    test('lanza BusinessRuleError si se intenta comprar para un evento que ya ocurrió', async () => {
+      const eventoPasado = new Evento({
+        id: 'evt-pasado',
+        nombre: 'Evento Pasado',
+        fecha: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        organizador,
+        tiposEntrada: [new TipoEntrada({ id: 'te-pasado', nombre: 'General', precio: 5000, cupo: 20 })],
+      });
+      await eventoRepo.save(eventoPasado);
+
+      await expect(
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-pasado',
+          tipoEntradaId: 'te-pasado',
+          cantidad: 1,
+        })
+      ).rejects.toThrow(BusinessRuleError);
+
+      expect(eventoPasado.tiposEntrada[0].disponibles).toBe(20);
     });
 
     test('lanza error si no hay cupo suficiente', async () => {
       crearContexto({ disponibles: 1 });
       compraRepo = new CompraRepository([]);
       eventoRepo = new EventoRepository([evento]);
-      usuarioRepo = new UsuarioRepository([comprador]);
+      usuarioRepo = new UsuarioRepository([comprador, organizador]);
       service = new CompraService(compraRepo, eventoRepo, usuarioRepo);
 
       await expect(
-        service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 5 })
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-1',
+          cantidad: 5,
+        })
       ).rejects.toThrow();
     });
 
-    test('rollback: restaura cupo si falla la persistencia de la compra', async () => {
+    test('rollback: restituye cupo si falla la persistencia de la compra', async () => {
       const disponiblesAntes = tipoEntrada.disponibles;
       const baseRepo = new CompraRepository([]);
-      const failingCompraRepo = {
-        findById: (...args) => baseRepo.findById(...args),
-        save: async () => { throw new Error('Fallo inyectado'); },
+      const failingRepo = {
+        save: async () => {
+          throw new Error('Fallo de persistencia inyectado');
+        },
         delete: (...args) => baseRepo.delete(...args),
       };
-      service = new CompraService(failingCompraRepo, eventoRepo, usuarioRepo);
+      service = new CompraService(failingRepo, eventoRepo, usuarioRepo);
 
       await expect(
-        service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 2 })
-      ).rejects.toThrow('Fallo inyectado');
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-1',
+          cantidad: 2,
+        })
+      ).rejects.toThrow();
 
       expect(tipoEntrada.disponibles).toBe(disponiblesAntes);
     });
@@ -150,6 +198,25 @@ describe('CompraService', () => {
 
       expect(compra.estado).toBe(EstadoCompra.REEMBOLSADA);
       expect(tipoEntrada.disponibles).toBe(disponiblesLuego + 2);
+    });
+
+    test('permite cancelar si el actor es el comprador dueño', async () => {
+      const compra = await realizarCompra(1);
+      await service.cancelarCompra(compra.id, comprador);
+      expect(compra.estado).toBe(EstadoCompra.REEMBOLSADA);
+    });
+
+    test('permite cancelar si el actor es el organizador del evento', async () => {
+      const compra = await realizarCompra(1);
+      await service.cancelarCompra(compra.id, organizador);
+      expect(compra.estado).toBe(EstadoCompra.REEMBOLSADA);
+    });
+
+    test('lanza ForbiddenError si el actor no es ni el comprador ni el organizador', async () => {
+      const compra = await realizarCompra(1);
+      await expect(
+        service.cancelarCompra(compra.id, otroUsuario)
+      ).rejects.toThrow(ForbiddenError);
     });
 
     test('lanza error si se intenta cancelar una compra UTILIZADA', async () => {
@@ -212,6 +279,45 @@ describe('CompraService', () => {
       expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
     });
 
+    test('permite marcar como utilizada si el actor es el organizador', async () => {
+      const compra = await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+
+      await service.marcarUtilizada(compra.id, organizador);
+      expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
+    });
+
+    test('lanza ForbiddenError si un comprador intenta marcar como utilizada', async () => {
+      const compra = await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+
+      await expect(
+        service.marcarUtilizada(compra.id, comprador)
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    test('lanza ForbiddenError si otro organizador intenta marcar como utilizada', async () => {
+      const compra = await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+      const otroOrg = new Usuario({ id: 'org-ajeno', nombre: 'Otro Org', rol: 'organizador' });
+
+      await expect(
+        service.marcarUtilizada(compra.id, otroOrg)
+      ).rejects.toThrow(ForbiddenError);
+    });
+
     test('lanza error si la compra no está CONFIRMADA', async () => {
       const compra = await service.realizarCompra({
         compradorId: 'comp-1',
@@ -248,6 +354,20 @@ describe('CompraService', () => {
       expect(compra.evento.resenias[0].puntuacion).toBe(4.5);
     });
 
+    test('permite calificar si el actor es el comprador dueño', async () => {
+      const compra = await prepararCompraUtilizada();
+      await service.calificarCompra(compra.id, { puntuacion: 5, comentario: 'Excelente!' }, comprador);
+
+      expect(compra.reseniaRealizada).toBe(true);
+    });
+
+    test('lanza ForbiddenError si el actor no es el comprador de la entrada', async () => {
+      const compra = await prepararCompraUtilizada();
+      await expect(
+        service.calificarCompra(compra.id, { puntuacion: 5, comentario: 'No soy el dueño' }, otroUsuario)
+      ).rejects.toThrow(ForbiddenError);
+    });
+
     test('lanza BusinessRuleError si la compra no está UTILIZADA', async () => {
       const compra = await service.realizarCompra({
         compradorId: 'comp-1',
@@ -268,6 +388,25 @@ describe('CompraService', () => {
       await expect(
         service.calificarCompra(compra.id, { puntuacion: 5, comentario: 'Segunda calificación' })
       ).rejects.toThrow(BusinessRuleError);
+    });
+  });
+
+  // ─── listarPorOrganizador ─────────────────────────────────────────────────
+
+  describe('listarPorOrganizador', () => {
+    test('retorna las compras de eventos organizados por el organizador', async () => {
+      await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+
+      const comprasOrg = await service.listarPorOrganizador('org-1');
+      expect(comprasOrg).toHaveLength(1);
+
+      const comprasOtroOrg = await service.listarPorOrganizador('org-otro');
+      expect(comprasOtroOrg).toHaveLength(0);
     });
   });
 

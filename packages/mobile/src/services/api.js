@@ -6,6 +6,8 @@ import { Platform } from 'react-native';
  * Implementa timeout y manejo tipado de respuestas.
  */
 
+let authUserId = null;
+
 const defaultHeaders = {
   'Content-Type': 'application/json',
   Accept: 'application/json',
@@ -51,6 +53,7 @@ async function request(endpoint, options = {}) {
     ...options,
     headers: {
       ...defaultHeaders,
+      ...(authUserId ? { 'X-User-Id': authUserId } : {}),
       ...options.headers,
     },
   };
@@ -86,6 +89,12 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  // Autenticación
+  setAuthUserId: (id) => {
+    authUserId = id;
+  },
+  getAuthUserId: () => authUserId,
+
   // Health
   checkHealth: () => request('/health'),
 

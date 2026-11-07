@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { compraController } from '../controllers/CompraController.js';
+import { authHandler } from '../middlewares/authHandler.js';
 
 const router = Router();
+
+// Todas las rutas de compras son privadas y requieren autenticación mediante X-User-Id
+router.use(authHandler);
 
 router.get('/', compraController.getAll);
 router.post('/', compraController.create);

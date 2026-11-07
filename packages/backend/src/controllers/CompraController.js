@@ -1,6 +1,10 @@
 import { compraService } from '../services/CompraService.js';
 import { mensajeService } from '../services/MensajeService.js';
 import { ValidationError } from './errors/ValidationError.js';
+import { ForbiddenError } from '../services/errors/index.js';
+
+const serializarCompra = (compra) =>
+  typeof compra?.toJSON === 'function' ? compra.toJSON() : compra;
 
 export class CompraController {
   constructor(
@@ -23,15 +27,38 @@ export class CompraController {
       ) {
         throw new ValidationError('Los filtros de compra deben ser valores únicos de texto');
       }
+
+      const actor = req.user;
       let compras;
-      if (compradorId) {
-        compras = await this.compraService.listarPorComprador(compradorId);
-      } else if (eventoId) {
-        compras = await this.compraService.listarPorEvento(eventoId);
+
+      if (actor && actor.rol === 'comprador') {
+        if (compradorId && compradorId !== actor.id) {
+          throw new ForbiddenError('No tienes permiso para ver compras de otros usuarios');
+        }
+        if (eventoId) {
+          throw new ForbiddenError('Solo el organizador puede consultar las compras del evento');
+        }
+        compras = await this.compraService.listarPorComprador(actor.id);
+      } else if (actor && actor.rol === 'organizador') {
+        if (compradorId && compradorId !== actor.id) {
+          throw new ForbiddenError('No tienes permiso para ver compras de otros usuarios');
+        }
+        if (eventoId) {
+          compras = await this.compraService.listarPorEvento(eventoId);
+        } else {
+          compras = await this.compraService.listarPorOrganizador(actor.id);
+        }
       } else {
-        compras = await this.compraService.listarTodas();
+        if (compradorId) {
+          compras = await this.compraService.listarPorComprador(compradorId);
+        } else if (eventoId) {
+          compras = await this.compraService.listarPorEvento(eventoId);
+        } else {
+          compras = await this.compraService.listarTodas();
+        }
       }
-      res.status(200).json({ data: compras });
+
+      res.status(200).json({ data: compras.map(serializarCompra) });
     } catch (error) {
       next(error);
     }
@@ -41,7 +68,16 @@ export class CompraController {
     try {
       const { id } = req.params;
       const compra = await this.compraService.obtenerPorId(id);
-      res.status(200).json({ data: compra });
+      const actor = req.user;
+      if (actor) {
+        const esDuenio = compra.comprador?.id === actor.id;
+        const organizadorId = compra.evento?.organizador?.id || compra.evento?.organizadorId;
+        const esOrganizador = organizadorId === actor.id;
+        if (!esDuenio && !esOrganizador) {
+          throw new ForbiddenError('No tienes permiso para ver esta compra');
+        }
+      }
+      res.status(200).json({ data: serializarCompra(compra) });
     } catch (error) {
       next(error);
     }
@@ -50,8 +86,15 @@ export class CompraController {
   create = async (req, res, next) => {
     try {
       const { compradorId, eventoId, tipoEntradaId, cantidad } = req.body;
+      const actor = req.user;
 
-      if (typeof compradorId !== 'string' || !compradorId.trim()) {
+      if (actor && compradorId && compradorId !== actor.id) {
+        throw new ForbiddenError('No puedes realizar compras en nombre de otro usuario');
+      }
+
+      const compradorIdFinal = compradorId || actor?.id;
+
+      if (typeof compradorIdFinal !== 'string' || !compradorIdFinal.trim()) {
         throw new ValidationError('compradorId es requerido');
       }
       if (!eventoId) throw new ValidationError('eventoId es requerido');
@@ -61,13 +104,13 @@ export class CompraController {
       }
 
       const compra = await this.compraService.realizarCompra({
-        compradorId,
+        compradorId: compradorIdFinal,
         eventoId,
         tipoEntradaId,
         cantidad,
       });
 
-      res.status(201).json({ data: compra });
+      res.status(201).json({ data: serializarCompra(compra) });
     } catch (error) {
       next(error);
     }
@@ -80,9 +123,14 @@ export class CompraController {
       if (quien !== undefined && (typeof quien !== 'string' || !quien.trim())) {
         throw new ValidationError('quien debe ser un texto no vacío');
       }
-      const compraCancelada = await this.compraService.cancelarCompra(id, quien || 'Comprador');
+      const actor = req.user;
+      const compraCancelada = await this.compraService.cancelarCompra(
+        id,
+        actor || quien || 'Comprador',
+        quien
+      );
       res.status(200).json({
-        data: compraCancelada,
+        data: serializarCompra(compraCancelada),
         message: 'Compra cancelada y reembolsada exitosamente',
       });
     } catch (error) {
@@ -97,9 +145,14 @@ export class CompraController {
       if (quien !== undefined && (typeof quien !== 'string' || !quien.trim())) {
         throw new ValidationError('quien debe ser un texto no vacío');
       }
-      const compraUtilizada = await this.compraService.marcarUtilizada(id, quien || 'Acreditación en Puerta');
+      const actor = req.user;
+      const compraUtilizada = await this.compraService.marcarUtilizada(
+        id,
+        actor || quien || 'Acreditación en Puerta',
+        quien
+      );
       res.status(200).json({
-        data: compraUtilizada,
+        data: serializarCompra(compraUtilizada),
         message: 'Entrada acreditada y marcada como UTILIZADA',
       });
     } catch (error) {
@@ -127,13 +180,18 @@ export class CompraController {
         throw new ValidationError('El comentario no puede superar los 250 caracteres');
       }
 
-      const compraCalificada = await this.compraService.calificarCompra(id, {
-        puntuacion,
-        comentario,
-      });
+      const actor = req.user;
+      const compraCalificada = await this.compraService.calificarCompra(
+        id,
+        {
+          puntuacion,
+          comentario,
+        },
+        actor
+      );
 
       res.status(200).json({
-        data: compraCalificada,
+        data: serializarCompra(compraCalificada),
         message: 'Reseña registrada con éxito',
       });
     } catch (error) {
@@ -145,17 +203,24 @@ export class CompraController {
     try {
       const { id } = req.params;
       const { usuarioId, texto } = req.body;
+      const actor = req.user;
+
+      if (actor && usuarioId && usuarioId !== actor.id) {
+        throw new ForbiddenError('No puedes enviar mensajes en nombre de otro usuario');
+      }
+
+      const finalUsuarioId = usuarioId || actor?.id;
 
       if (typeof texto !== 'string' || !texto.trim()) {
         throw new ValidationError('El texto del mensaje no puede estar vacío');
       }
-      if (!usuarioId) {
+      if (!finalUsuarioId) {
         throw new ValidationError('usuarioId es requerido para enviar un mensaje');
       }
 
-      const mensaje = await this.mensajeService.enviarMensaje(id, { usuarioId, texto });
+      const mensaje = await this.mensajeService.enviarMensaje(id, { usuarioId: finalUsuarioId, texto });
 
-      res.status(201).json({ data: mensaje });
+      res.status(201).json({ data: typeof mensaje?.toJSON === 'function' ? mensaje.toJSON() : mensaje });
     } catch (error) {
       next(error);
     }
@@ -164,6 +229,16 @@ export class CompraController {
   getMessages = async (req, res, next) => {
     try {
       const { id } = req.params;
+      const actor = req.user;
+      if (actor) {
+        const compra = await this.compraService.obtenerPorId(id);
+        const esDuenio = compra.comprador?.id === actor.id;
+        const organizadorId = compra.evento?.organizador?.id || compra.evento?.organizadorId;
+        const esOrganizador = organizadorId === actor.id;
+        if (!esDuenio && !esOrganizador) {
+          throw new ForbiddenError('No tienes permiso para ver los mensajes de esta compra');
+        }
+      }
       const mensajes = await this.mensajeService.obtenerMensajes(id);
       res.status(200).json({ data: mensajes });
     } catch (error) {
@@ -175,11 +250,19 @@ export class CompraController {
     try {
       const { id } = req.params;
       const { usuarioId } = req.body;
-      if (typeof usuarioId !== 'string' || !usuarioId.trim()) {
+      const actor = req.user;
+
+      if (actor && usuarioId && usuarioId !== actor.id) {
+        throw new ForbiddenError('No puedes marcar mensajes leídos en nombre de otro usuario');
+      }
+
+      const finalUsuarioId = usuarioId || actor?.id;
+
+      if (typeof finalUsuarioId !== 'string' || !finalUsuarioId.trim()) {
         throw new ValidationError('usuarioId es requerido para marcar los mensajes como leídos');
       }
 
-      const mensajes = await this.mensajeService.marcarMensajesLeidos(id, usuarioId);
+      const mensajes = await this.mensajeService.marcarMensajesLeidos(id, finalUsuarioId);
       res.status(200).json({ data: mensajes });
     } catch (error) {
       next(error);

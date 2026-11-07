@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -17,9 +16,12 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { EventListSkeleton } from '../components/loading/Skeletons';
+import AccessDeniedView from '../components/AccessDeniedView';
+import { useNotification } from '../components/NotificationProvider';
 
 export default function ExplorarScreen({ navigation }) {
-  const { eventos, categorias, favoritos, favoritosError, toggleFavorito } = useApp();
+  const { eventos, categorias, favoritos, favoritosError, toggleFavorito, currentUser } = useApp();
+  const { notify } = useNotification();
   const isLoading = useMockLoading();
 
   const [searchText, setSearchText] = useState('');
@@ -43,6 +45,40 @@ export default function ExplorarScreen({ navigation }) {
       ],
     [categorias, eventos]
   );
+  const resumenesPorOrganizador = useMemo(() => {
+    const acumulados = new Map();
+
+    eventos.forEach((evento) => {
+      const organizadorId = evento.organizadorId || evento.organizadorObj?.id;
+      const totalResenias = Number(evento.totalResenias);
+      const rating = Number(evento.organizadorRating);
+      if (
+        !organizadorId ||
+        !Number.isFinite(totalResenias) ||
+        totalResenias <= 0 ||
+        !Number.isFinite(rating)
+      ) {
+        return;
+      }
+
+      const resumen = acumulados.get(organizadorId) || { sumaPonderada: 0, totalResenias: 0 };
+      resumen.sumaPonderada += rating * totalResenias;
+      resumen.totalResenias += totalResenias;
+      acumulados.set(organizadorId, resumen);
+    });
+
+    return new Map(
+      [...acumulados].map(([organizadorId, resumen]) => [
+        organizadorId,
+        {
+          rating: resumen.sumaPonderada / resumen.totalResenias,
+          totalResenias: resumen.totalResenias,
+        },
+      ])
+    );
+  }, [eventos]);
+  const obtenerResumenOrganizador = (evento) =>
+    resumenesPorOrganizador.get(evento.organizadorId || evento.organizadorObj?.id);
 
   const filteredEventos = useMemo(() => {
     const ahora = Date.now();
@@ -78,17 +114,47 @@ export default function ExplorarScreen({ navigation }) {
       const getMinPrice = (e) => (e.tiposEntrada && e.tiposEntrada.length > 0 ? Math.min(...e.tiposEntrada.map((t) => t.precio)) : 0);
       result.sort((a, b) => direction * (getMinPrice(a) - getMinPrice(b)));
     } else if (selectedSort === 'rating') {
-      result.sort((a, b) => direction * ((a.organizadorRating || 0) - (b.organizadorRating || 0)));
+      result.sort(
+        (a, b) =>
+          direction *
+          ((obtenerResumenOrganizador(a)?.rating || 0) -
+            (obtenerResumenOrganizador(b)?.rating || 0))
+      );
     }
 
     return result;
-  }, [eventos, favoritos, soloFavoritos, selectedCategoria, searchText, selectedSort, sortDirection]);
+  }, [
+    eventos,
+    favoritos,
+    soloFavoritos,
+    selectedCategoria,
+    searchText,
+    selectedSort,
+    sortDirection,
+    resumenesPorOrganizador,
+  ]);
+
+  if (currentUser?.rol === 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Explorar Eventos"
+        headerSubtitle="Acceso Restringido"
+        actionText="Ir a Mis Eventos"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
 
   const handleToggleFavorito = async (eventoId) => {
     try {
       await toggleFavorito(eventoId);
     } catch (error) {
-      Alert.alert('No se pudo actualizar el favorito', error.message);
+      notify({
+        title: 'No se pudo actualizar el favorito',
+        message: error.message,
+        type: 'error',
+      });
     }
   };
 
@@ -217,7 +283,9 @@ export default function ExplorarScreen({ navigation }) {
                   Probá con otra búsqueda o modificá los filtros.
                 </Text>
               </View>
-            ) : filteredEventos.map((item) => (
+            ) : filteredEventos.map((item) => {
+              const resumenOrganizador = obtenerResumenOrganizador(item);
+              return (
               <TouchableOpacity key={item.id} style={styles.eventCard} onPress={() => navigation.navigate('DetalleEvento', { eventoId: item.id })} activeOpacity={0.8}>
                 <View style={styles.eventImageContainer}>
                   <Image source={item.imagen ? { uri: item.imagen } : null} style={styles.eventImage} />
@@ -256,11 +324,12 @@ export default function ExplorarScreen({ navigation }) {
                         {getOrg(item.organizador)}
                       </Text>
                       <Text style={styles.eventOrganizerSeparator}>•</Text>
-                      {item.totalResenias > 0 && Number.isFinite(Number(item.organizadorRating)) ? (
+                      {resumenOrganizador?.totalResenias > 0 &&
+                      Number.isFinite(resumenOrganizador.rating) ? (
                         <>
                           <Ionicons name="star" size={12} color={COLORS.statusWarning} />
                           <Text style={styles.eventRating}>
-                            {Number(item.organizadorRating).toFixed(1)}
+                            {resumenOrganizador.rating.toFixed(1)}
                           </Text>
                         </>
                       ) : (
@@ -278,7 +347,8 @@ export default function ExplorarScreen({ navigation }) {
                   </View>
                 </View>
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>

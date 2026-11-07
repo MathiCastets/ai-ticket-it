@@ -109,6 +109,18 @@ describe('EventoService', () => {
       expect(enRepo).toBe(nuevo);
     });
 
+    test('falla si la fecha del evento es anterior o igual al momento actual', async () => {
+      await expect(
+        service.crearEvento({
+          nombre: 'Evento Pasado',
+          fecha: new Date(Date.now() - 10000).toISOString(),
+          organizadorId: 'org-1',
+          categoriaId: 'cat-recitales',
+          tiposEntrada: [{ nombre: 'General', precio: 8000, cupo: 50 }],
+        })
+      ).rejects.toThrow(BusinessRuleError);
+    });
+
     test('falla si el usuario no es organizador', async () => {
       await expect(
         service.crearEvento({

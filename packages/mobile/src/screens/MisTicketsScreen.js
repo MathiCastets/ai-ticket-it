@@ -8,7 +8,6 @@ import {
   TextInput,
   TouchableOpacity,
   Modal,
-  Alert,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +17,8 @@ import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import { TicketListSkeleton } from '../components/loading/Skeletons';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
+import { useNotification } from '../components/NotificationProvider';
 
 const normalizarTexto = (texto) =>
   String(texto || '')
@@ -31,15 +32,35 @@ const obtenerNombreCategoria = (categoria) =>
     : categoria || '';
 
 export default function MisTicketsScreen({ navigation }) {
-  const { compras, eventos, currentUser, getDiasRestantes, cancelarCompra } = useApp();
+  const {
+    compras,
+    comprasCargando,
+    eventos,
+    currentUser,
+    getDiasRestantes,
+    cancelarCompra,
+  } = useApp();
+  const { notify } = useNotification();
   const isLoading = useMockLoading();
 
-  const [activeTab, setActiveTab] = useState('todas'); // 'todas' | 'confirmadas' | 'pendientes' | 'historial'
+  const [activeTab, setActiveTab] = useState('todas');
   const [busqueda, setBusqueda] = useState('');
   const [sortDirection, setSortDirection] = useState('desc');
   const [selectedCompraQR, setSelectedCompraQR] = useState(null);
   const [selectedCompraCancel, setSelectedCompraCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
+
+  if (currentUser?.rol === 'organizador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Mis Tickets"
+        headerSubtitle="Acceso Restringido"
+        actionText="Ir a Eventos"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
 
   const comprasDelUsuario = compras.filter((compra) => compra.compradorId === currentUser.id);
   const obtenerCategoriaCompra = (compra) => {
@@ -53,12 +74,8 @@ export default function MisTicketsScreen({ navigation }) {
     .filter((compra) => {
       if (activeTab === 'confirmadas' && compra.estado !== 'CONFIRMADA') return false;
       if (activeTab === 'pendientes' && compra.estado !== 'PENDIENTE') return false;
-      if (
-        activeTab === 'historial' &&
-        !['UTILIZADA', 'REEMBOLSADA', 'CANCELADA'].includes(compra.estado)
-      ) {
-        return false;
-      }
+      if (activeTab === 'utilizadas' && compra.estado !== 'UTILIZADA') return false;
+      if (activeTab === 'reembolsadas' && compra.estado !== 'REEMBOLSADA') return false;
 
       if (!textoBusqueda) return true;
       return normalizarTexto(
@@ -87,9 +104,9 @@ export default function MisTicketsScreen({ navigation }) {
       const res = await cancelarCompra(selectedCompraCancel.id);
       if (!res.success) throw new Error(res.error || 'No se pudo cancelar la compra.');
       setSelectedCompraCancel(null);
-      Alert.alert('Cancelación Exitosa', res.mensaje);
+      notify({ title: 'Cancelación exitosa', message: res.mensaje, type: 'success' });
     } catch (error) {
-      Alert.alert('No se pudo cancelar', error.message);
+      notify({ title: 'No se pudo cancelar', message: error.message, type: 'error' });
     } finally {
       setIsCancelling(false);
     }
@@ -107,51 +124,6 @@ export default function MisTicketsScreen({ navigation }) {
             {/*<Text style={styles.pageSubtitle}>Gestioná tus accesos, estados y cancelaciones</Text>*/}
           </View>
         </View>
-
-        {/* Status Filter Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-          {[
-            { id: 'todas', label: 'Todas', count: comprasDelUsuario.length },
-            {
-              id: 'confirmadas',
-              label: 'Confirmadas',
-              count: comprasDelUsuario.filter((c) => c.estado === 'CONFIRMADA').length,
-            },
-            {
-              id: 'pendientes',
-              label: 'Pendientes',
-              count: comprasDelUsuario.filter((c) => c.estado === 'PENDIENTE').length,
-            },
-            {
-              id: 'historial',
-              label: 'Utilizadas',
-              count: comprasDelUsuario.filter((c) =>
-                ['UTILIZADA', 'REEMBOLSADA', 'CANCELADA'].includes(c.estado)
-              ).length,
-            },
-          ].map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                style={[styles.tabButton, isActive && styles.tabButtonActive]}
-                onPress={() => setActiveTab(tab.id)}
-                activeOpacity={0.75}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isActive }}
-              >
-                <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>
-                  {tab.label}
-                </Text>
-                <View style={[styles.tabCountBadge, isActive && styles.tabCountBadgeActive]}>
-                  <Text style={[styles.tabCount, isActive && styles.tabCountActive]}>
-                    {tab.count}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
 
         <View style={styles.filters}>
           <View style={styles.searchInputContainer}>
@@ -198,9 +170,57 @@ export default function MisTicketsScreen({ navigation }) {
           </View>
         </View>
 
+        {/* Status Filter Tabs */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+          {[
+            { id: 'todas', label: 'Todas', count: comprasDelUsuario.length },
+            {
+              id: 'confirmadas',
+              label: 'Confirmadas',
+              count: comprasDelUsuario.filter((c) => c.estado === 'CONFIRMADA').length,
+            },
+            {
+              id: 'pendientes',
+              label: 'Pendientes',
+              count: comprasDelUsuario.filter((c) => c.estado === 'PENDIENTE').length,
+            },
+            {
+              id: 'utilizadas',
+              label: 'Utilizadas',
+              count: comprasDelUsuario.filter((c) => c.estado === 'UTILIZADA').length,
+            },
+            {
+              id: 'reembolsadas',
+              label: 'Reembolsadas',
+              count: comprasDelUsuario.filter((c) => c.estado === 'REEMBOLSADA').length,
+            },
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.tabButton, isActive && styles.tabButtonActive]}
+                onPress={() => setActiveTab(tab.id)}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+              >
+                <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>
+                  {tab.label}
+                </Text>
+                <View style={[styles.tabCountBadge, isActive && styles.tabCountBadgeActive]}>
+                  <Text style={[styles.tabCount, isActive && styles.tabCountActive]}>
+                    {tab.count}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
         {/* Purchases List */}
         <View style={styles.ticketList}>
-          {isLoading ? (
+          {isLoading || comprasCargando ? (
             <TicketListSkeleton />
           ) : filteredCompras.length === 0 ? (
             <View style={styles.emptyContainer}>

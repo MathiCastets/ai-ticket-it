@@ -6,7 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
@@ -14,12 +15,15 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
+import AccessDeniedView from '../components/AccessDeniedView';
+import { useNotification } from '../components/NotificationProvider';
 
 const MAX_REVIEW_LENGTH = 250;
 
 export default function CalificarScreen({ route, navigation }) {
   const { compraId } = route.params;
   const { compras, currentUser, calificarEvento } = useApp();
+  const { notify } = useNotification();
   const isLoading = useMockLoading();
 
   const compra = compras.find((c) => c.id === compraId);
@@ -30,20 +34,53 @@ export default function CalificarScreen({ route, navigation }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reseniaPublicada, setReseniaPublicada] = useState(false);
 
+  if (currentUser?.rol !== 'comprador') {
+    return (
+      <AccessDeniedView
+        headerTitle="Calificar Evento"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver"
+        onBack={() => navigation.goBack()}
+        navigation={navigation}
+      />
+    );
+  }
+
+  if (!compra || !puedeCalificar) {
+    return (
+      <AccessDeniedView
+        headerTitle="Calificar Evento"
+        headerSubtitle="Acceso Restringido"
+        actionText="Volver a Mis Tickets"
+        onBack={() => navigation.navigate('MainTabs')}
+        navigation={navigation}
+      />
+    );
+  }
+
   const handleSubmit = async () => {
     if (!puedeCalificar) {
-      Alert.alert(
-        'Acceso no disponible',
-        'Esta compra no corresponde al perfil actual.'
-      );
+      notify({
+        title: 'Acceso no disponible',
+        message: 'Esta compra no corresponde al perfil actual.',
+        type: 'warning',
+      });
       return;
     }
     if (!comentario.trim()) {
-      Alert.alert('Falta comentario', 'Por favor ingresá un breve comentario sobre tu experiencia.');
+      notify({
+        title: 'Falta comentario',
+        message: 'Por favor ingresá un breve comentario sobre tu experiencia.',
+        type: 'warning',
+      });
       return;
     }
     if (comentario.length > MAX_REVIEW_LENGTH) {
-      Alert.alert('Reseña demasiado larga', 'La reseña no puede superar los 250 caracteres.');
+      notify({
+        title: 'Reseña demasiado larga',
+        message: 'La reseña no puede superar los 250 caracteres.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -57,7 +94,11 @@ export default function CalificarScreen({ route, navigation }) {
       if (!res.success) throw new Error(res.error || 'No se pudo publicar la reseña.');
       setReseniaPublicada(true);
     } catch (error) {
-      Alert.alert('No se pudo publicar la reseña', error.message);
+      notify({
+        title: 'No se pudo publicar la reseña',
+        message: error.message,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -108,7 +149,7 @@ export default function CalificarScreen({ route, navigation }) {
     );
   }
 
-  if (reseniaPublicada || compra.reseniaRealizada) {
+  if (reseniaPublicada || (compra.reseniaRealizada && !isSubmitting)) {
     return (
       <View style={styles.screenContainer}>
         <Header
@@ -142,7 +183,10 @@ export default function CalificarScreen({ route, navigation }) {
   }
 
   return (
-    <View style={styles.screenContainer}>
+    <KeyboardAvoidingView
+      style={styles.screenContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <Header
         title="Calificar Evento"
         subtitle={compra.ordenCodigo}
@@ -150,7 +194,11 @@ export default function CalificarScreen({ route, navigation }) {
         onBack={() => navigation.goBack()}
       />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.eventCard}>
           <Text style={styles.eventName}>{compra.eventoNombre || compra.evento?.nombre}</Text>
           <Text style={styles.eventInfo}>
@@ -246,7 +294,7 @@ export default function CalificarScreen({ route, navigation }) {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

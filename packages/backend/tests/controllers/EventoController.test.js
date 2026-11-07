@@ -1,6 +1,9 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { EventoController } from '../../src/controllers/EventoController.js';
 import { ValidationError } from '../../src/controllers/errors/ValidationError.js';
+import { ForbiddenError } from '../../src/services/errors/index.js';
+import { Evento } from '../../src/domain/entities/Evento.js';
+import { Usuario } from '../../src/domain/entities/Usuario.js';
 
 describe('EventoController', () => {
   let mockEventoService;
@@ -48,6 +51,7 @@ describe('EventoController', () => {
 
       await controller.getAll(req, res, next);
 
+      expect(mockEventoService.listarEventos).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -55,32 +59,130 @@ describe('EventoController', () => {
         })
       );
     });
+
+    test('la respuesta de getAll no expone el email del organizador (Ley 25.326)', async () => {
+      const organizador = new Usuario({
+        id: 'org-priv',
+        nombre: 'Teatro',
+        rol: 'organizador',
+        email: 'secreto.organizador@teatro.com',
+      });
+      const evento = new Evento({
+        id: 'e-priv',
+        nombre: 'Concierto',
+        fecha: new Date('2026-12-15T20:00:00Z'),
+        organizador,
+      });
+
+      mockEventoService.listarEventos.mockResolvedValue([evento]);
+      const req = { query: {} };
+
+      await controller.getAll(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      const jsonLlamada = res.json.mock.calls[0][0];
+      const resString = JSON.stringify(jsonLlamada);
+      expect(resString).not.toContain('secreto.organizador@teatro.com');
+      expect(jsonLlamada.data[0].organizador?.email).toBeUndefined();
+    });
+  });
+
+  describe('getById', () => {
+    test('obtiene un evento por id devolviendo 200', async () => {
+      mockEventoService.obtenerPorId.mockResolvedValue({
+        id: 'e1',
+        nombre: 'Evento 1',
+        organizador: { id: 'org-1' },
+        resenias: [],
+      });
+      const req = { params: { id: 'e1' } };
+
+      await controller.getById(req, res, next);
+
+      expect(mockEventoService.obtenerPorId).toHaveBeenCalledWith('e1');
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('la respuesta de getById no expone el email del organizador (Ley 25.326)', async () => {
+      const organizador = new Usuario({
+        id: 'org-priv',
+        nombre: 'Teatro Colón',
+        rol: 'organizador',
+        email: 'entradas.privadas@teatrocolon.org.ar',
+      });
+      const evento = new Evento({
+        id: 'e-priv-id',
+        nombre: 'Ópera',
+        fecha: new Date('2026-12-15T20:00:00Z'),
+        organizador,
+      });
+
+      mockEventoService.obtenerPorId.mockResolvedValue(evento);
+      const req = { params: { id: 'e-priv-id' } };
+
+      await controller.getById(req, res, next);
+
+      expect(mockEventoService.obtenerPorId).toHaveBeenCalledWith('e-priv-id');
+      expect(mockEventoService.listarEventos).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      const jsonLlamada = res.json.mock.calls[0][0];
+      const resString = JSON.stringify(jsonLlamada);
+      expect(resString).not.toContain('entradas.privadas@teatrocolon.org.ar');
+      expect(jsonLlamada.data.organizador?.email).toBeUndefined();
+    });
   });
 
   describe('create', () => {
     const eventoValido = {
-      nombre: 'Recital Rock',
-      fecha: '2026-11-20T20:00:00.000Z',
-      categoria: 'Recitales',
+      nombre: 'Nuevo Evento',
+      fecha: '2026-12-01T20:00:00.000Z',
+      categoriaId: 'cat-1',
       organizadorId: 'org-1',
-      tiposEntrada: [{ nombre: 'General', precio: 5000, cupo: 100 }],
+      tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 100 }],
     };
 
-    test('valida y crea un evento devolviendo 201', async () => {
-      mockEventoService.crearEvento.mockResolvedValue({ id: 'e-nuevo', ...eventoValido });
+    test('crea evento válido y responde 201', async () => {
+      mockEventoService.crearEvento.mockResolvedValue({ id: 'evt-creado', ...eventoValido });
       const req = {
         is: () => false,
         body: eventoValido,
-        files: [],
       };
 
       await controller.create(req, res, next);
 
       expect(mockEventoService.crearEvento).toHaveBeenCalledWith(
-        expect.objectContaining({ nombre: 'Recital Rock' })
+        expect.objectContaining({ nombre: 'Nuevo Evento' })
       );
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({ data: expect.objectContaining({ id: 'e-nuevo' }) });
+      expect(res.json).toHaveBeenCalledWith({
+        data: expect.objectContaining({ id: 'evt-creado' }),
+      });
+    });
+
+    test('rechaza con ForbiddenError si un usuario con rol comprador intenta crear un evento', async () => {
+      const req = {
+        is: () => false,
+        body: eventoValido,
+        user: { id: 'comp-1', rol: 'comprador' },
+      };
+
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+
+    test('rechaza con ForbiddenError si un organizador intenta crear un evento para otro organizador', async () => {
+      const req = {
+        is: () => false,
+        body: eventoValido,
+        user: { id: 'org-otro', rol: 'organizador' },
+      };
+
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
 
     test('rechaza si falta el nombre sin llamar al servicio', async () => {
@@ -117,6 +219,54 @@ describe('EventoController', () => {
 
       expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('update', () => {
+    test('actualiza el evento y devuelve 200 cuando el organizador es el dueño', async () => {
+      mockEventoService.actualizarEvento.mockResolvedValue({ id: 'evt-1', nombre: 'Modificado' });
+      const req = {
+        is: () => false,
+        params: { id: 'evt-1' },
+        body: { organizadorId: 'org-1', nombre: 'Modificado' },
+        user: { id: 'org-1', rol: 'organizador' },
+      };
+
+      await controller.update(req, res, next);
+
+      expect(mockEventoService.actualizarEvento).toHaveBeenCalledWith(
+        'evt-1',
+        expect.objectContaining({ nombre: 'Modificado', organizadorId: 'org-1' })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('rechaza con ForbiddenError si un comprador intenta modificar un evento', async () => {
+      const req = {
+        is: () => false,
+        params: { id: 'evt-1' },
+        body: { organizadorId: 'org-1', nombre: 'Hacked' },
+        user: { id: 'comp-1', rol: 'comprador' },
+      };
+
+      await controller.update(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
+    });
+
+    test('rechaza con ForbiddenError si un organizador intenta modificar el evento de otro', async () => {
+      const req = {
+        is: () => false,
+        params: { id: 'evt-1' },
+        body: { organizadorId: 'org-1', nombre: 'Hacked' },
+        user: { id: 'org-otro', rol: 'organizador' },
+      };
+
+      await controller.update(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
     });
   });
 

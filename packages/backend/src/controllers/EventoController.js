@@ -1,38 +1,6 @@
 import { eventoService } from '../services/EventoService.js';
 import { ValidationError } from './errors/ValidationError.js';
-
-const obtenerResumenesOrganizadores = (eventos) => {
-  const resumenes = new Map();
-  for (const evento of eventos) {
-    const organizadorId = evento.organizador?.id || evento.organizadorId;
-    if (!organizadorId) continue;
-
-    const resumen = resumenes.get(organizadorId) || { suma: 0, total: 0 };
-    for (const resenia of evento.resenias || []) {
-      const puntuacion = Number(resenia.puntuacion);
-      if (!Number.isFinite(puntuacion)) continue;
-      resumen.suma += puntuacion;
-      resumen.total += 1;
-    }
-    resumenes.set(organizadorId, resumen);
-  }
-
-  return resumenes;
-};
-
-const serializarEventoSinResenias = (evento, resumenes) => {
-  const serializado = typeof evento.toJSON === 'function' ? evento.toJSON() : evento;
-  const organizadorId = serializado.organizador?.id || serializado.organizadorId;
-  const resumen = resumenes.get(organizadorId);
-  const totalResenias = resumen?.total || 0;
-  return {
-    ...serializado,
-    organizadorRating:
-      totalResenias > 0 ? Number((resumen.suma / totalResenias).toFixed(1)) : null,
-    totalResenias,
-    resenias: [],
-  };
-};
+import { ForbiddenError } from '../services/errors/index.js';
 
 export class EventoController {
   constructor(_eventoService = eventoService) {
@@ -52,13 +20,9 @@ export class EventoController {
       if (sortBy && !['fecha', 'precio', 'rating'].includes(sortBy)) {
         throw new ValidationError('sortBy debe ser fecha, precio o rating');
       }
-      const [eventos, todosLosEventos] = await Promise.all([
-        this.eventoService.listarEventos({ categoria, search, sortBy }),
-        this.eventoService.listarEventos(),
-      ]);
-      const resumenes = obtenerResumenesOrganizadores(todosLosEventos);
+      const eventos = await this.eventoService.listarEventos({ categoria, search, sortBy });
       const eventosSerializados = eventos.map((evento) =>
-        serializarEventoSinResenias(evento, resumenes)
+        typeof evento.toJSON === 'function' ? evento.toJSON() : evento
       );
       if (sortBy === 'rating') {
         eventosSerializados.sort(
@@ -75,9 +39,8 @@ export class EventoController {
     try {
       const { id } = req.params;
       const evento = await this.eventoService.obtenerPorId(id);
-      const todosLosEventos = await this.eventoService.listarEventos();
-      const resumenes = obtenerResumenesOrganizadores(todosLosEventos);
-      res.status(200).json({ data: serializarEventoSinResenias(evento, resumenes) });
+      const serializado = typeof evento.toJSON === 'function' ? evento.toJSON() : evento;
+      res.status(200).json({ data: serializado });
     } catch (error) {
       next(error);
     }
@@ -101,6 +64,18 @@ export class EventoController {
       }
 
       const { nombre, fecha, categoria, categoriaId, organizadorId, tiposEntrada } = payload;
+      const actor = req.user;
+
+      if (actor) {
+        if (actor.rol !== 'organizador') {
+          throw new ForbiddenError('Solo los organizadores pueden crear eventos');
+        }
+        if (organizadorId && organizadorId !== actor.id) {
+          throw new ForbiddenError('No puedes crear eventos a nombre de otro organizador');
+        }
+      }
+
+      const finalOrganizadorId = organizadorId || actor?.id;
 
       if (typeof nombre !== 'string' || !nombre.trim()) {
         throw new ValidationError('El nombre del evento es requerido');
@@ -123,10 +98,10 @@ export class EventoController {
       ) {
         throw new ValidationError('La categoría debe indicarse mediante un nombre o id de texto');
       }
-      if (!organizadorId) {
+      if (!finalOrganizadorId) {
         throw new ValidationError('organizadorId es requerido');
       }
-      if (typeof organizadorId !== 'string' || !organizadorId.trim()) {
+      if (typeof finalOrganizadorId !== 'string' || !finalOrganizadorId.trim()) {
         throw new ValidationError('organizadorId debe ser un texto no vacío');
       }
       if (!Array.isArray(tiposEntrada) || tiposEntrada.length === 0) {
@@ -135,6 +110,7 @@ export class EventoController {
 
       const nuevoEvento = await this.eventoService.crearEvento({
         ...payload,
+        organizadorId: finalOrganizadorId,
         imagenes: req.files || [],
       });
       res.status(201).json({ data: nuevoEvento });
@@ -166,12 +142,25 @@ export class EventoController {
         imagen,
         fecha,
       } = payload;
-      if (typeof organizadorId !== 'string' || !organizadorId.trim()) {
+      const actor = req.user;
+
+      if (actor) {
+        if (actor.rol !== 'organizador') {
+          throw new ForbiddenError('Solo los organizadores pueden modificar eventos');
+        }
+        if (organizadorId && organizadorId !== actor.id) {
+          throw new ForbiddenError('No puedes modificar eventos a nombre de otro organizador');
+        }
+      }
+
+      const finalOrganizadorId = organizadorId || actor?.id;
+
+      if (typeof finalOrganizadorId !== 'string' || !finalOrganizadorId.trim()) {
         throw new ValidationError('organizadorId es requerido para modificar el evento');
       }
 
       const evento = await this.eventoService.actualizarEvento(req.params.id, {
-        organizadorId,
+        organizadorId: finalOrganizadorId,
         nombre,
         descripcion,
         ubicacion,
@@ -209,11 +198,18 @@ export class EventoController {
         throw new ValidationError('El comentario no puede superar los 250 caracteres');
       }
 
-      const resenia = await this.eventoService.agregarResenia(id, {
-        compraId,
-        puntuacion,
-        detalle,
-      });
+      const args = [
+        id,
+        {
+          compraId,
+          puntuacion,
+          detalle,
+        },
+      ];
+      if (req.user) {
+        args.push(req.user);
+      }
+      const resenia = await this.eventoService.agregarResenia(...args);
 
       res.status(201).json({ data: resenia });
     } catch (error) {
