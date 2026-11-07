@@ -115,7 +115,10 @@ export class Compra {
     if (!check.puede) {
       throw new ReglaNegocioError(check.razon, 'CANCELACION_NO_PERMITIDA');
     }
-    this.actualizarEstado(EstadoCompra.REEMBOLSADA, quien, 'Cancelación solicitada por comprador');
+    const estadoDestino = this.estado === EstadoCompra.PENDIENTE
+      ? EstadoCompra.CANCELADA
+      : EstadoCompra.REEMBOLSADA;
+    this.actualizarEstado(estadoDestino, quien, 'Cancelación solicitada por comprador');
   }
 
   marcarComoUtilizada(quien) {
@@ -193,6 +196,7 @@ export class Compra {
       organizadorNombre: typeof this.evento?.organizador === 'object' ? this.evento.organizador?.nombre : (this.evento?.organizador || ''),
       imagen: this.evento?.imagen || '',
       ubicacion: this.evento?.ubicacion || '',
+      conversacionCerrada: this.estaConversacionCerrada(),
     };
   }
 }

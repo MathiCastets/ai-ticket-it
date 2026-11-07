@@ -25,7 +25,37 @@ export class EventoService {
   }
 
   async listarEventos(filtros = {}) {
-    return await this.eventoRepository.findAll(filtros);
+    const eventos = await this.eventoRepository.findAll(filtros);
+    if (filtros.sortBy !== 'rating') return eventos;
+
+    // Centralizar ordenamiento por rating: promedio por organizador
+    const ratingPorOrganizador = new Map();
+    for (const evento of eventos) {
+      const orgId = evento.organizador?.id ?? evento.organizadorId ?? '';
+      if (!ratingPorOrganizador.has(orgId)) {
+        ratingPorOrganizador.set(orgId, { suma: 0, count: 0 });
+      }
+      const entry = ratingPorOrganizador.get(orgId);
+      for (const resenia of (evento.resenias || [])) {
+        entry.suma += resenia.puntuacion;
+        entry.count += 1;
+      }
+    }
+
+    const ratingPromedio = (orgId) => {
+      const entry = ratingPorOrganizador.get(orgId);
+      if (!entry || entry.count === 0) return null; // sin resenas -> al final
+      return entry.suma / entry.count;
+    };
+
+    return [...eventos].sort((a, b) => {
+      const rA = ratingPromedio(a.organizador?.id ?? a.organizadorId ?? '');
+      const rB = ratingPromedio(b.organizador?.id ?? b.organizadorId ?? '');
+      if (rA === null && rB === null) return 0;
+      if (rA === null) return 1;  // a al final
+      if (rB === null) return -1; // b al final
+      return rB - rA; // mayor rating primero
+    });
   }
 
   async obtenerPorId(id) {
@@ -266,25 +296,6 @@ export class EventoService {
     }
   }
 
-  async agregarResenia(eventoId, { compraId, puntuacion, detalle }, actor = null) {
-    const evento = await this.obtenerPorId(eventoId);
-    const compra = await this.compraService.obtenerPorId(compraId);
-
-    if (compra.evento.id !== evento.id) {
-      throw new BusinessRuleError('La compra no pertenece al evento indicado', 'COMPRA_EVENTO_NO_COINCIDE');
-    }
-
-    const compraCalificada = await this.compraService.calificarCompra(
-      compraId,
-      {
-        puntuacion,
-        comentario: detalle,
-      },
-      actor
-    );
-
-    return compraCalificada.evento.resenias[0];
-  }
 }
 
 export const eventoService = new EventoService();

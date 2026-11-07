@@ -24,11 +24,6 @@ export class EventoController {
       const eventosSerializados = eventos.map((evento) =>
         typeof evento.toJSON === 'function' ? evento.toJSON() : evento
       );
-      if (sortBy === 'rating') {
-        eventosSerializados.sort(
-          (a, b) => (b.organizadorRating ?? -1) - (a.organizadorRating ?? -1)
-        );
-      }
       res.status(200).json({ data: eventosSerializados });
     } catch (error) {
       next(error);
@@ -175,47 +170,6 @@ export class EventoController {
     }
   };
 
-  addReview = async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const { compraId, puntuacion, detalle } = req.body;
-
-      if (!compraId) {
-        throw new ValidationError('compraId es requerido para verificar la entrada utilizada');
-      }
-      if (
-        typeof puntuacion !== 'number' ||
-        !Number.isInteger(puntuacion * 2) ||
-        puntuacion < 0.5 ||
-        puntuacion > 5
-      ) {
-        throw new ValidationError('La puntuación debe estar entre 0.5 y 5 en incrementos de 0.5');
-      }
-      if (typeof detalle !== 'string' || !detalle.trim()) {
-        throw new ValidationError('El comentario de la reseña es requerido');
-      }
-      if (detalle.length > 250) {
-        throw new ValidationError('El comentario no puede superar los 250 caracteres');
-      }
-
-      const args = [
-        id,
-        {
-          compraId,
-          puntuacion,
-          detalle,
-        },
-      ];
-      if (req.user) {
-        args.push(req.user);
-      }
-      const resenia = await this.eventoService.agregarResenia(...args);
-
-      res.status(201).json({ data: resenia });
-    } catch (error) {
-      next(error);
-    }
-  };
 }
 
 export const eventoController = new EventoController();

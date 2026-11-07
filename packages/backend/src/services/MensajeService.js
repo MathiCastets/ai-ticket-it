@@ -2,7 +2,7 @@ import { Mensaje } from '../domain/entities/Mensaje.js';
 import { compraRepository } from '../repositories/inMemory/CompraRepository.js';
 import { usuarioRepository } from '../repositories/inMemory/UsuarioRepository.js';
 import { EntityNotFoundError } from '../repositories/errors/EntityNotFoundError.js';
-import { ResourceNotFoundError, BusinessRuleError } from './errors/index.js';
+import { ResourceNotFoundError, BusinessRuleError, ForbiddenError } from './errors/index.js';
 
 export class MensajeService {
   constructor(
@@ -44,10 +44,7 @@ export class MensajeService {
         ? compra.evento.organizador?.id
         : compra.evento.organizadorId;
     if (usuario.id !== compra.comprador.id && usuario.id !== organizadorId) {
-      throw new BusinessRuleError(
-        'Solo el comprador y el organizador del evento pueden participar en este chat.',
-        'MENSAJERO_NO_AUTORIZADO'
-      );
+      throw new ForbiddenError('Solo el comprador y el organizador del evento pueden participar en este chat.', 'MENSAJERO_NO_AUTORIZADO');
     }
 
     if (compra.estaConversacionCerrada()) {
@@ -97,10 +94,7 @@ export class MensajeService {
         ? compra.evento.organizador?.id
         : compra.evento.organizadorId;
     if (usuarioId !== compra.comprador.id && usuarioId !== organizadorId) {
-      throw new BusinessRuleError(
-        'Solo el comprador y el organizador del evento pueden leer este chat.',
-        'LECTOR_NO_AUTORIZADO'
-      );
+      throw new ForbiddenError('Solo el comprador y el organizador del evento pueden leer este chat.', 'LECTOR_NO_AUTORIZADO');
     }
 
     const mensajesAnteriores = compra.mensajes.map((mensaje) => ({

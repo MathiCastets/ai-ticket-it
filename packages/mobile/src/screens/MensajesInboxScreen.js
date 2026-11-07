@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,9 +10,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
-import { isConversationClosed, useConversationStatusTime } from '../conversationStatus';
+import { useFocusEffect } from '@react-navigation/native';
 import Header from '../components/Header';
-import useMockLoading from '../hooks/useMockLoading';
 import { ConversationListSkeleton } from '../components/loading/Skeletons';
 
 const formatearFechaUltimoMensaje = (mensaje) => {
@@ -50,11 +49,20 @@ const normalizarTexto = (texto) =>
     .toLocaleLowerCase();
 
 export default function MensajesInboxScreen({ navigation }) {
-  const { compras, currentUser } = useApp();
-  const isLoading = useMockLoading();
+  const { compras, comprasCargando, currentUser, refrescarCompras } = useApp();
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState('todos');
-  const ahora = useConversationStatusTime(compras);
+  useFocusEffect(
+    useCallback(() => {
+      const intervalId = setInterval(() => {
+        refrescarCompras().catch((error) => {
+          console.error('[AI Ticket It Mobile] No se pudieron actualizar las conversaciones.', error);
+        });
+      }, 60_000);
+      return () => clearInterval(intervalId);
+    }, [refrescarCompras])
+  );
+
   const conversaciones = compras.filter(
     (compra) =>
       compra.compradorId === currentUser.id || compra.organizadorId === currentUser.id
@@ -78,7 +86,7 @@ export default function MensajesInboxScreen({ navigation }) {
           mensaje.usuarioId !== currentUser.id &&
           !mensaje.leidoPor?.includes(currentUser.id)
       ).length;
-      const cerrada = isConversationClosed(compra, ahora);
+      const cerrada = compra.conversacionCerrada;
       const actividad = Date.parse(ultimoMensaje?.enviado || compra.fechaHora) || 0;
       const grupo =
         grupos[clave] ||
@@ -130,9 +138,7 @@ export default function MensajesInboxScreen({ navigation }) {
         !mensaje.leidoPor?.includes(currentUser.id)
     )
   ).length;
-  const cantidadCerradas = conversaciones.filter((compra) =>
-    isConversationClosed(compra, ahora)
-  ).length;
+  const cantidadCerradas = conversaciones.filter((compra) => compra.conversacionCerrada).length;
   const conversacionesVisibles = conversacionesAgrupadas
     .map((grupo) => {
       let comprasVisibles = grupo.compras;
@@ -198,7 +204,7 @@ export default function MensajesInboxScreen({ navigation }) {
           </Text>*/}
         </View>
 
-        {!isLoading && !noHayConversaciones ? (
+        {!comprasCargando && !noHayConversaciones ? (
           <View style={styles.filters}>
             <View style={styles.searchInputContainer}>
               <Ionicons name="search" size={18} color={COLORS.textMuted} />
@@ -258,7 +264,7 @@ export default function MensajesInboxScreen({ navigation }) {
         ) : null}
 
         <View style={styles.inboxList}>
-          {isLoading ? <ConversationListSkeleton /> : noHayConversaciones ? (
+          {comprasCargando ? <ConversationListSkeleton /> : noHayConversaciones ? (
             <View style={styles.emptyState}>
               <Ionicons name="chatbubbles-outline" size={34} color={COLORS.textMuted} />
               <Text style={styles.emptyTitle}>Todavía no hay conversaciones</Text>

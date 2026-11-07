@@ -14,15 +14,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
-import useMockLoading from '../hooks/useMockLoading';
-import { EventListSkeleton } from '../components/loading/Skeletons';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
 
 export default function ExplorarScreen({ navigation }) {
   const { eventos, categorias, favoritos, favoritosError, toggleFavorito, currentUser } = useApp();
   const { notify } = useNotification();
-  const isLoading = useMockLoading();
 
   const [searchText, setSearchText] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('Todos');
@@ -271,19 +268,16 @@ export default function ExplorarScreen({ navigation }) {
           })}
         </ScrollView>
 
-        {isLoading ? (
-          <EventListSkeleton count={3} />
-        ) : (
-          <View style={styles.eventList}>
-            {filteredEventos.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={34} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>No encontramos eventos</Text>
-                <Text style={styles.emptySubtitle}>
-                  Probá con otra búsqueda o modificá los filtros.
-                </Text>
-              </View>
-            ) : filteredEventos.map((item) => {
+        <View style={styles.eventList}>
+          {filteredEventos.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={34} color={COLORS.textMuted} />
+              <Text style={styles.emptyTitle}>No encontramos eventos</Text>
+              <Text style={styles.emptySubtitle}>
+                Probá con otra búsqueda o modificá los filtros.
+              </Text>
+            </View>
+          ) : filteredEventos.map((item) => {
               const resumenOrganizador = obtenerResumenOrganizador(item);
               return (
               <TouchableOpacity key={item.id} style={styles.eventCard} onPress={() => navigation.navigate('DetalleEvento', { eventoId: item.id })} activeOpacity={0.8}>
@@ -348,9 +342,8 @@ export default function ExplorarScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
               );
-            })}
-          </View>
-        )}
+          })}
+        </View>
       </ScrollView>
       <Modal
         transparent

@@ -12,11 +12,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
-import { isConversationClosed, useConversationStatusTime } from '../conversationStatus';
 import Header from '../components/Header';
-import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
@@ -43,9 +42,15 @@ const CHAT_INPUT_MAX_HEIGHT = CHAT_INPUT_LINE_HEIGHT * 4 + CHAT_INPUT_VERTICAL_P
 
 export default function ChatScreen({ route, navigation }) {
   const { compraId } = route.params;
-  const { compras, enviarMensaje, marcarMensajesLeidos, currentUser } = useApp();
+  const {
+    compras,
+    comprasCargando,
+    enviarMensaje,
+    marcarMensajesLeidos,
+    refrescarCompras,
+    currentUser,
+  } = useApp();
   const { notify } = useNotification();
-  const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom > 0 ? insets.bottom : 10;
   const messagesScrollRef = useRef(null);
@@ -63,10 +68,9 @@ export default function ChatScreen({ route, navigation }) {
   const compra = compras.find(
     (item) =>
       item.id === compraId &&
-      (item.compradorId === currentUser.id || item.organizadorId === currentUser.id)
+      (item.compradorId === currentUser?.id || item.organizadorId === currentUser?.id)
   );
-  const ahora = useConversationStatusTime(compra ? [compra] : []);
-  const conversacionCerrada = isConversationClosed(compra, ahora);
+  const conversacionCerrada = compra?.conversacionCerrada === true;
   const mensajesConSeparadores = (compra?.mensajes || []).reduce((resultado, mensaje) => {
     const fecha = obtenerFechaMensaje(mensaje);
     if (fecha && fecha.clave !== resultado.ultimaFecha) {
@@ -79,6 +83,17 @@ export default function ChatScreen({ route, navigation }) {
   const [nuevoTexto, setNuevoTexto] = useState('');
   const [chatInputHeight, setChatInputHeight] = useState(CHAT_INPUT_MIN_HEIGHT);
   const [isSending, setIsSending] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const intervalId = setInterval(() => {
+        refrescarCompras().catch((error) => {
+          console.error('[AI Ticket It Mobile] No se pudo actualizar el chat.', error);
+        });
+      }, 60_000);
+      return () => clearInterval(intervalId);
+    }, [refrescarCompras])
+  );
 
   useEffect(() => {
     if (!compra) return;
@@ -93,14 +108,12 @@ export default function ChatScreen({ route, navigation }) {
   }, [Boolean(compra), compraId, currentUser.id, marcarMensajesLeidos, notify]);
 
   useEffect(() => {
-    if (isLoading) return undefined;
-
     const frame = requestAnimationFrame(() => {
       messagesScrollRef.current?.scrollToEnd({ animated: false });
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [compraId, isLoading]);
+  }, [compraId, Boolean(compra), compra?.mensajes?.length]);
 
   useEffect(() => {
     const eventoMostrar = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -133,6 +146,22 @@ export default function ChatScreen({ route, navigation }) {
       setIsSending(false);
     }
   };
+
+  if (comprasCargando) {
+    return (
+      <View style={styles.screenContainer}>
+        <Header
+          title="Chat de Compra"
+          subtitle="Cargando compra..."
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={styles.messagesLoading}>
+          <LoadingSpinner variant="dots" label="Cargando mensajes..." />
+        </View>
+      </View>
+    );
+  }
 
   if (!compra) {
     return (
@@ -189,17 +218,10 @@ export default function ChatScreen({ route, navigation }) {
         onContentSizeChange={() => {
           if (keyboardVisibleRef.current) desplazarAlUltimoMensaje();
         }}
-        contentContainerStyle={[
-          styles.messagesContent,
-          isLoading && styles.loadingMessagesContent,
-        ]}
+        contentContainerStyle={styles.messagesContent}
         showsVerticalScrollIndicator={false}
       >
-        {isLoading ? (
-          <View style={styles.messagesLoading}>
-            <LoadingSpinner variant="dots" label="Cargando mensajes..." />
-          </View>
-        ) : mensajesConSeparadores.length > 0 ? (
+        {mensajesConSeparadores.length > 0 ? (
           mensajesConSeparadores.map((item) => {
             if (item.tipo === 'separador') {
               return (
@@ -317,12 +339,12 @@ export default function ChatScreen({ route, navigation }) {
             multiline
             submitBehavior="submit"
             rows={Platform.OS === 'web' ? 1 : undefined}
-            editable={!isLoading && !isSending && !conversacionCerrada}
+            editable={!isSending && !conversacionCerrada}
           />
           <TouchableOpacity
-            style={[styles.sendButton, (isLoading || isSending || conversacionCerrada || !nuevoTexto.trim()) && styles.sendButtonDisabled]}
+            style={[styles.sendButton, (isSending || conversacionCerrada || !nuevoTexto.trim()) && styles.sendButtonDisabled]}
             onPress={handleEnviar}
-            disabled={isLoading || isSending || conversacionCerrada || !nuevoTexto.trim()}
+            disabled={isSending || conversacionCerrada || !nuevoTexto.trim()}
             activeOpacity={0.8}
           >
             {isSending ? (
@@ -407,9 +429,6 @@ const styles = StyleSheet.create({
   messagesContent: {
     padding: 16,
     paddingBottom: 20,
-  },
-  loadingMessagesContent: {
-    flexGrow: 1,
   },
   messagesLoading: {
     flex: 1,

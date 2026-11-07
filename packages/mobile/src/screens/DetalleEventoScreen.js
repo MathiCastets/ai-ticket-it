@@ -15,8 +15,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
-import useMockLoading from '../hooks/useMockLoading';
-import { EventDetailSkeleton } from '../components/loading/Skeletons';
 import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
@@ -33,7 +31,6 @@ export default function DetalleEventoScreen({ route, navigation }) {
     currentUser,
   } = useApp();
   const { notify } = useNotification();
-  const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const bottomInset = insets.bottom > 0 ? insets.bottom : 12;
@@ -42,13 +39,13 @@ export default function DetalleEventoScreen({ route, navigation }) {
 
   const evento = eventos.find((e) => e.id === eventoId) || eventos[0];
   const organizadorId =
-    evento.organizadorId || evento.organizadorObj?.id || evento.organizador?.id;
+    evento?.organizadorId || evento?.organizadorObj?.id || evento?.organizador?.id;
   const imagenesEvento =
-    evento.multimedia?.length > 0 ? evento.multimedia : evento.imagen ? [evento.imagen] : [];
+    evento?.multimedia?.length > 0 ? evento.multimedia : evento?.imagen ? [evento.imagen] : [];
 
   // Selection states
   const [selectedTipoId, setSelectedTipoId] = useState(
-    evento.tiposEntrada && evento.tiposEntrada.length > 0 ? evento.tiposEntrada[0].id : null
+    evento?.tiposEntrada?.length > 0 ? evento.tiposEntrada[0].id : null
   );
   const [cantidad, setCantidad] = useState(1);
   const [compraExitosa, setCompraExitosa] = useState(false);
@@ -74,6 +71,26 @@ export default function DetalleEventoScreen({ route, navigation }) {
       return () => {
         active = false;
       };
+    }
+    if (!evento) {
+      return (
+        <View style={styles.screenContainer}>
+          <Header
+            title="AI Ticket It"
+            subtitle="Detalle Evento"
+            showBack
+            onBack={() => navigation.goBack()}
+          />
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: '700' }}>
+              No encontramos el evento
+            </Text>
+            <Text style={{ color: COLORS.textSecondary, marginTop: 8, textAlign: 'center' }}>
+              Volvé a explorar y seleccioná otro evento.
+            </Text>
+          </View>
+        </View>
+      );
     }
 
     obtenerReseniasOrganizador(organizadorId, { page: 1, limit: 5 })
@@ -191,17 +208,6 @@ export default function DetalleEventoScreen({ route, navigation }) {
       setIsLoadingResenias(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <View style={styles.screenContainer}>
-        <Header title="AI Ticket It" subtitle="Detalle Evento" showBack onBack={() => navigation.goBack()} />
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <EventDetailSkeleton />
-        </ScrollView>
-      </View>
-    );
-  }
 
   const catNombre = typeof evento?.categoria === 'object' && evento?.categoria !== null ? evento.categoria.nombre : (evento?.categoria || '');
   const orgNombre = typeof evento?.organizador === 'object' && evento?.organizador !== null ? evento.organizador.nombre : (evento?.organizador || '');

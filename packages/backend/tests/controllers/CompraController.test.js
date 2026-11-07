@@ -110,6 +110,18 @@ describe('CompraController', () => {
       expect(mockCompraService.listarPorEvento).not.toHaveBeenCalled();
     });
 
+    test('organizador con ?eventoId= solo recibe compras de sus propios eventos', async () => {
+      mockCompraService.listarPorEvento.mockResolvedValue([
+        { id: 'c1', evento: { organizador: { id: 'org-1' } } },
+        { id: 'c2', evento: { organizador: { id: 'org-otro' } } },
+      ]);
+      const req = { query: { eventoId: 'e1' }, user: { id: 'org-1', rol: 'organizador' } };
+      await controller.getAll(req, res, next);
+      expect(mockCompraService.listarPorEvento).toHaveBeenCalledWith('e1');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ data: [{ id: 'c1', evento: { organizador: { id: 'org-1' } } }] });
+    });
+
     test('la respuesta de getAll no expone emails en la respuesta (Ley 25.326)', async () => {
       const comprador = new Usuario({
         id: 'u-priv',
@@ -232,6 +244,13 @@ describe('CompraController', () => {
       expect(mockCompraService.realizarCompra).toHaveBeenCalledWith(datosCompra);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith({ data: expect.objectContaining({ id: 'compra-1' }) });
+    });
+
+    test('rechaza con ForbiddenError si el actor no tiene rol comprador al intentar comprar', async () => {
+      const req = { body: { compradorId: 'org-1', eventoId: 'e1', tipoEntradaId: 't1', cantidad: 1 }, user: { id: 'org-1', rol: 'organizador' } };
+      await controller.create(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
     });
 
     test('rechaza con ForbiddenError si compradorId no coincide con el usuario autenticado', async () => {

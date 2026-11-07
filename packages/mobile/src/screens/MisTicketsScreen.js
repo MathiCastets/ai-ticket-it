@@ -14,7 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
-import useMockLoading from '../hooks/useMockLoading';
 import { TicketListSkeleton } from '../components/loading/Skeletons';
 import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
@@ -41,7 +40,6 @@ export default function MisTicketsScreen({ navigation }) {
     cancelarCompra,
   } = useApp();
   const { notify } = useNotification();
-  const isLoading = useMockLoading();
 
   const [activeTab, setActiveTab] = useState('todas');
   const [busqueda, setBusqueda] = useState('');
@@ -220,7 +218,7 @@ export default function MisTicketsScreen({ navigation }) {
 
         {/* Purchases List */}
         <View style={styles.ticketList}>
-          {isLoading || comprasCargando ? (
+          {comprasCargando ? (
             <TicketListSkeleton />
           ) : filteredCompras.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -272,7 +270,11 @@ export default function MisTicketsScreen({ navigation }) {
                     <View style={styles.countdownBar}>
                       <Ionicons name="time" size={14} color={COLORS.badgeCyanGlow} />
                       <Text style={styles.countdownText}>
-                        {dias > 0 ? `¡Faltan ${dias} días para el evento!` : '¡El evento es hoy!'}
+                        {dias > 0
+                          ? dias === 1
+                            ? '¡Falta 1 día para el evento!'
+                            : `¡Faltan ${dias} días para el evento!`
+                          : '¡El evento es hoy!'}
                       </Text>
                     </View>
                   ) : null}
@@ -323,7 +325,7 @@ export default function MisTicketsScreen({ navigation }) {
                       </TouchableOpacity>
 
                       {/* Cancel / Refund Button (TP Requirement) */}
-                      {isConfirmada && (
+                      {(isConfirmada || isPendiente) && (
                         <TouchableOpacity
                           style={styles.actionBtnCancel}
                           onPress={() => setSelectedCompraCancel(compra)}
@@ -412,21 +414,45 @@ export default function MisTicketsScreen({ navigation }) {
                 <Ionicons name="alert-circle" size={32} color={COLORS.statusDanger} />
               </View>
 
-              <Text style={styles.cancelTitle}>¿Cancelar compra y solicitar reembolso?</Text>
+              <Text style={styles.cancelTitle}>
+                {selectedCompraCancel.estado === 'PENDIENTE'
+                  ? '¿Cancelar compra pendiente?'
+                  : '¿Cancelar compra y solicitar reembolso?'}
+              </Text>
               <Text style={styles.cancelSubtitle}>
-                Estás por solicitar la cancelación de la orden <Text style={{ fontWeight: '700', color: COLORS.textPrimary }}>{selectedCompraCancel.ordenCodigo}</Text> ({selectedCompraCancel.eventoNombre}).
+                {selectedCompraCancel.estado === 'PENDIENTE'
+                  ? 'Estás por cancelar la orden '
+                  : 'Estás por solicitar la cancelación de la orden '}
+                <Text style={{ fontWeight: '700', color: COLORS.textPrimary }}>
+                  {selectedCompraCancel.ordenCodigo}
+                </Text>{' '}
+                ({selectedCompraCancel.eventoNombre}).
               </Text>
 
               <View style={styles.cancelInfoBox}>
                 <View style={styles.cancelInfoRow}>
-                  <Text style={styles.cancelInfoLabel}>Total pagado:</Text>
+                  <Text style={styles.cancelInfoLabel}>
+                    {selectedCompraCancel.estado === 'PENDIENTE' ? 'Total de la compra:' : 'Total pagado:'}
+                  </Text>
                   <Text style={styles.cancelInfoValue}>${selectedCompraCancel.total?.toLocaleString('es-AR')}</Text>
                 </View>
                 <View style={styles.cancelInfoRow}>
-                  <Text style={styles.cancelInfoLabel}>Reembolso estimado:</Text>
-                  <Text style={[styles.cancelInfoValue, { color: COLORS.statusSuccess }]}>100% (${selectedCompraCancel.total?.toLocaleString('es-AR')})</Text>
+                  <Text style={styles.cancelInfoLabel}>
+                    {selectedCompraCancel.estado === 'PENDIENTE'
+                      ? 'Reembolso:'
+                      : 'Reembolso estimado:'}
+                  </Text>
+                  <Text style={[styles.cancelInfoValue, { color: COLORS.statusSuccess }]}>
+                    {selectedCompraCancel.estado === 'PENDIENTE'
+                      ? 'No aplica'
+                      : `100% ($${selectedCompraCancel.total?.toLocaleString('es-AR')})`}
+                  </Text>
                 </View>
-                <Text style={styles.cancelPolicyText}>✓ Cumple con la política de devolución.</Text>
+                <Text style={styles.cancelPolicyText}>
+                  {selectedCompraCancel.estado === 'PENDIENTE'
+                    ? 'La compra pendiente se cancelará sin generar un reembolso.'
+                    : '✓ Cumple con la política de devolución.'}
+                </Text>
               </View>
 
               <View style={styles.cancelBtnRow}>

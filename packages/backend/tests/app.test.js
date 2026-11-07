@@ -107,7 +107,9 @@ describe('App HTTP Integration Tests', () => {
     });
 
     test('Gestión de favoritos en /usuarios/:id/favoritos', async () => {
-      const resInicial = await fetch(`${baseUrl}/usuarios/user_comprador_1/favoritos`);
+      const resInicial = await fetch(`${baseUrl}/usuarios/user_comprador_1/favoritos`, {
+        headers: { 'X-User-Id': 'user_comprador_1' },
+      });
       const dataInicial = await resInicial.json();
       expect(resInicial.status).toBe(200);
       expect(Array.isArray(dataInicial.data)).toBe(true);
@@ -115,6 +117,7 @@ describe('App HTTP Integration Tests', () => {
       // PUT para agregar
       const resPut = await fetch(`${baseUrl}/usuarios/user_comprador_1/favoritos/evt-electro-2`, {
         method: 'PUT',
+        headers: { 'X-User-Id': 'user_comprador_1' },
       });
       const dataPut = await resPut.json();
       expect(resPut.status).toBe(200);
@@ -123,6 +126,7 @@ describe('App HTTP Integration Tests', () => {
       // DELETE para remover
       const resDel = await fetch(`${baseUrl}/usuarios/user_comprador_1/favoritos/evt-electro-2`, {
         method: 'DELETE',
+        headers: { 'X-User-Id': 'user_comprador_1' },
       });
       const dataDel = await resDel.json();
       expect(resDel.status).toBe(200);
@@ -296,7 +300,7 @@ describe('App HTTP Integration Tests', () => {
       });
       expect(resMsg.status).toBe(201);
 
-      // Usuario no participante es rechazado con 400
+      // Usuario no participante es rechazado con 403
       const resAjeno = await fetch(`${baseUrl}/compras/compra-1/mensajes`, {
         method: 'POST',
         headers: {
@@ -308,7 +312,7 @@ describe('App HTTP Integration Tests', () => {
           texto: 'Mensaje no autorizado',
         }),
       });
-      expect(resAjeno.status).toBe(400);
+      expect(resAjeno.status).toBe(403);
 
       // Marcar mensajes como leídos
       const resLeidos = await fetch(`${baseUrl}/compras/compra-1/mensajes/leidos`, {
@@ -473,6 +477,47 @@ describe('App HTTP Integration Tests', () => {
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error.message).toContain('posteriores al momento actual');
+    });
+  });
+
+  describe('Autorización Avanzada (Fase 7a)', () => {
+    test('organizador ajeno con ?eventoId= devuelve lista vacía', async () => {
+      const resEvts = await fetch(`${baseUrl}/eventos`);
+      const dataEvts = await resEvts.json();
+      const eventoFuturo = dataEvts.data.find((e) => new Date(e.fecha).getTime() > Date.now());
+      expect(eventoFuturo).toBeDefined();
+
+      const res = await fetch(`${baseUrl}/compras?eventoId=${eventoFuturo.id}`, {
+        headers: { 'X-User-Id': 'user_org_underground' },
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.data).toEqual([]);
+    });
+
+    test('organizador intentando comprar devuelve 403', async () => {
+      const resEvts = await fetch(`${baseUrl}/eventos`);
+      const dataEvts = await resEvts.json();
+      const eventoFuturo = dataEvts.data.find((e) => new Date(e.fecha).getTime() > Date.now());
+      const tipoEntradaId = eventoFuturo.tiposEntrada[0].id;
+
+      const res = await fetch(`${baseUrl}/compras`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_org_sonora',
+        },
+        body: JSON.stringify({
+          compradorId: 'user_org_sonora',
+          eventoId: eventoFuturo.id,
+          tipoEntradaId,
+          cantidad: 1,
+        }),
+      });
+
+      expect(res.status).toBe(403);
+      const data = await res.json();
+      expect(data.error.code).toBe('FORBIDDEN');
     });
   });
 });

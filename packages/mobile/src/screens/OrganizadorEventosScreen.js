@@ -15,7 +15,6 @@ import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
-import useMockLoading from '../hooks/useMockLoading';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
@@ -46,7 +45,6 @@ const obtenerEstadoEvento = (evento, ahora) => {
 export default function OrganizadorEventosScreen({ navigation, route }) {
   const { eventos, categorias, currentUser, actualizarEvento } = useApp();
   const { notify } = useNotification();
-  const isLoading = useMockLoading();
   const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
   const [eventoEditando, setEventoEditando] = useState(null);
   const [formulario, setFormulario] = useState(null);
@@ -232,12 +230,7 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
   return (
     <View style={styles.screen}>
       <Header title="AI Ticket It" subtitle="Mis Eventos" />
-      {isLoading ? (
-        <View style={styles.loading}>
-          <LoadingSpinner variant="dual" label="Cargando tus eventos..." />
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.pageHeading}>
             <Text style={styles.title}>Tus eventos</Text>
             {/*<Text style={styles.subtitle}>Administrá la información y revisá el rendimiento de cada uno.</Text>*/}
@@ -517,8 +510,7 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
               })}
             </>
           )}
-        </ScrollView>
-      )}
+      </ScrollView>
 
       <Modal visible={!!eventoEditando} transparent animationType="fade" onRequestClose={cerrarEdicion}>
         <View style={styles.modalBackdrop}>
@@ -650,7 +642,6 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.background },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: 16, paddingBottom: 36, gap: 14 },
   pageHeading: { gap: 4, marginBottom: 4 },
   title: { color: COLORS.textPrimary, fontSize: 22, fontWeight: '800' },

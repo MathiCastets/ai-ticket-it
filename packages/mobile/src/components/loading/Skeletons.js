@@ -38,33 +38,6 @@ export function Skeleton({ width = '100%', height = 14, borderRadius = 8, style 
   );
 }
 
-export function EventCardSkeleton() {
-  return (
-    <View style={styles.eventListCard}>
-      <Skeleton height={190} borderRadius={0} />
-      <View style={styles.eventListCardContent}>
-        <Skeleton width="72%" height={18} />
-        <Skeleton width="62%" height={12} />
-        <Skeleton width="78%" height={12} />
-        <View style={styles.row}>
-          <Skeleton width="42%" height={12} />
-          <Skeleton width="32%" height={12} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-export function EventListSkeleton({ count = 3 }) {
-  return (
-    <View style={styles.eventList}>
-      {Array.from({ length: count }, (_, index) => (
-        <EventCardSkeleton key={index} />
-      ))}
-    </View>
-  );
-}
-
 export function TicketCardSkeleton() {
   return (
     <View style={styles.card}>
@@ -124,26 +97,6 @@ export function ConversationListSkeleton({ count = 3 }) {
   );
 }
 
-export function EventDetailSkeleton() {
-  return (
-    <View style={styles.detailSkeleton}>
-      <Skeleton height={210} borderRadius={0} />
-      <View style={styles.detailContent}>
-        <Skeleton width="34%" height={18} />
-        <Skeleton width="78%" height={24} />
-        <Skeleton height={58} borderRadius={14} />
-        <Skeleton height={58} borderRadius={14} />
-        <Skeleton height={84} borderRadius={14} />
-        <View style={styles.detailSection}>
-          <Skeleton width="54%" height={18} />
-          <Skeleton height={82} borderRadius={14} />
-          <Skeleton height={82} borderRadius={14} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   skeleton: {
     overflow: 'hidden',
@@ -159,10 +112,6 @@ const styles = StyleSheet.create({
   list: {
     gap: 12,
   },
-  eventList: {
-    paddingHorizontal: 16,
-    gap: 14,
-  },
   card: {
     gap: 12,
     padding: 14,
@@ -170,17 +119,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceCard,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  eventListCard: {
-    overflow: 'hidden',
-    borderRadius: 16,
-    backgroundColor: COLORS.surfaceCard,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  eventListCardContent: {
-    padding: 14,
-    gap: 10,
   },
   row: {
     flexDirection: 'row',
@@ -213,16 +151,5 @@ const styles = StyleSheet.create({
   spaceBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  detailSkeleton: {
-    gap: 0,
-  },
-  detailContent: {
-    padding: 16,
-    gap: 14,
-  },
-  detailSection: {
-    gap: 12,
-    marginTop: 8,
   },
 });

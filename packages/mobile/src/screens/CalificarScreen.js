@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
-import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
@@ -22,9 +21,8 @@ const MAX_REVIEW_LENGTH = 250;
 
 export default function CalificarScreen({ route, navigation }) {
   const { compraId } = route.params;
-  const { compras, currentUser, calificarEvento } = useApp();
+  const { compras, comprasCargando, currentUser, calificarEvento } = useApp();
   const { notify } = useNotification();
-  const isLoading = useMockLoading();
 
   const compra = compras.find((c) => c.id === compraId);
   const puedeCalificar = compra?.compradorId === currentUser?.id;
@@ -43,6 +41,22 @@ export default function CalificarScreen({ route, navigation }) {
         onBack={() => navigation.goBack()}
         navigation={navigation}
       />
+    );
+  }
+
+  if (comprasCargando) {
+    return (
+      <View style={styles.screenContainer}>
+        <Header
+          title="Calificar Evento"
+          subtitle="Cargando compra..."
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={styles.loadingContainer}>
+          <LoadingSpinner variant="dots" label="Cargando los datos de tu compra..." />
+        </View>
+      </View>
     );
   }
 
@@ -103,22 +117,6 @@ export default function CalificarScreen({ route, navigation }) {
       setIsSubmitting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <View style={styles.screenContainer}>
-        <Header
-          title="Calificar Evento"
-          subtitle={compra?.ordenCodigo || 'Acceso no disponible'}
-          showBack
-          onBack={() => navigation.goBack()}
-        />
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner variant="dots" label="Cargando los datos de tu compra..." />
-        </View>
-      </View>
-    );
-  }
 
   if (!puedeCalificar) {
     return (

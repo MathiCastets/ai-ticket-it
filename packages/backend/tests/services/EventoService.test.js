@@ -9,8 +9,6 @@ import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
 import { Categoria } from '../../src/domain/entities/Categoria.js';
-import { Compra } from '../../src/domain/entities/Compra.js';
-import { EstadoCompra } from '../../src/domain/enums/EstadoCompra.js';
 import { BusinessRuleError, ResourceNotFoundError } from '../../src/services/errors/index.js';
 
 describe('EventoService', () => {
@@ -77,6 +75,18 @@ describe('EventoService', () => {
       const eventos = await service.listarEventos();
       expect(eventos).toHaveLength(1);
       expect(eventos[0].id).toBe('evt-1');
+    });
+
+    test('ordena por rating promediando por organizador y dejando sin reseñas al final', async () => {
+      const orgAlto = new Usuario({ id: 'org-alto', nombre: 'Alto', rol: 'organizador' });
+      const orgBajo = new Usuario({ id: 'org-bajo', nombre: 'Bajo', rol: 'organizador' });
+      const orgSin = new Usuario({ id: 'org-sin', nombre: 'Sin Reseñas', rol: 'organizador' });
+      const e1 = new Evento({ id: 'e1', nombre: 'E1', fecha: new Date(Date.now() + 100000).toISOString(), organizador: orgBajo, tiposEntrada: [new TipoEntrada({ id: 't1', nombre: 'T1', precio: 10, cupo: 10 })], resenias: [{ puntuacion: 2 }, { puntuacion: 3 }] });
+      const e2 = new Evento({ id: 'e2', nombre: 'E2', fecha: new Date(Date.now() + 200000).toISOString(), organizador: orgAlto, tiposEntrada: [new TipoEntrada({ id: 't2', nombre: 'T2', precio: 10, cupo: 10 })], resenias: [{ puntuacion: 5 }, { puntuacion: 4 }] });
+      const e3 = new Evento({ id: 'e3', nombre: 'E3', fecha: new Date(Date.now() + 300000).toISOString(), organizador: orgSin, tiposEntrada: [new TipoEntrada({ id: 't3', nombre: 'T3', precio: 10, cupo: 10 })], resenias: [] });
+      eventoRepo.findAll = async () => [e1, e2, e3];
+      const ordenados = await service.listarEventos({ sortBy: 'rating' });
+      expect(ordenados.map(e => e.id)).toEqual(['e2', 'e1', 'e3']);
     });
 
     test('obtiene un evento por id', async () => {
@@ -189,56 +199,4 @@ describe('EventoService', () => {
     });
   });
 
-  describe('agregarResenia', () => {
-    test('agrega una reseña a través de compra calificada', async () => {
-      const compra = new Compra({
-        id: 'compra-1',
-        comprador,
-        evento,
-        tipoEntrada: evento.tiposEntrada[0],
-        cantidad: 1,
-        total: 10000,
-        estado: EstadoCompra.UTILIZADA,
-      });
-      await compraRepo.save(compra);
-
-      const resenia = await service.agregarResenia('evt-1', {
-        compraId: 'compra-1',
-        puntuacion: 4.5,
-        detalle: 'Increíble sonido',
-      });
-
-      expect(resenia.puntuacion).toBe(4.5);
-      expect(resenia.detalle).toBe('Increíble sonido');
-      expect(evento.resenias).toHaveLength(1);
-    });
-
-    test('rechaza si la compra no pertenece al evento', async () => {
-      const otroEvento = new Evento({
-        id: 'evt-otro',
-        nombre: 'Otro',
-        fecha: new Date(Date.now() + 1000).toISOString(),
-        organizador,
-        tiposEntrada: [new TipoEntrada({ id: 'te-x', nombre: 'X', precio: 10, cupo: 10 })],
-      });
-      await eventoRepo.save(otroEvento);
-
-      const compraOtro = new Compra({
-        id: 'compra-otra',
-        comprador,
-        evento: otroEvento,
-        tipoEntrada: otroEvento.tiposEntrada[0],
-        estado: EstadoCompra.UTILIZADA,
-      });
-      await compraRepo.save(compraOtro);
-
-      await expect(
-        service.agregarResenia('evt-1', {
-          compraId: 'compra-otra',
-          puntuacion: 4,
-          detalle: 'Prueba',
-        })
-      ).rejects.toThrow(BusinessRuleError);
-    });
-  });
 });

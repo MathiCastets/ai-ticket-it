@@ -3,7 +3,6 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { CATEGORIAS, EVENTOS_INICIALES, COMPRAS_INICIALES, USUARIOS } from '../data/mockData';
 import { resolverImagen, USE_MOCK_DATA } from '../config/apiConfig';
 import { api } from '../services/api';
-import { isConversationClosed } from '../conversationStatus';
 import { COLORS } from '../theme/colors';
 
 const AppContext = createContext();
@@ -117,6 +116,7 @@ const normalizarCompra = (compra) => ({
     '',
   imagen: resolverImagen(compra.imagen || compra.evento?.imagen),
   ubicacion: compra.ubicacion || compra.evento?.ubicacion || '',
+  conversacionCerrada: compra.conversacionCerrada === true,
   mensajes: (compra.mensajes || []).map((mensaje) =>
     normalizarMensaje({
       ...mensaje,
@@ -158,6 +158,7 @@ export const AppProvider = ({ children }) => {
   const [backendStatus, setBackendStatus] = useState('checking');
   const backendStatusRef = useRef('checking');
   const backendErrorRef = useRef(null);
+  const refreshingComprasRef = useRef(false);
   const initialSyncPromise = useRef(null);
   const favoritosRef = useRef(initialUser?.favoritos || []);
   const favoritosPorUsuarioRef = useRef(
@@ -270,7 +271,7 @@ export const AppProvider = ({ children }) => {
     initialSyncPromise.current = sincronizarConBackend();
   }, [sincronizarConBackend]);
 
-  const backendDisponible = async () => {
+  const backendDisponible = useCallback(async () => {
     if (USE_MOCK_DATA) return false;
     if (backendStatusRef.current === 'checking' && initialSyncPromise.current) {
       await initialSyncPromise.current;
@@ -291,7 +292,24 @@ export const AppProvider = ({ children }) => {
       throw new Error('No hay datos del backend disponibles para completar la operación.');
     }
     return true;
-  };
+  }, [sincronizarConBackend]);
+
+  const refrescarCompras = useCallback(async () => {
+    if (refreshingComprasRef.current) return;
+    refreshingComprasRef.current = true;
+    try {
+      if (!(await backendDisponible())) return;
+      const usuarioId = currentUserIdRef.current;
+      const comprasApi = await api.getCompras();
+      if (currentUserIdRef.current !== usuarioId) return;
+      if (!Array.isArray(comprasApi)) {
+        throw new Error('El backend devolvió un formato de compras inesperado.');
+      }
+      setCompras(comprasApi.map(normalizarCompra));
+    } finally {
+      refreshingComprasRef.current = false;
+    }
+  }, [backendDisponible]);
 
   const obtenerReseniasOrganizador = useCallback(
     async (organizadorId, { page = 1, limit = 5 } = {}) => {
@@ -585,7 +603,10 @@ export const AppProvider = ({ children }) => {
       const compraServidor = await api.cancelarCompra(compraId, 'Comprador');
       return {
         success: true,
-        mensaje: 'Compra cancelada y reembolsada con éxito',
+        mensaje:
+          compraActual.estado === 'PENDIENTE'
+            ? 'Compra pendiente cancelada con éxito'
+            : 'Compra cancelada y reembolsada con éxito',
         compra: guardarCompraServidor(compraServidor),
       };
     }
@@ -615,10 +636,21 @@ export const AppProvider = ({ children }) => {
     );
     setCompras((prev) =>
       prev.map((item) =>
-        item.id === compraId ? { ...item, estado: 'REEMBOLSADA' } : item
+        item.id === compraId
+          ? {
+              ...item,
+              estado: compra.estado === 'PENDIENTE' ? 'CANCELADA' : 'REEMBOLSADA',
+            }
+          : item
       )
     );
-    return { success: true, mensaje: 'Compra cancelada y reembolsada con éxito' };
+    return {
+      success: true,
+      mensaje:
+        compra.estado === 'PENDIENTE'
+          ? 'Compra pendiente cancelada con éxito'
+          : 'Compra cancelada y reembolsada con éxito',
+    };
   };
 
   const enviarMensaje = async (compraId, texto) => {
@@ -635,7 +667,7 @@ export const AppProvider = ({ children }) => {
     if (!textoLimpio) {
       throw new Error('El mensaje no puede estar vacío.');
     }
-    if (isConversationClosed(compraActual)) {
+    if (compraActual.conversacionCerrada) {
       throw new Error('Esta conversación se encuentra cerrada.');
     }
 
@@ -897,6 +929,7 @@ export const AppProvider = ({ children }) => {
         eventos,
         compras,
         comprasCargando: comprasCargandoUsuarioId === currentUserId,
+        refrescarCompras,
         favoritos,
         favoritosError,
         backendConectado: backendStatus === 'connected',

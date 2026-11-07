@@ -257,6 +257,12 @@ describe('Compra', () => {
       expect(compra.estado).toBe(EstadoCompra.REEMBOLSADA);
     });
 
+    test('cambia estado a CANCELADA si estaba PENDIENTE y se solicita reembolso', () => {
+      const compra = crearCompra({ estado: EstadoCompra.PENDIENTE });
+      compra.cancelarParaReembolso('Comprador');
+      expect(compra.estado).toBe(EstadoCompra.CANCELADA);
+    });
+
     test('lanza ReglaNegocioError si no puede cancelarse', () => {
       const compra = crearCompra({ estado: EstadoCompra.UTILIZADA });
       expect(() => compra.cancelarParaReembolso('Comprador')).toThrow(ReglaNegocioError);
@@ -341,6 +347,12 @@ describe('Compra', () => {
       const json = compra.toJSON();
       expect(json.eventoFecha).toBeDefined();
       expect(json.eventoFechaTexto).toBeUndefined();
+    });
+
+    test('expone la propiedad booleana conversacionCerrada en toJSON', () => {
+      const compra = crearCompra();
+      const json = compra.toJSON();
+      expect(typeof json.conversacionCerrada).toBe('boolean');
     });
 
     test('no expone el email del comprador ni del organizador en toJSON', () => {

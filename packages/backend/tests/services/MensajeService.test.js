@@ -7,7 +7,7 @@ import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
 import { EstadoCompra } from '../../src/domain/enums/EstadoCompra.js';
-import { BusinessRuleError, ResourceNotFoundError } from '../../src/services/errors/index.js';
+import { BusinessRuleError, ForbiddenError, ResourceNotFoundError } from '../../src/services/errors/index.js';
 
 describe('MensajeService', () => {
   let compraRepo;
@@ -72,7 +72,7 @@ describe('MensajeService', () => {
     test('un usuario ajeno no puede enviar mensajes', async () => {
       await expect(
         service.enviarMensaje('compra-1', { usuarioId: 'otro-1', texto: 'Mensaje no autorizado' })
-      ).rejects.toThrow(BusinessRuleError);
+      ).rejects.toThrow(ForbiddenError);
 
       await service.enviarMensaje('compra-1', {
         usuarioId: 'comp-1',
@@ -171,7 +171,7 @@ describe('MensajeService', () => {
     test('un usuario ajeno no puede marcar mensajes', async () => {
       await expect(
         service.marcarMensajesLeidos('compra-1', 'otro-1')
-      ).rejects.toThrow(BusinessRuleError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     test('lanza ResourceNotFoundError si la compra no existe', async () => {

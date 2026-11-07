@@ -44,7 +44,8 @@ export class CompraController {
           throw new ForbiddenError('No tienes permiso para ver compras de otros usuarios');
         }
         if (eventoId) {
-          compras = await this.compraService.listarPorEvento(eventoId);
+          const todas = await this.compraService.listarPorEvento(eventoId);
+          compras = todas.filter((c) => c.evento?.organizador?.id === actor.id);
         } else {
           compras = await this.compraService.listarPorOrganizador(actor.id);
         }
@@ -88,6 +89,9 @@ export class CompraController {
       const { compradorId, eventoId, tipoEntradaId, cantidad } = req.body;
       const actor = req.user;
 
+      if (actor && actor.rol !== 'comprador') {
+        throw new ForbiddenError('Solo los compradores pueden realizar compras');
+      }
       if (actor && compradorId && compradorId !== actor.id) {
         throw new ForbiddenError('No puedes realizar compras en nombre de otro usuario');
       }

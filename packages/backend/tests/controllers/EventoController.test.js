@@ -17,7 +17,6 @@ describe('EventoController', () => {
       obtenerPorId: jest.fn(),
       crearEvento: jest.fn(),
       actualizarEvento: jest.fn(),
-      agregarResenia: jest.fn(),
     };
 
     controller = new EventoController(mockEventoService);
@@ -270,34 +269,4 @@ describe('EventoController', () => {
     });
   });
 
-  describe('addReview', () => {
-    test('valida y agrega reseña devolviendo 201', async () => {
-      mockEventoService.agregarResenia.mockResolvedValue({ id: 'res-1', puntuacion: 4.5 });
-      const req = {
-        params: { id: 'evt-1' },
-        body: { compraId: 'c1', puntuacion: 4.5, detalle: 'Muy buen evento' },
-      };
-
-      await controller.addReview(req, res, next);
-
-      expect(mockEventoService.agregarResenia).toHaveBeenCalledWith('evt-1', {
-        compraId: 'c1',
-        puntuacion: 4.5,
-        detalle: 'Muy buen evento',
-      });
-      expect(res.status).toHaveBeenCalledWith(201);
-    });
-
-    test('rechaza puntuación mayor a 5', async () => {
-      const req = {
-        params: { id: 'evt-1' },
-        body: { compraId: 'c1', puntuacion: 6, detalle: 'Super' },
-      };
-
-      await controller.addReview(req, res, next);
-
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
-      expect(mockEventoService.agregarResenia).not.toHaveBeenCalled();
-    });
-  });
 });

@@ -10,13 +10,11 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
-import useMockLoading from '../hooks/useMockLoading';
 import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
 
 export default function PanelVentasScreen({ route, navigation }) {
-  const { eventos, compras, currentUser } = useApp();
-  const isLoading = useMockLoading();
+  const { eventos, compras, comprasCargando, currentUser } = useApp();
   const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser?.id);
   const [ahora, setAhora] = useState(Date.now());
 
@@ -97,7 +95,7 @@ export default function PanelVentasScreen({ route, navigation }) {
     );
   }
 
-  if (isLoading) {
+  if (comprasCargando) {
     return (
       <View style={styles.screenContainer}>
         <Header title="AI Ticket It" subtitle="Panel de Ventas" showBack onBack={() => navigation.goBack()} />
