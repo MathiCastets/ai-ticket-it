@@ -6,6 +6,8 @@ import { Platform } from 'react-native';
  * Implementa timeout y manejo tipado de respuestas.
  */
 
+let authUserId = null;
+
 const defaultHeaders = {
   'Content-Type': 'application/json',
   Accept: 'application/json',
@@ -51,6 +53,7 @@ async function request(endpoint, options = {}) {
     ...options,
     headers: {
       ...defaultHeaders,
+      ...(authUserId ? { 'X-User-Id': authUserId } : {}),
       ...options.headers,
     },
   };
@@ -86,6 +89,12 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  // Autenticación
+  setAuthUserId: (id) => {
+    authUserId = id;
+  },
+  getAuthUserId: () => authUserId,
+
   // Health
   checkHealth: () => request('/health'),
 
@@ -94,7 +103,7 @@ export const api = {
   getReseniasOrganizador: (organizadorId, { page = 1, limit = 5 } = {}) =>
     request(`/usuarios/${organizadorId}/resenias?page=${page}&limit=${limit}`),
 
-  // Categorías
+  // CategorÃ­as
   getCategorias: () => request('/categorias'),
 
   // Eventos
@@ -179,7 +188,7 @@ export const api = {
       body: JSON.stringify({ quien }),
     }),
 
-  marcarUtilizada: (id, quien = 'Acreditación en Puerta') =>
+  marcarUtilizada: (id, quien = 'AcreditaciÃ³n en Puerta') =>
     request(`/compras/${id}/acreditar`, {
       method: 'POST',
       body: JSON.stringify({ quien }),
@@ -191,7 +200,7 @@ export const api = {
       body: JSON.stringify({ puntuacion, comentario }),
     }),
 
-  // Mensajería vinculada a compra
+  // MensajerÃ­a vinculada a compra
   getMensajes: (compraId) => request(`/compras/${compraId}/mensajes`),
 
   enviarMensaje: (compraId, { usuarioId, texto }) =>

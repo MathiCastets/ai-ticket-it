@@ -122,6 +122,27 @@ describe('CompraRepository', () => {
     });
   });
 
+  describe('findByOrganizadorId', () => {
+    test('retorna las compras asociadas a los eventos del organizador', async () => {
+      const otroOrg = new Usuario({ id: 'org-2', nombre: 'Org2', rol: 'organizador' });
+      const otroEvento = new Evento({
+        id: 'evt-2',
+        nombre: 'Otro Evento',
+        fecha: new Date(Date.now() + 1000).toISOString(),
+        organizador: otroOrg,
+        tiposEntrada: [new TipoEntrada({ id: 'te-2', nombre: 'General', precio: 5000, cupo: 50 })],
+      });
+      const c1 = crearCompra({ id: 'c-1' }); // org-1
+      const c2 = new Compra({ id: 'c-2', comprador, evento: otroEvento, tipoEntrada: otroEvento.tiposEntrada[0], cantidad: 1, total: 5000 }); // org-2
+      await repository.save(c1);
+      await repository.save(c2);
+
+      const result = await repository.findByOrganizadorId('org-1');
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('c-1');
+    });
+  });
+
   describe('findByCodigo', () => {
     test('retorna la compra con el código indicado (case insensitive)', async () => {
       const compra = crearCompra({ id: 'c-codigo', ordenCodigo: '#TK-99999' });

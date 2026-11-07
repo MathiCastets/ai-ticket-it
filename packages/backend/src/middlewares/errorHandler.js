@@ -1,5 +1,5 @@
 import { ValidationError } from '../controllers/errors/ValidationError.js';
-import { ResourceNotFoundError, BusinessRuleError } from '../services/errors/index.js';
+import { ResourceNotFoundError, BusinessRuleError, UnauthorizedError, ForbiddenError } from '../services/errors/index.js';
 import { EntityNotFoundError } from '../repositories/errors/EntityNotFoundError.js';
 import { DomainError, CupoInsuficienteError, EstadoCompraInvalidoError } from '../domain/errors/index.js';
 
@@ -32,7 +32,26 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
-  // 2. Entidad o Recurso no encontrado (Repository / Service)
+  // 2. Errores de autenticación y autorización (401 / 403)
+  if (err instanceof UnauthorizedError || err.status === 401 || err.name === 'UnauthorizedError') {
+    return res.status(401).json({
+      error: {
+        message: err.message,
+        code: err.code || 'UNAUTHORIZED',
+      },
+    });
+  }
+
+  if (err instanceof ForbiddenError || err.status === 403 || err.name === 'ForbiddenError') {
+    return res.status(403).json({
+      error: {
+        message: err.message,
+        code: err.code || 'FORBIDDEN',
+      },
+    });
+  }
+
+  // 3. Entidad o Recurso no encontrado (Repository / Service)
   if (err instanceof ResourceNotFoundError || err instanceof EntityNotFoundError) {
     return res.status(404).json({
       error: {
@@ -42,7 +61,7 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
-  // 3. Errores de cupo insuficiente o transición inválida (Domain)
+  // 4. Errores de cupo insuficiente o transición inválida (Domain)
   if (err instanceof CupoInsuficienteError || err instanceof EstadoCompraInvalidoError) {
     return res.status(409).json({
       error: {
@@ -52,7 +71,7 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
-  // 4. Reglas de negocio incumplidas (Domain / Service)
+  // 5. Reglas de negocio incumplidas (Domain / Service)
   if (err instanceof BusinessRuleError || err instanceof DomainError) {
     return res.status(400).json({
       error: {
@@ -62,7 +81,7 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
-  // 5. Error inesperado / no tipado (500)
+  // 6. Error inesperado / no tipado (500)
   console.error('[Unhandled Error]:', err);
   return res.status(500).json({
     error: {

@@ -82,7 +82,12 @@ describe('App HTTP Integration Tests', () => {
   describe('Validaciones y Errores HTTP', () => {
     test('Filtros ambiguos en compras responden 400', async () => {
       const res = await fetch(
-        `${baseUrl}/compras?compradorId=user_comprador_1&eventoId=evt-utn-2026`
+        `${baseUrl}/compras?compradorId=user_comprador_1&eventoId=evt-utn-2026`,
+        {
+          headers: {
+            'X-User-Id': 'user_comprador_1',
+          },
+        }
       );
       expect(res.status).toBe(400);
     });
@@ -90,7 +95,10 @@ describe('App HTTP Integration Tests', () => {
     test('JSON malformado responde 400', async () => {
       const res = await fetch(`${baseUrl}/eventos`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_org_sonora',
+        },
         body: '{"nombre":',
       });
       const data = await res.json();
@@ -103,6 +111,7 @@ describe('App HTTP Integration Tests', () => {
     let eventoId;
     let tipoEntradaId;
     let cupoInicial;
+    let organizadorId;
 
     test('GET /eventos lista eventos normalizados', async () => {
       const res = await fetch(`${baseUrl}/eventos`);
@@ -116,16 +125,20 @@ describe('App HTTP Integration Tests', () => {
       eventoId = evento.id;
       tipoEntradaId = evento.tiposEntrada[0].id;
       cupoInicial = evento.tiposEntrada[0].disponibles;
+      organizadorId = evento.organizador.id;
 
       expect(typeof evento.categoria).toBe('object');
       expect(typeof evento.organizador).toBe('object');
     });
 
     test('Ciclo de compra: Crear -> Descontar cupo -> Acreditar -> Calificar', async () => {
-      // 1. Crear compra
+      // 1. Crear compra (actor comprador)
       const resCompra = await fetch(`${baseUrl}/compras`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
         body: JSON.stringify({
           compradorId: 'user_comprador_1',
           eventoId,
@@ -144,20 +157,26 @@ describe('App HTTP Integration Tests', () => {
       const tipo = dataEvt.data.tiposEntrada.find((t) => t.id === tipoEntradaId);
       expect(tipo.disponibles).toBe(cupoInicial - 1);
 
-      // 3. Acreditar compra
+      // 3. Acreditar compra (actor debe ser el organizador del evento)
       const resAcreditar = await fetch(`${baseUrl}/compras/${compra.id}/acreditar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': organizadorId,
+        },
         body: JSON.stringify({ quien: 'Staff Puerta' }),
       });
       const dataAcreditar = await resAcreditar.json();
       expect(resAcreditar.status).toBe(200);
       expect(dataAcreditar.data.estado).toBe('UTILIZADA');
 
-      // 4. Calificar compra
+      // 4. Calificar compra (actor debe ser el comprador)
       const resCalificar = await fetch(`${baseUrl}/compras/${compra.id}/calificar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
         body: JSON.stringify({
           puntuacion: 5,
           comentario: 'Excelente festival',
@@ -170,7 +189,10 @@ describe('App HTTP Integration Tests', () => {
       // Crear nueva compra
       const resCompra = await fetch(`${baseUrl}/compras`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
         body: JSON.stringify({
           compradorId: 'user_comprador_1',
           eventoId,
@@ -184,7 +206,10 @@ describe('App HTTP Integration Tests', () => {
       // Cancelar compra
       const resCancel = await fetch(`${baseUrl}/compras/${compraId}/cancelar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
         body: JSON.stringify({ quien: 'Comprador' }),
       });
       const dataCancel = await resCancel.json();
@@ -194,7 +219,10 @@ describe('App HTTP Integration Tests', () => {
       // Intentar cancelar de nuevo debe fallar
       const resReCancel = await fetch(`${baseUrl}/compras/${compraId}/cancelar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
         body: JSON.stringify({ quien: 'Comprador' }),
       });
       expect(resReCancel.status).toBe(400);
@@ -206,7 +234,10 @@ describe('App HTTP Integration Tests', () => {
       // Comprador 1 envía mensaje en su compra
       const resMsg = await fetch(`${baseUrl}/compras/compra-1/mensajes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
         body: JSON.stringify({
           usuarioId: 'user_comprador_1',
           texto: '¿A qué hora abren?',
@@ -217,7 +248,10 @@ describe('App HTTP Integration Tests', () => {
       // Usuario no participante es rechazado con 400
       const resAjeno = await fetch(`${baseUrl}/compras/compra-1/mensajes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_org_underground',
+        },
         body: JSON.stringify({
           usuarioId: 'user_org_underground',
           texto: 'Mensaje no autorizado',
@@ -228,10 +262,123 @@ describe('App HTTP Integration Tests', () => {
       // Marcar mensajes como leídos
       const resLeidos = await fetch(`${baseUrl}/compras/compra-1/mensajes/leidos`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_org_sonora',
+        },
         body: JSON.stringify({ usuarioId: 'user_org_sonora' }),
       });
       expect(resLeidos.status).toBe(200);
+    });
+  });
+
+  describe('Seguridad y Control de Acceso (Fase 3)', () => {
+    test('Rechaza con 401 si falta el header X-User-Id en rutas protegidas', async () => {
+      const resCompras = await fetch(`${baseUrl}/compras`);
+      expect(resCompras.status).toBe(401);
+      const dataCompras = await resCompras.json();
+      expect(dataCompras.error.code).toBe('UNAUTHORIZED');
+
+      const resCrearEvento = await fetch(`${baseUrl}/eventos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: 'Evento hacker' }),
+      });
+      expect(resCrearEvento.status).toBe(401);
+    });
+
+    test('Rechaza con 401 si X-User-Id no corresponde a un usuario registrado', async () => {
+      const res = await fetch(`${baseUrl}/compras`, {
+        headers: { 'X-User-Id': 'usuario-inexistente-123' },
+      });
+      expect(res.status).toBe(401);
+    });
+
+    test('Rechaza con 403 si un comprador intenta crear un evento', async () => {
+      const res = await fetch(`${baseUrl}/eventos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
+        body: JSON.stringify({
+          nombre: 'Evento No Autorizado',
+          fecha: new Date(Date.now() + 86400000).toISOString(),
+          categoriaId: 'cat-recitales',
+          organizadorId: 'user_comprador_1',
+          tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+        }),
+      });
+      expect(res.status).toBe(403);
+      const data = await res.json();
+      expect(data.error.code).toBe('FORBIDDEN');
+    });
+
+    test('Rechaza con 403 si un comprador intenta acreditar una entrada', async () => {
+      const res = await fetch(`${baseUrl}/compras/compra-1/acreditar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_1',
+        },
+        body: JSON.stringify({ quien: 'Comprador intentando autovalidarse' }),
+      });
+      expect(res.status).toBe(403);
+    });
+
+    test('Rechaza con 403 si un usuario intenta cancelar la compra de otro usuario', async () => {
+      // compra-1 pertenece a user_comprador_1. user_comprador_2 intenta cancelarla
+      const res = await fetch(`${baseUrl}/compras/compra-1/cancelar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': 'user_comprador_2',
+        },
+        body: JSON.stringify({ quien: 'Hacker' }),
+      });
+      expect(res.status).toBe(403);
+    });
+
+    test('Rechaza con 403 si un usuario intenta ver el detalle de compra de otro usuario', async () => {
+      // compra-1 pertenece a user_comprador_1. user_comprador_2 intenta consultarla
+      const res = await fetch(`${baseUrl}/compras/compra-1`, {
+        headers: {
+          'X-User-Id': 'user_comprador_2',
+        },
+      });
+      expect(res.status).toBe(403);
+    });
+
+    test('Un comprador autenticado en GET /compras solo recibe sus propios tickets', async () => {
+      const res = await fetch(`${baseUrl}/compras`, {
+        headers: {
+          'X-User-Id': 'user_comprador_1',
+        },
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(Array.isArray(data.data)).toBe(true);
+      for (const compra of data.data) {
+        expect(compra.comprador.id).toBe('user_comprador_1');
+      }
+    });
+
+    test('Rechaza con 403 si un comprador intenta consultar compras con otro compradorId', async () => {
+      const res = await fetch(`${baseUrl}/compras?compradorId=user_comprador_2`, {
+        headers: {
+          'X-User-Id': 'user_comprador_1',
+        },
+      });
+      expect(res.status).toBe(403);
+    });
+
+    test('Rechaza con 403 si un comprador intenta consultar compras por eventoId', async () => {
+      const res = await fetch(`${baseUrl}/compras?eventoId=evt-utn-2026`, {
+        headers: {
+          'X-User-Id': 'user_comprador_1',
+        },
+      });
+      expect(res.status).toBe(403);
     });
   });
 });

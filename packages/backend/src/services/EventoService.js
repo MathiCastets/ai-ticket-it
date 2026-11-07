@@ -4,7 +4,7 @@ import { eventoRepository } from '../repositories/inMemory/EventoRepository.js';
 import { usuarioRepository } from '../repositories/inMemory/UsuarioRepository.js';
 import { categoriaRepository } from '../repositories/inMemory/CategoriaRepository.js';
 import { EntityNotFoundError } from '../repositories/errors/EntityNotFoundError.js';
-import { ResourceNotFoundError, BusinessRuleError } from './errors/index.js';
+import { ResourceNotFoundError, BusinessRuleError, ForbiddenError } from './errors/index.js';
 import { compraService } from './CompraService.js';
 import { eventoImageStorage } from './EventoImageStorage.js';
 import { randomUUID } from 'node:crypto';
@@ -54,7 +54,7 @@ export class EventoService {
   ) {
     const evento = await this.obtenerPorId(id);
     if (evento.organizador?.id !== organizadorId) {
-      throw new BusinessRuleError(
+      throw new ForbiddenError(
         'Solo el organizador del evento puede modificarlo',
         'ORGANIZADOR_EVENTO_INVALIDO'
       );
@@ -260,7 +260,7 @@ export class EventoService {
     }
   }
 
-  async agregarResenia(eventoId, { compraId, puntuacion, detalle }) {
+  async agregarResenia(eventoId, { compraId, puntuacion, detalle }, actor = null) {
     const evento = await this.obtenerPorId(eventoId);
     const compra = await this.compraService.obtenerPorId(compraId);
 
@@ -268,10 +268,14 @@ export class EventoService {
       throw new BusinessRuleError('La compra no pertenece al evento indicado', 'COMPRA_EVENTO_NO_COINCIDE');
     }
 
-    const compraCalificada = await this.compraService.calificarCompra(compraId, {
-      puntuacion,
-      comentario: detalle,
-    });
+    const compraCalificada = await this.compraService.calificarCompra(
+      compraId,
+      {
+        puntuacion,
+        comentario: detalle,
+      },
+      actor
+    );
 
     return compraCalificada.evento.resenias[0];
   }

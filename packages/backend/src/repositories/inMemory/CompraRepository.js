@@ -28,6 +28,12 @@ class CompraRepository {
     return this.compras.filter((c) => c.evento.id === eventoId);
   }
 
+  async findByOrganizadorId(organizadorId) {
+    return this.compras.filter(
+      (c) => (c.evento?.organizador?.id || c.evento?.organizadorId) === organizadorId
+    );
+  }
+
   async save(compra) {
     const existingIndex = this.compras.findIndex((c) => c.id === compra.id);
     if (existingIndex >= 0) {
