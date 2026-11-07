@@ -7,11 +7,14 @@ export class Resenia {
     puntuacion,
     fechaHora = null,
   }) {
-    if (!Number.isInteger(puntuacion) || puntuacion < 1 || puntuacion > 5) {
-      throw new Error('La puntuación debe ser un número entero entre 1 y 5');
+    if (!Number.isInteger(puntuacion * 2) || puntuacion < 0.5 || puntuacion > 5) {
+      throw new Error('La puntuación debe estar entre 0.5 y 5 en incrementos de 0.5');
     }
     if (!detalle || !detalle.trim()) {
       throw new Error('El comentario de la reseña no puede estar vacío');
+    }
+    if (detalle.length > 250) {
+      throw new Error('El comentario no puede superar los 250 caracteres');
     }
     if (!comprador) throw new Error('Reseña requiere un comprador (Usuario)');
     if (!eventoId)  throw new Error('Reseña requiere eventoId');

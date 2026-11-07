@@ -16,7 +16,7 @@ import LoadingSpinner from '../components/loading/Spinners';
 export default function PanelVentasScreen({ route, navigation }) {
   const { eventos, compras, currentUser } = useApp();
   const isLoading = useMockLoading();
-  const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser.id);
+  const eventosDelUsuario = eventos.filter((evento) => evento.organizadorId === currentUser?.id);
   const [ahora, setAhora] = useState(Date.now());
 
   useEffect(() => {
@@ -67,6 +67,35 @@ export default function PanelVentasScreen({ route, navigation }) {
 
     return { totalRecaudado, ingresosUltimas24Horas, vendidas, cupoTotal };
   }, [selectedEvento, comprasDelEvento, ahora]);
+
+  if (currentUser?.rol !== 'organizador') {
+    return (
+      <View style={styles.screenContainer}>
+        <Header
+          title="AI Ticket It"
+          subtitle="Acceso no disponible"
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={styles.accessErrorContainer}>
+          <View style={styles.accessErrorIcon}>
+            <Ionicons name="lock-closed-outline" size={30} color={COLORS.statusWarning} />
+          </View>
+          <Text style={styles.accessErrorTitle}>Acceso restringido</Text>
+          <Text style={styles.accessErrorText}>
+            El panel de ventas está disponible únicamente para perfiles organizadores.
+          </Text>
+          <TouchableOpacity
+            style={styles.accessBackButton}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+          >
+            <Text style={styles.accessBackButtonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -281,6 +310,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+  },
+  accessErrorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    gap: 12,
+  },
+  accessErrorIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.borderTranslucent,
+  },
+  accessErrorTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  accessErrorText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    maxWidth: 360,
+  },
+  accessBackButton: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.secondaryContainer,
+  },
+  accessBackButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   selectorSection: {
     gap: 6,

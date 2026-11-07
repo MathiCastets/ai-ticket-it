@@ -91,6 +91,8 @@ export const api = {
 
   // Usuarios
   getUsuarios: () => request('/usuarios'),
+  getReseniasOrganizador: (organizadorId, { page = 1, limit = 5 } = {}) =>
+    request(`/usuarios/${organizadorId}/resenias?page=${page}&limit=${limit}`),
 
   // Categorías
   getCategorias: () => request('/categorias'),

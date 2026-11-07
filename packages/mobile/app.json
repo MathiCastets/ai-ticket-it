@@ -5,7 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "androidNavigationBar": {
+      "visible": "sticky-immersive",
+      "backgroundColor": "#0F081D",
+      "barStyle": "light-content"
+    },
     "plugins": [
       [
         "expo-image-picker",
@@ -18,6 +23,7 @@
       "supportsTablet": true
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

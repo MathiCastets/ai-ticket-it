@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   Alert,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../theme/colors';
@@ -20,13 +22,24 @@ import LoadingSpinner from '../components/loading/Spinners';
 
 export default function DetalleEventoScreen({ route, navigation }) {
   const { eventoId } = route.params;
-  const { eventos, favoritos, favoritosError, toggleFavorito, comprarEntrada } = useApp();
+  const {
+    eventos,
+    favoritos,
+    favoritosError,
+    toggleFavorito,
+    comprarEntrada,
+    obtenerReseniasOrganizador,
+  } = useApp();
   const isLoading = useMockLoading();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const bottomInset = insets.bottom > 0 ? insets.bottom : 12;
+  const [heroWidth, setHeroWidth] = useState(0);
+  const effectiveHeroWidth = heroWidth || (Platform.OS === 'web' ? Math.min(screenWidth, 480) : screenWidth);
 
   const evento = eventos.find((e) => e.id === eventoId) || eventos[0];
+  const organizadorId =
+    evento.organizadorId || evento.organizadorObj?.id || evento.organizador?.id;
   const imagenesEvento =
     evento.multimedia?.length > 0 ? evento.multimedia : evento.imagen ? [evento.imagen] : [];
 
@@ -37,6 +50,49 @@ export default function DetalleEventoScreen({ route, navigation }) {
   const [cantidad, setCantidad] = useState(1);
   const [compraExitosa, setCompraExitosa] = useState(false);
   const [isBuying, setIsBuying] = useState(false);
+  const [reseniasOrganizador, setReseniasOrganizador] = useState([]);
+  const [reseniasTotal, setReseniasTotal] = useState(0);
+  const [puntuacionPromedio, setPuntuacionPromedio] = useState(null);
+  const [paginaResenias, setPaginaResenias] = useState(1);
+  const [totalPaginasResenias, setTotalPaginasResenias] = useState(0);
+  const [isLoadingResenias, setIsLoadingResenias] = useState(true);
+  const [isLoadingMoreResenias, setIsLoadingMoreResenias] = useState(false);
+  const [errorResenias, setErrorResenias] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setIsLoadingResenias(true);
+    setErrorResenias('');
+    setReseniasOrganizador([]);
+
+    if (!organizadorId) {
+      setErrorResenias('No pudimos identificar al organizador de este evento.');
+      setIsLoadingResenias(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    obtenerReseniasOrganizador(organizadorId, { page: 1, limit: 5 })
+      .then((resultado) => {
+        if (!active) return;
+        setReseniasOrganizador(resultado.resenias);
+        setReseniasTotal(resultado.total);
+        setPuntuacionPromedio(resultado.promedio);
+        setPaginaResenias(resultado.page);
+        setTotalPaginasResenias(resultado.totalPages);
+      })
+      .catch((error) => {
+        if (active) setErrorResenias(error.message || 'No se pudieron cargar las reseñas.');
+      })
+      .finally(() => {
+        if (active) setIsLoadingResenias(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [organizadorId, obtenerReseniasOrganizador]);
 
   const selectedTipo = evento.tiposEntrada?.find((t) => t.id === selectedTipoId);
   const total = selectedTipo ? selectedTipo.precio * cantidad : 0;
@@ -75,6 +131,48 @@ export default function DetalleEventoScreen({ route, navigation }) {
     }
   };
 
+  const handleLoadMoreReviews = async () => {
+    if (isLoadingMoreResenias || paginaResenias >= totalPaginasResenias) return;
+    const paginaSiguiente = paginaResenias + 1;
+    setIsLoadingMoreResenias(true);
+    setErrorResenias('');
+    try {
+      const resultado = await obtenerReseniasOrganizador(organizadorId, {
+        page: paginaSiguiente,
+        limit: 5,
+      });
+      setReseniasOrganizador((actuales) => [...actuales, ...resultado.resenias]);
+      setPaginaResenias(resultado.page);
+      setReseniasTotal(resultado.total);
+      setPuntuacionPromedio(resultado.promedio);
+      setTotalPaginasResenias(resultado.totalPages);
+    } catch (error) {
+      setErrorResenias(error.message || 'No se pudieron cargar más reseñas.');
+    } finally {
+      setIsLoadingMoreResenias(false);
+    }
+  };
+
+  const handleRetryReviews = async () => {
+    setIsLoadingResenias(true);
+    setErrorResenias('');
+    try {
+      const resultado = await obtenerReseniasOrganizador(organizadorId, {
+        page: 1,
+        limit: 5,
+      });
+      setReseniasOrganizador(resultado.resenias);
+      setReseniasTotal(resultado.total);
+      setPuntuacionPromedio(resultado.promedio);
+      setPaginaResenias(resultado.page);
+      setTotalPaginasResenias(resultado.totalPages);
+    } catch (error) {
+      setErrorResenias(error.message || 'No se pudieron cargar las reseñas.');
+    } finally {
+      setIsLoadingResenias(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.screenContainer}>
@@ -100,27 +198,54 @@ export default function DetalleEventoScreen({ route, navigation }) {
           </Text>
         ) : null}
         {/* Hero Image */}
-        <View style={styles.heroContainer}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            style={styles.heroGallery}
-          >
-            {imagenesEvento.map((imagen, index) => (
-              <Image
-                key={`${imagen}-${index}`}
-                source={{ uri: imagen }}
-                style={[styles.heroImage, { width: screenWidth }]}
-              />
-            ))}
-          </ScrollView>
-          <View style={styles.heroOverlay} />
+        <View
+          style={styles.heroContainer}
+          onLayout={(e) => {
+            const w = e.nativeEvent.layout?.width;
+            if (w && w !== heroWidth) {
+              setHeroWidth(w);
+            }
+          }}
+        >
+          {imagenesEvento.length > 1 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={styles.heroGallery}
+            >
+              {imagenesEvento.map((imagen, index) => (
+                <Image
+                  key={`${imagen}-${index}`}
+                  source={{ uri: imagen }}
+                  style={[styles.heroGalleryImage, { width: effectiveHeroWidth }]}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            <Image
+              source={imagenesEvento[0] ? { uri: imagenesEvento[0] } : null}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+          )}
+          <LinearGradient
+            colors={['rgba(15, 8, 29, 0.62)', 'rgba(15, 8, 29, 0)', 'rgba(15, 8, 29, 0.65)']}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
 
           <View style={styles.heroTopActions}>
-            <View style={styles.liveBadge}>
-              <View style={styles.pingDot} />
-              <Text style={styles.liveBadgeText}>DISPONIBLE</Text>
+            <View style={styles.heroBadges}>
+              <View style={styles.liveBadge}>
+                <View style={styles.pingDot} />
+                <Text style={styles.liveBadgeText}>DISPONIBLE</Text>
+              </View>
+              <View style={styles.categoryChip}>
+                <Text style={styles.categoryChipText}>{catNombre.toUpperCase()}</Text>
+              </View>
             </View>
 
             <TouchableOpacity
@@ -139,18 +264,6 @@ export default function DetalleEventoScreen({ route, navigation }) {
 
         {/* Title & Badges */}
         <View style={styles.contentSection}>
-          <View style={styles.categoryBadgeRow}>
-            <View style={styles.categoryChip}>
-              <Text style={styles.categoryChipText}>{catNombre.toUpperCase()}</Text>
-            </View>
-          {/*       TODO: quizas mostrarlo condicionalmente.     
-            <View style={styles.demandChip}>
-              <Ionicons name="flame" size={12} color={COLORS.badgeCyanGlow} />
-              <Text style={styles.demandChipText}>Alta demanda</Text>
-            </View>
-            */}
-          </View>
-
           <Text style={styles.eventTitle}>{evento.nombre}</Text>
 
           {/* Date & Location Cards */}
@@ -160,7 +273,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
             </View>
             <View style={styles.infoTextBox}>
               <Text style={styles.infoPrimaryText}>{evento.fechaTexto}</Text>
-              <Text style={styles.infoSecondaryText}>Apertura de puertas: {evento.apertura || '18:00 hs'}</Text>
+              {/*<Text style={styles.infoSecondaryText}>Apertura de puertas: {evento.apertura || '18:00 hs'}</Text>*/}
             </View>
           </View>
 
@@ -182,12 +295,27 @@ export default function DetalleEventoScreen({ route, navigation }) {
             <View style={styles.organizerTextBox}>
               <View style={styles.organizerNameRow}>
                 <Text style={styles.organizerName}>{orgNombre}</Text>
-                <Ionicons name="checkmark-circle" size={14} color={COLORS.statusSuccess} />
               </View>
               <View style={styles.ratingRow}>
-                <Ionicons name="star" size={13} color={COLORS.statusWarning} />
-                <Text style={styles.ratingNumber}>{evento.organizadorRating}</Text>
-                <Text style={styles.ratingCount}>• {evento.totalResenias || 120} opiniones verificadas</Text>
+                {isLoadingResenias ? (
+                  <Text style={styles.ratingCount}>Cargando opiniones...</Text>
+                ) : reseniasTotal > 0 ? (
+                  <>
+                    {puntuacionPromedio !== null ? (
+                      <>
+                        <Ionicons name="star" size={13} color={COLORS.statusWarning} />
+                        <Text style={styles.ratingNumber}>{puntuacionPromedio.toFixed(1)}</Text>
+                        <Text style={styles.ratingCount}>•</Text>
+                      </>
+                    ) : null}
+                    <Text style={styles.ratingCount}>
+                      {reseniasTotal}{' '}
+                      {reseniasTotal === 1 ? 'opinión' : 'opiniones'}
+                    </Text>
+                  </>
+                ) : !errorResenias ? (
+                  <Text style={styles.ratingCount}>0 opiniones</Text>
+                ) : null}
               </View>
             </View>
           </View>
@@ -207,29 +335,32 @@ export default function DetalleEventoScreen({ route, navigation }) {
               const isSelected = selectedTipoId === tipo.id;
               const hasCupo = tipo.disponibles > 0;
               return (
-                <TouchableOpacity
+                <View
                   key={tipo.id}
                   style={[
                     styles.ticketOptionCard,
                     isSelected && styles.ticketOptionSelected,
                     !hasCupo && styles.ticketOptionDisabled,
                   ]}
-                  disabled={isBuying}
-                  onPress={() => {
-                    if (hasCupo) {
-                      setSelectedTipoId(tipo.id);
-                      setCantidad(1);
-                    }
-                  }}
-                  activeOpacity={0.8}
                 >
                   <View style={styles.ticketOptionHeader}>
-                    <View style={styles.ticketTitleRow}>
+                    <TouchableOpacity
+                      style={styles.ticketTitleRow}
+                      disabled={isBuying || !hasCupo}
+                      onPress={() => {
+                        setSelectedTipoId(tipo.id);
+                        setCantidad(1);
+                      }}
+                      activeOpacity={0.8}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: isSelected, disabled: !hasCupo || isBuying }}
+                      accessibilityLabel={`${tipo.nombre}, $${tipo.precio.toLocaleString('es-AR')}`}
+                    >
                       <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
                         {isSelected && <View style={styles.radioInnerDot} />}
                       </View>
                       <Text style={styles.ticketName}>{tipo.nombre}</Text>
-                    </View>
+                    </TouchableOpacity>
                     <Text style={styles.ticketPrice}>${tipo.precio.toLocaleString('es-AR')}</Text>
                   </View>
 
@@ -251,37 +382,63 @@ export default function DetalleEventoScreen({ route, navigation }) {
                         {hasCupo ? `${tipo.disponibles} cupos disponibles de ${tipo.cupo}` : 'Agotado'}
                       </Text>
                     </View>
+                    {isSelected && hasCupo ? (
+                      <View style={styles.counterRow}>
+                        <TouchableOpacity
+                          style={styles.counterBtn}
+                          onPress={handleDecrement}
+                          disabled={isBuying || cantidad <= 1}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Restar una entrada de ${tipo.nombre}`}
+                        >
+                          <Feather name="minus" size={14} color={COLORS.textPrimary} />
+                        </TouchableOpacity>
+                        <Text style={styles.counterValue}>{cantidad}</Text>
+                        <TouchableOpacity
+                          style={styles.counterBtn}
+                          onPress={handleIncrement}
+                          disabled={isBuying}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Agregar una entrada de ${tipo.nombre}`}
+                        >
+                          <Feather name="plus" size={14} color={COLORS.textPrimary} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
                   </View>
-                </TouchableOpacity>
+                </View>
               );
             })}
           </View>
-
-          {/* Quantity Selector */}
-          {selectedTipo && selectedTipo.disponibles > 0 && (
-            <View style={styles.quantitySection}>
-              <Text style={styles.quantityLabel}>Cantidad de entradas:</Text>
-              <View style={styles.counterRow}>
-                <TouchableOpacity style={styles.counterBtn} onPress={handleDecrement} disabled={isBuying} activeOpacity={0.7}>
-                  <Feather name="minus" size={16} color={COLORS.textPrimary} />
-                </TouchableOpacity>
-                <Text style={styles.counterValue}>{cantidad}</Text>
-                <TouchableOpacity style={styles.counterBtn} onPress={handleIncrement} disabled={isBuying} activeOpacity={0.7}>
-                  <Feather name="plus" size={16} color={COLORS.textPrimary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
 
           {/* Previous Reviews from Organizer (TP requirement) */}
           <View style={styles.reviewsSection}>
             <View style={styles.reviewsHeader}>
               <Text style={styles.subHeading}>Reseñas de este Organizador</Text>
-              <Text style={styles.reviewsNote}>Experiencias previas</Text>
+              {/*<Text style={styles.reviewsNote}>Experiencias previas</Text> */}
             </View>
 
-            {evento.reseniasAnteriores && evento.reseniasAnteriores.length > 0 ? (
-              evento.reseniasAnteriores.map((res) => (
+            {isLoadingResenias && reseniasOrganizador.length === 0 ? (
+              <Text style={styles.noReviewsText}>Cargando reseñas...</Text>
+            ) : errorResenias && reseniasOrganizador.length === 0 ? (
+              <View>
+                <Text style={styles.noReviewsText}>{errorResenias}</Text>
+                <TouchableOpacity
+                  style={styles.reviewsAction}
+                  onPress={handleRetryReviews}
+                  disabled={isLoadingResenias}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.reviewsActionText}>
+                    {isLoadingResenias ? 'Reintentando...' : 'Reintentar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : reseniasOrganizador.length > 0 ? (
+              <>
+                {reseniasOrganizador.map((res) => (
                 <View key={res.id} style={styles.reviewCard}>
                   <View style={styles.reviewHeader}>
                     <Text style={styles.reviewUser}>
@@ -294,10 +451,31 @@ export default function DetalleEventoScreen({ route, navigation }) {
                       <Text style={styles.reviewScore}>{res.puntuacion}</Text>
                     </View>
                   </View>
+                  {res.eventoNombre ? (
+                    <Text style={styles.reviewEvent}>{res.eventoNombre}</Text>
+                  ) : null}
                   <Text style={styles.reviewComment}>{res.detalle}</Text>
                   <Text style={styles.reviewDate}>{res.fecha}</Text>
                 </View>
-              ))
+                ))}
+                {errorResenias ? (
+                  <Text style={styles.noReviewsText}>{errorResenias}</Text>
+                ) : null}
+                {paginaResenias < totalPaginasResenias ? (
+                  <TouchableOpacity
+                    style={styles.reviewsAction}
+                    onPress={handleLoadMoreReviews}
+                    disabled={isLoadingMoreResenias}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.reviewsActionText}>
+                      {isLoadingMoreResenias
+                        ? 'Cargando...'
+                        : `Cargar más reseñas (${reseniasTotal - reseniasOrganizador.length} restantes)`}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </>
             ) : (
               <Text style={styles.noReviewsText}>Aún no hay reseñas registradas para este organizador.</Text>
             )}
@@ -383,17 +561,18 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 220,
     backgroundColor: COLORS.surfaceContainerLow,
+    overflow: 'hidden',
   },
   heroGallery: {
     width: '100%',
     height: '100%',
   },
-  heroImage: {
+  heroGalleryImage: {
     height: '100%',
   },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 8, 29, 0.45)',
+  heroImage: {
+    width: '100%',
+    height: '100%',
   },
   heroTopActions: {
     position: 'absolute',
@@ -403,6 +582,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  heroBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    flex: 1,
   },
   liveBadge: {
     flexDirection: 'row',
@@ -436,36 +622,18 @@ const styles = StyleSheet.create({
   contentSection: {
     padding: 16,
   },
-  categoryBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
   categoryChip: {
-    backgroundColor: COLORS.secondaryContainer,
+    backgroundColor: 'rgba(255, 0, 127, 0.9)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
   },
   categoryChipText: {
     fontSize: 10,
     fontWeight: '700',
     color: COLORS.textPrimary,
-  },
-  demandChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: COLORS.surfaceCardSubtle,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  demandChipText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: COLORS.badgeCyanGlow,
   },
   eventTitle: {
     fontSize: 24,
@@ -602,6 +770,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    minHeight: 40,
   },
   radioCircle: {
     width: 18,
@@ -641,40 +811,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
     marginLeft: 26,
   },
   cupoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexShrink: 1,
   },
   cupoText: {
     fontSize: 11,
     fontWeight: '600',
   },
-  quantitySection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surfaceCard,
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  quantityLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
   counterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 6,
+    flexShrink: 0,
   },
   counterBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: COLORS.surfaceCardSubtle,
     alignItems: 'center',
     justifyContent: 'center',
@@ -721,6 +880,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
+  reviewEvent: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.tertiary,
+    marginBottom: 4,
+  },
   reviewStars: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -745,6 +910,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     fontStyle: 'italic',
+  },
+  reviewsAction: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 210, 242, 0.14)',
+  },
+  reviewsActionText: {
+    color: COLORS.badgeCyanGlow,
+    fontSize: 12,
+    fontWeight: '700',
   },
   bottomBar: {
     position: 'absolute',

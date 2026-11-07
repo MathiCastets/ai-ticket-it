@@ -64,7 +64,10 @@ const normalizarEvento = (evento) => {
     organizador: organizadorObj?.nombre || evento.organizador || evento.organizadorNombre || '',
     organizadorObj,
     organizadorId: organizadorObj?.id || evento.organizadorId || '',
-    organizadorRating: evento.organizadorRating ?? organizadorObj?.rating ?? 5,
+    organizadorRating:
+      evento.organizadorRating !== undefined
+        ? evento.organizadorRating
+        : organizadorObj?.rating ?? 5,
     reseniasAnteriores: (evento.reseniasAnteriores || evento.resenias || []).map(normalizarResenia),
   };
 };
@@ -253,6 +256,61 @@ export const AppProvider = ({ children }) => {
     }
     return true;
   };
+
+  const obtenerReseniasOrganizador = useCallback(
+    async (organizadorId, { page = 1, limit = 5 } = {}) => {
+      let resultado;
+      if (USE_MOCK_DATA) {
+        const resenias = eventos
+          .filter((evento) => evento.organizadorId === organizadorId)
+          .flatMap((evento) =>
+            (evento.reseniasAnteriores || evento.resenias || []).map((resenia) => ({
+              ...resenia,
+              eventoNombre: evento.nombre,
+            }))
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.fechaHora || b.fecha).getTime() -
+              new Date(a.fechaHora || a.fecha).getTime()
+          );
+        const offset = (page - 1) * limit;
+        resultado = {
+          resenias: resenias.slice(offset, offset + limit),
+          total: resenias.length,
+          page,
+          limit,
+          totalPages: Math.ceil(resenias.length / limit),
+          promedio:
+            resenias.length > 0
+              ? Number(
+                  (
+                    resenias.reduce((suma, resenia) => suma + Number(resenia.puntuacion), 0) /
+                    resenias.length
+                  ).toFixed(1)
+                )
+              : null,
+        };
+      } else {
+        resultado = await api.getReseniasOrganizador(organizadorId, { page, limit });
+      }
+
+      if (
+        !Array.isArray(resultado.resenias) ||
+        !Number.isInteger(resultado.total) ||
+        !Number.isInteger(resultado.page) ||
+        !Number.isInteger(resultado.totalPages) ||
+        (resultado.promedio !== null && !Number.isFinite(resultado.promedio))
+      ) {
+        throw new Error('El backend devolvió un formato de reseñas inesperado.');
+      }
+      return {
+        ...resultado,
+        resenias: resultado.resenias.map(normalizarResenia),
+      };
+    },
+    [eventos]
+  );
 
   const guardarEventoServidor = (eventoServidor) => {
     if (!eventoServidor?.id) return;
@@ -609,7 +667,20 @@ export const AppProvider = ({ children }) => {
 
     if (await backendDisponible()) {
       const compraServidor = await api.calificarCompra(compraId, { puntuacion, comentario });
-      return { success: true, compra: guardarCompraServidor(compraServidor) };
+      const compraGuardada = guardarCompraServidor(compraServidor);
+      try {
+        const eventosActualizados = await api.getEventos();
+        if (!Array.isArray(eventosActualizados)) {
+          throw new Error('El backend devolvió un listado de eventos inválido.');
+        }
+        setEventos(eventosActualizados.map(normalizarEvento));
+      } catch (error) {
+        console.error(
+          '[AI Ticket It Mobile] La reseña se guardó, pero no se pudo actualizar el promedio del organizador.',
+          error
+        );
+      }
+      return { success: true, compra: compraGuardada };
     }
 
     const compra = compras.find((item) => item.id === compraId);
@@ -634,14 +705,41 @@ export const AppProvider = ({ children }) => {
       )
     );
     setEventos((prev) =>
-      prev.map((evento) =>
-        evento.id === compra.eventoId
-          ? {
-              ...evento,
-              reseniasAnteriores: [nuevaResenia, ...(evento.reseniasAnteriores || [])],
-            }
-          : evento
-      )
+      {
+        const eventosDelOrganizador = prev.filter(
+          (evento) => evento.organizadorId === compra.organizadorId
+        );
+        const resumenAnterior = eventosDelOrganizador[0];
+        const cantidadAnterior = Number(resumenAnterior?.totalResenias) || 0;
+        const promedioAnterior = Number(resumenAnterior?.organizadorRating);
+        const nuevoTotal = cantidadAnterior + 1;
+        const nuevoPromedio =
+          cantidadAnterior > 0 && Number.isFinite(promedioAnterior)
+            ? Number(
+                (
+                  (promedioAnterior * cantidadAnterior + Number(puntuacion)) /
+                  nuevoTotal
+                ).toFixed(1)
+              )
+            : Number(puntuacion);
+
+        return prev.map((evento) => {
+          if (evento.organizadorId !== compra.organizadorId) return evento;
+          return {
+            ...evento,
+            organizadorRating: nuevoPromedio,
+            totalResenias: nuevoTotal,
+            ...(evento.id === compra.eventoId
+              ? {
+                  reseniasAnteriores: [
+                    nuevaResenia,
+                    ...(evento.reseniasAnteriores || []),
+                  ],
+                }
+              : {}),
+          };
+        });
+      }
     );
     return { success: true };
   };
@@ -747,6 +845,7 @@ export const AppProvider = ({ children }) => {
         favoritosError,
         backendConectado: backendStatus === 'connected',
         sincronizarConBackend,
+        obtenerReseniasOrganizador,
         toggleFavorito,
         getDiasRestantes,
         comprarEntrada,

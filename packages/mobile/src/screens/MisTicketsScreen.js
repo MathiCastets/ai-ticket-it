@@ -5,11 +5,13 @@ import {
   Text,
   ScrollView,
   Image,
+  TextInput,
   TouchableOpacity,
   Modal,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
@@ -17,23 +19,66 @@ import useMockLoading from '../hooks/useMockLoading';
 import { TicketListSkeleton } from '../components/loading/Skeletons';
 import LoadingSpinner from '../components/loading/Spinners';
 
+const normalizarTexto = (texto) =>
+  String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase();
+
+const obtenerNombreCategoria = (categoria) =>
+  typeof categoria === 'object' && categoria !== null
+    ? categoria.nombre || ''
+    : categoria || '';
+
 export default function MisTicketsScreen({ navigation }) {
-  const { compras, currentUser, getDiasRestantes, cancelarCompra } = useApp();
+  const { compras, eventos, currentUser, getDiasRestantes, cancelarCompra } = useApp();
   const isLoading = useMockLoading();
 
   const [activeTab, setActiveTab] = useState('todas'); // 'todas' | 'confirmadas' | 'pendientes' | 'historial'
+  const [busqueda, setBusqueda] = useState('');
+  const [sortDirection, setSortDirection] = useState('desc');
   const [selectedCompraQR, setSelectedCompraQR] = useState(null);
   const [selectedCompraCancel, setSelectedCompraCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // Filter purchases by tab
   const comprasDelUsuario = compras.filter((compra) => compra.compradorId === currentUser.id);
-  const filteredCompras = comprasDelUsuario.filter((c) => {
-    if (activeTab === 'confirmadas') return c.estado === 'CONFIRMADA';
-    if (activeTab === 'pendientes') return c.estado === 'PENDIENTE';
-    if (activeTab === 'historial') return c.estado === 'UTILIZADA' || c.estado === 'REEMBOLSADA' || c.estado === 'CANCELADA';
-    return true;
-  });
+  const obtenerCategoriaCompra = (compra) => {
+    const evento = eventos.find((item) => item.id === compra.eventoId);
+    return obtenerNombreCategoria(
+      compra.categoria || compra.evento?.categoria || evento?.categoria
+    );
+  };
+  const textoBusqueda = normalizarTexto(busqueda.trim());
+  const filteredCompras = comprasDelUsuario
+    .filter((compra) => {
+      if (activeTab === 'confirmadas' && compra.estado !== 'CONFIRMADA') return false;
+      if (activeTab === 'pendientes' && compra.estado !== 'PENDIENTE') return false;
+      if (
+        activeTab === 'historial' &&
+        !['UTILIZADA', 'REEMBOLSADA', 'CANCELADA'].includes(compra.estado)
+      ) {
+        return false;
+      }
+
+      if (!textoBusqueda) return true;
+      return normalizarTexto(
+        `${compra.eventoNombre || compra.evento?.nombre || ''} ${
+          compra.ubicacion || compra.evento?.ubicacion || ''
+        } ${obtenerCategoriaCompra(compra)}`
+      ).includes(textoBusqueda);
+    })
+    .sort((compraA, compraB) => {
+      const fechaA = Date.parse(compraA.fechaHora || '');
+      const fechaB = Date.parse(compraB.fechaHora || '');
+      const fechaValidaA = Number.isFinite(fechaA);
+      const fechaValidaB = Number.isFinite(fechaB);
+
+      if (!fechaValidaA || !fechaValidaB) {
+        if (fechaValidaA === fechaValidaB) return 0;
+        return fechaValidaA ? -1 : 1;
+      }
+      return (fechaA - fechaB) * (sortDirection === 'asc' ? 1 : -1);
+    });
 
   const handleConfirmCancel = async () => {
     if (!selectedCompraCancel) return;
@@ -59,28 +104,30 @@ export default function MisTicketsScreen({ navigation }) {
         <View style={styles.headerInfo}>
           <View>
             <Text style={styles.pageTitle}>Mis Compras</Text>
-            <Text style={styles.pageSubtitle}>Gestioná tus accesos, estados y cancelaciones</Text>
-          </View>
-          <View style={styles.ticketCountBadge}>
-            <Ionicons name="ticket" size={20} color={COLORS.accentElectric} />
+            {/*<Text style={styles.pageSubtitle}>Gestioná tus accesos, estados y cancelaciones</Text>*/}
           </View>
         </View>
 
         {/* Status Filter Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {[
-            { id: 'todas', label: `Todas (${comprasDelUsuario.length})` },
+            { id: 'todas', label: 'Todas', count: comprasDelUsuario.length },
             {
               id: 'confirmadas',
-              label: `Confirmadas (${comprasDelUsuario.filter((c) => c.estado === 'CONFIRMADA').length})`,
+              label: 'Confirmadas',
+              count: comprasDelUsuario.filter((c) => c.estado === 'CONFIRMADA').length,
             },
             {
               id: 'pendientes',
-              label: `Pendientes (${comprasDelUsuario.filter((c) => c.estado === 'PENDIENTE').length})`,
+              label: 'Pendientes',
+              count: comprasDelUsuario.filter((c) => c.estado === 'PENDIENTE').length,
             },
             {
               id: 'historial',
-              label: `Historial (${comprasDelUsuario.filter((c) => ['UTILIZADA', 'REEMBOLSADA', 'CANCELADA'].includes(c.estado)).length})`,
+              label: 'Utilizadas',
+              count: comprasDelUsuario.filter((c) =>
+                ['UTILIZADA', 'REEMBOLSADA', 'CANCELADA'].includes(c.estado)
+              ).length,
             },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -90,12 +137,66 @@ export default function MisTicketsScreen({ navigation }) {
                 style={[styles.tabButton, isActive && styles.tabButtonActive]}
                 onPress={() => setActiveTab(tab.id)}
                 activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
               >
-                <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>{tab.label}</Text>
+                <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>
+                  {tab.label}
+                </Text>
+                <View style={[styles.tabCountBadge, isActive && styles.tabCountBadgeActive]}>
+                  <Text style={[styles.tabCount, isActive && styles.tabCountActive]}>
+                    {tab.count}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
+
+        <View style={styles.filters}>
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="search" size={18} color={COLORS.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar por nombre, lugar o categoría..."
+              placeholderTextColor={COLORS.textMuted}
+              value={busqueda}
+              onChangeText={setBusqueda}
+              returnKeyType="search"
+              accessibilityLabel="Buscar tickets por nombre, lugar o categoría"
+            />
+            {busqueda.length > 0 ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Limpiar búsqueda"
+                onPress={() => setBusqueda('')}
+                hitSlop={8}
+              >
+                <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <View style={styles.sortSection}>
+            <Text style={styles.eventCount}>
+              {filteredCompras.length} {filteredCompras.length === 1 ? 'ticket' : 'tickets'}
+            </Text>
+            <TouchableOpacity
+              style={styles.sortPill}
+              onPress={() => setSortDirection((direction) => (direction === 'asc' ? 'desc' : 'asc'))}
+              accessibilityRole="button"
+              accessibilityLabel={`Ordenar por fecha de compra ${sortDirection === 'asc' ? 'ascendente' : 'descendente'}`}
+              accessibilityHint="Toca para invertir el orden"
+              hitSlop={4}
+            >
+              <Text style={styles.sortPillText}>Fecha</Text>
+              <MaterialIcons
+                name={sortDirection === 'asc' ? 'arrow-upward' : 'arrow-downward'}
+                size={14}
+                color={COLORS.textPrimary}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Purchases List */}
         <View style={styles.ticketList}>
@@ -130,7 +231,11 @@ export default function MisTicketsScreen({ navigation }) {
                       source={compra.imagen || compra.evento?.imagen ? { uri: compra.imagen || compra.evento?.imagen } : null}
                       style={styles.cardImage}
                     />
-                    <View style={styles.cardImageOverlay} />
+                    <LinearGradient
+                      colors={['rgba(15, 8, 29, 0.65)', 'rgba(15, 8, 29, 0)']}
+                      style={styles.cardImageScrim}
+                      pointerEvents="none"
+                    />
 
                     {/* Top Badges */}
                     <View style={styles.cardTopRow}>
@@ -141,16 +246,16 @@ export default function MisTicketsScreen({ navigation }) {
                       <Text style={styles.orderCode}>{compra.ordenCodigo}</Text>
                     </View>
 
-                    {/* Countdown Pill (Key TP Requirement) */}
-                    {isConfirmada && (
-                      <View style={styles.countdownPill}>
-                        <Ionicons name="time" size={14} color={COLORS.badgeCyanGlow} />
-                        <Text style={styles.countdownText}>
-                          {dias > 0 ? `¡Faltan ${dias} días para el evento!` : '¡El evento es hoy!'}
-                        </Text>
-                      </View>
-                    )}
                   </View>
+
+                  {isConfirmada ? (
+                    <View style={styles.countdownBar}>
+                      <Ionicons name="time" size={14} color={COLORS.badgeCyanGlow} />
+                      <Text style={styles.countdownText}>
+                        {dias > 0 ? `¡Faltan ${dias} días para el evento!` : '¡El evento es hoy!'}
+                      </Text>
+                    </View>
+                  ) : null}
 
                   {/* Card Content */}
                   <View style={styles.cardBody}>
@@ -178,12 +283,12 @@ export default function MisTicketsScreen({ navigation }) {
                       {/* View QR (if Confirmada) */}
                       {isConfirmada && (
                         <TouchableOpacity
-                          style={styles.actionBtnSecondary}
+                          style={styles.actionBtnQr}
                           onPress={() => setSelectedCompraQR(compra)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="qr-code-outline" size={15} color={COLORS.badgeCyanGlow} />
-                          <Text style={styles.actionBtnSecondaryText}>Ver QR</Text>
+                          <Ionicons name="qr-code-outline" size={15} color={COLORS.background} />
+                          <Text style={styles.actionBtnQrText}>Ver QR</Text>
                         </TouchableOpacity>
                       )}
 
@@ -193,8 +298,8 @@ export default function MisTicketsScreen({ navigation }) {
                         onPress={() => navigation.navigate('Chat', { compraId: compra.id })}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="chatbubble-ellipses-outline" size={15} color={COLORS.accentElectric} />
-                        <Text style={styles.actionBtnChatText}>Chat ({compra.mensajes?.length || 0})</Text>
+                        <Ionicons name="chatbubble-ellipses-outline" size={15} color={COLORS.badgeCyanGlow} />
+                        <Text style={styles.actionBtnChatText}>Chat</Text>
                       </TouchableOpacity>
 
                       {/* Cancel / Refund Button (TP Requirement) */}
@@ -204,24 +309,37 @@ export default function MisTicketsScreen({ navigation }) {
                           onPress={() => setSelectedCompraCancel(compra)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="close-circle-outline" size={15} color={COLORS.statusDanger} />
-                          <Text style={styles.actionBtnCancelText}>Cancelar</Text>
+                          <Text style={styles.actionBtnCancelText}>
+                            <Ionicons name="close-circle-outline" size={15} color={COLORS.statusDanger} />
+                            {' '}Cancelar
+                          </Text>
                         </TouchableOpacity>
                       )}
 
                       {/* Rate event if UTILIZADA (TP Requirement) */}
-                      {isUtilizada && (
-                        <TouchableOpacity
-                          style={styles.actionBtnRate}
-                          onPress={() => navigation.navigate('Calificar', { compraId: compra.id })}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="star" size={14} color={COLORS.statusWarning} />
-                          <Text style={styles.actionBtnRateText}>
-                            {compra.reseniaRealizada ? 'Ver Calificación' : 'Calificar Evento'}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                      {isUtilizada &&
+                        (compra.reseniaRealizada ? (
+                          <View style={styles.ratedChip}>
+                            <View style={styles.ratedIconCircle}>
+                              <Ionicons
+                                name="checkmark"
+                                size={10}
+                                color={COLORS.badgeCyanGlow}
+                                style={styles.ratedCheckIcon}
+                              />
+                            </View>
+                            <Text style={styles.ratedChipText}>Calificada</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            style={styles.actionBtnRate}
+                            onPress={() => navigation.navigate('Calificar', { compraId: compra.id })}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="star" size={14} color={COLORS.statusWarning} />
+                            <Text style={styles.actionBtnRateText}>Calificar Evento</Text>
+                          </TouchableOpacity>
+                        ))}
 
                     </View>
                   </View>
@@ -260,7 +378,6 @@ export default function MisTicketsScreen({ navigation }) {
                 <Text style={styles.qrVerifiedText}>Entrada digital válida para acreditar</Text>
               </View>
 
-              <Text style={styles.qrDoorText}>Mostrá este código en el acceso norte del predio.</Text>
             </View>
           </View>
         </Modal>
@@ -289,7 +406,7 @@ export default function MisTicketsScreen({ navigation }) {
                   <Text style={styles.cancelInfoLabel}>Reembolso estimado:</Text>
                   <Text style={[styles.cancelInfoValue, { color: COLORS.statusSuccess }]}>100% (${selectedCompraCancel.total?.toLocaleString('es-AR')})</Text>
                 </View>
-                <Text style={styles.cancelPolicyText}>✓ Cumple con la política del TP: Entrada no utilizada y evento no realizado.</Text>
+                <Text style={styles.cancelPolicyText}>✓ Cumple con la política de devolución.</Text>
               </View>
 
               <View style={styles.cancelBtnRow}>
@@ -366,26 +483,97 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  tabButton: {
+  filters: {
+    gap: 10,
+    paddingHorizontal: 16,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    gap: 9,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  searchInput: {
+    flex: 1,
+    color: COLORS.textPrimary,
+    fontSize: 13,
+  },
+  sortSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eventCount: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  sortPillText: {
+    color: COLORS.textPrimary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 38,
+    paddingHorizontal: 14,
+    borderRadius: 19,
     backgroundColor: COLORS.surfaceCard,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   tabButtonActive: {
-    backgroundColor: COLORS.primaryContainer,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.accentElectric,
+    borderColor: COLORS.accentElectric,
   },
   tabButtonText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
+    fontWeight: '700',
+    color: COLORS.badgeCyanGlow,
   },
   tabButtonTextActive: {
     color: COLORS.textPrimary,
+  },
+  tabCountBadge: {
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceContainerHigh,
+  },
+  tabCountBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  tabCount: {
+    color: COLORS.textMuted,
+    fontSize: 10,
     fontWeight: '700',
+    lineHeight: 12,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
+  tabCountActive: {
+    color: COLORS.textPrimary,
   },
   ticketList: {
     paddingHorizontal: 16,
@@ -425,9 +613,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  cardImageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 8, 29, 0.4)',
+  cardImageScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 72,
   },
   cardTopRow: {
     position: 'absolute',
@@ -445,6 +636,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
+  },
+  ratedIconCircle: {
+    width: 16,
+    height: 16,
+    borderWidth: 2,
+    borderColor: COLORS.badgeCyanGlow,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  ratedCheckIcon: {
+    lineHeight: 12,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
   statusDot: {
     width: 6,
@@ -465,24 +671,20 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
   },
-  countdownPill: {
-    position: 'absolute',
-    bottom: 8,
-    left: 10,
+  countdownBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(59, 30, 109, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(32, 217, 249, 0.4)',
+    minHeight: 30,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(0, 210, 242, 0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 210, 242, 0.18)',
   },
   countdownText: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: COLORS.badgeCyanGlow,
   },
   cardBody: {
     padding: 14,
@@ -520,25 +722,25 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
-  actionBtnSecondary: {
+  actionBtnQr: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: COLORS.surfaceContainerLow,
+    backgroundColor: COLORS.badgeCyanGlow,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 10,
   },
-  actionBtnSecondaryText: {
+  actionBtnQrText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.badgeCyanGlow,
+    fontWeight: '800',
+    color: COLORS.background,
   },
   actionBtnChat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(255, 0, 127, 0.12)',
+    backgroundColor: 'rgba(0, 210, 242, 0.14)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
@@ -546,7 +748,7 @@ const styles = StyleSheet.create({
   actionBtnChatText: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.accentElectric,
+    color: COLORS.badgeCyanGlow,
   },
   actionBtnCancel: {
     flexDirection: 'row',
@@ -575,6 +777,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.statusWarning,
+  },
+  ratedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0, 210, 242, 0.14)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  ratedChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.badgeCyanGlow,
   },
   actionSpinner: {
     width: 18,
