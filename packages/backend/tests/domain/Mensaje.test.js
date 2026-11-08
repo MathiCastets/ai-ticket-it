@@ -35,6 +35,14 @@ describe('Mensaje', () => {
       expect(msg.enviado).toEqual(fecha);
       expect(msg.leidoPor).toEqual(['user-2']);
     });
+
+    test('normaliza el mensaje y reinicia leidoPor cuando no recibe una lista', () => {
+      const msg = new Mensaje({ usuario, mensaje: 42, enviado: null, leidoPor: 'user-2' });
+
+      expect(msg.mensaje).toBe('42');
+      expect(msg.leidoPor).toEqual([]);
+      expect(msg.enviado).toBeInstanceOf(Date);
+    });
   });
 
   describe('validaciones de construcción', () => {
@@ -73,6 +81,16 @@ describe('Mensaje', () => {
 
       expect(str).not.toContain('emisor.secreto@example.com');
       expect(str).not.toContain('"email"');
+    });
+
+    test('serializa un usuario identificado por string sin inventar sus datos', () => {
+      const msg = new Mensaje({ usuario: 'user-2', mensaje: 'Consulta' });
+
+      expect(msg.toJSON()).toMatchObject({
+        usuario: 'user-2',
+        usuarioId: 'user-2',
+        usuarioNombre: '',
+      });
     });
   });
 });

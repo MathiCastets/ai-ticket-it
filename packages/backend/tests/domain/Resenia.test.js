@@ -77,4 +77,14 @@ describe('Resenia', () => {
       expect(() => crearResenia({ eventoId: null })).toThrow();
     });
   });
+
+  test('serializa un comprador representado por id sin agregar datos personales', () => {
+    const resenia = crearResenia({ comprador: 'comp-2' });
+
+    expect(resenia.toJSON()).toMatchObject({
+      comprador: 'comp-2',
+      compradorId: 'comp-2',
+      compradorNombre: '',
+    });
+  });
 });

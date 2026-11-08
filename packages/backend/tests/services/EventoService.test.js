@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { EventoService } from '../../src/services/EventoService.js';
 import { EventoRepository } from '../../src/repositories/inMemory/EventoRepository.js';
 import { UsuarioRepository } from '../../src/repositories/inMemory/UsuarioRepository.js';
@@ -9,6 +9,7 @@ import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
 import { Categoria } from '../../src/domain/entities/Categoria.js';
+import { EntityNotFoundError } from '../../src/repositories/errors/EntityNotFoundError.js';
 import { BusinessRuleError, ResourceNotFoundError } from '../../src/services/errors/index.js';
 
 describe('EventoService', () => {
@@ -196,6 +197,179 @@ describe('EventoService', () => {
           fecha: new Date(Date.now() - 100000).toISOString(),
         })
       ).rejects.toThrow(BusinessRuleError);
+    });
+  });
+
+  describe('validaciones y compensaciones', () => {
+    const crearDatosEvento = (overrides = {}) => ({
+      nombre: 'Evento nuevo',
+      fecha: new Date(Date.now() + 500000).toISOString(),
+      organizadorId: 'org-1',
+      categoriaId: 'cat-recitales',
+      tiposEntrada: [{ id: 'te-nuevo', nombre: 'General', precio: 1000, cupo: 20 }],
+      ...overrides,
+    });
+
+    test.each([
+      ['rechaza imagenes si no es una lista', { imagenes: null }],
+      ['rechaza multimedia si no es una lista', { multimedia: null }],
+      ['rechaza más de una imagen total', { multimedia: ['/uploads/one.jpg'], imagen: '/uploads/two.jpg' }],
+      ['rechaza un nombre vacío', { nombre: '   ' }],
+      ['rechaza una fecha ausente', { fecha: '' }],
+      ['rechaza una fecha inválida', { fecha: 'no-es-fecha' }],
+      ['rechaza una fecha pasada', { fecha: new Date(Date.now() - 1000).toISOString() }],
+      ['rechaza una lista de entradas vacía', { tiposEntrada: [] }],
+    ])('%s', async (_description, cambios) => {
+      await expect(service.crearEvento(crearDatosEvento(cambios))).rejects.toThrow(
+        BusinessRuleError
+      );
+    });
+
+    test('convierte a recurso no encontrado si el organizador no existe', async () => {
+      await expect(
+        service.crearEvento(crearDatosEvento({ organizadorId: 'org-inexistente' }))
+      ).rejects.toThrow(ResourceNotFoundError);
+    });
+
+    test('propaga errores inesperados al buscar el organizador', async () => {
+      usuarioRepo.findById = async () => {
+        throw new Error('Repositorio no disponible');
+      };
+
+      await expect(service.crearEvento(crearDatosEvento())).rejects.toThrow(
+        'Repositorio no disponible'
+      );
+    });
+
+    test('acepta resolver la categoría por nombre cuando no se encuentra por id', async () => {
+      const creado = await service.crearEvento(
+        crearDatosEvento({ categoriaId: undefined, categoria: 'Recitales' })
+      );
+
+      expect(creado.categoria).toBe(categoria);
+    });
+
+    test('no crea el evento cuando no logra resolver la categoría', async () => {
+      categoriaRepo.findByNombre = async () => {
+        throw new EntityNotFoundError('Categoria', 'desconocida');
+      };
+
+      await expect(
+        service.crearEvento(crearDatosEvento({ categoriaId: 'desconocida' }))
+      ).rejects.toThrow(ResourceNotFoundError);
+    });
+
+    test.each([
+      ['entrada no es un objeto', [null]],
+      ['nombre de entrada vacío', [{ id: 't1', nombre: ' ', precio: 1, cupo: 1 }]],
+      ['precio no es numérico', [{ id: 't1', nombre: 'General', precio: '1', cupo: 1 }]],
+      ['precio es negativo', [{ id: 't1', nombre: 'General', precio: -1, cupo: 1 }]],
+      ['cupo no es entero positivo', [{ id: 't1', nombre: 'General', precio: 1, cupo: 0 }]],
+    ])('rechaza cuando la %s', async (_description, tiposEntrada) => {
+      await expect(service.crearEvento(crearDatosEvento({ tiposEntrada }))).rejects.toThrow(
+        BusinessRuleError
+      );
+    });
+
+    test('rechaza identificadores duplicados entre tipos de entrada', async () => {
+      const tiposEntrada = [
+        { id: 'duplicado', nombre: 'General', precio: 10, cupo: 10 },
+        { id: 'duplicado', nombre: 'VIP', precio: 20, cupo: 5 },
+      ];
+
+      await expect(
+        service.crearEvento(crearDatosEvento({ tiposEntrada }))
+      ).rejects.toThrow('deben tener ids únicos');
+    });
+
+    test('elimina la imagen cargada si falla el guardado del nuevo evento', async () => {
+      const eliminar = jest.fn().mockResolvedValue(undefined);
+      service.eventoImageStorage = {
+        guardar: jest.fn().mockResolvedValue(['/uploads/nueva.jpg']),
+        eliminar,
+      };
+      eventoRepo.save = async () => {
+        throw new Error('No se pudo guardar');
+      };
+
+      await expect(
+        service.crearEvento(
+          crearDatosEvento({ imagenes: [{ filename: 'nueva.jpg' }] })
+        )
+      ).rejects.toThrow('No se pudo guardar');
+      expect(eliminar).toHaveBeenCalledWith(['/uploads/nueva.jpg']);
+    });
+
+    test.each([
+      ['rechaza nombre vacío', { nombre: ' ' }],
+      ['rechaza descripción no textual', { descripcion: 1 }],
+      ['rechaza ubicación no textual', { ubicacion: 1 }],
+      ['rechaza dirección no textual', { direccion: 1 }],
+      ['rechaza imagen no textual', { imagen: 1 }],
+      ['rechaza fecha que no es texto', { fecha: Date.now() + 100000 }],
+      ['rechaza fecha inválida', { fecha: 'inválida' }],
+      ['rechaza fecha pasada', { fecha: new Date(Date.now() - 1000).toISOString() }],
+      ['rechaza imagenes no listadas', { imagenes: null }],
+      ['rechaza más de una imagen', { imagenes: [{}, {}] }],
+    ])('actualizarEvento %s', async (_description, cambios) => {
+      await expect(
+        service.actualizarEvento('evt-1', { organizadorId: 'org-1', ...cambios })
+      ).rejects.toThrow(BusinessRuleError);
+    });
+
+    test('elimina imágenes reemplazadas y conserva el evento actualizado', async () => {
+      evento.imagen = '/uploads/anterior.jpg';
+      evento.multimedia = ['/uploads/anterior.jpg'];
+      const eliminar = jest.fn().mockResolvedValue(undefined);
+      service.eventoImageStorage = { guardar: jest.fn(), eliminar };
+
+      const actualizado = await service.actualizarEvento('evt-1', {
+        organizadorId: 'org-1',
+        imagen: '/uploads/nueva.jpg',
+      });
+
+      expect(actualizado.imagen).toBe('/uploads/nueva.jpg');
+      expect(actualizado.multimedia).toEqual(['/uploads/nueva.jpg']);
+      expect(eliminar).toHaveBeenCalledWith(['/uploads/anterior.jpg']);
+    });
+
+    test('restaura los valores originales y limpia la imagen si falla el guardado', async () => {
+      const nombreOriginal = evento.nombre;
+      const eliminar = jest.fn().mockResolvedValue(undefined);
+      service.eventoImageStorage = {
+        guardar: jest.fn().mockResolvedValue(['/uploads/nueva.jpg']),
+        eliminar,
+      };
+      eventoRepo.save = async () => {
+        throw new Error('No se pudo guardar');
+      };
+
+      await expect(
+        service.actualizarEvento('evt-1', {
+          organizadorId: 'org-1',
+          nombre: 'Nombre temporal',
+          imagenes: [{ filename: 'nueva.jpg' }],
+        })
+      ).rejects.toThrow('No se pudo guardar');
+      expect(evento.nombre).toBe(nombreOriginal);
+      expect(eliminar).toHaveBeenCalledWith(['/uploads/nueva.jpg']);
+    });
+
+    test('expone ambos errores si falla el guardado y su compensación', async () => {
+      service.eventoImageStorage = {
+        guardar: jest.fn().mockResolvedValue(['/uploads/nueva.jpg']),
+        eliminar: jest.fn().mockRejectedValue(new Error('No se pudo limpiar')),
+      };
+      eventoRepo.save = async () => {
+        throw new Error('No se pudo guardar');
+      };
+
+      await expect(
+        service.actualizarEvento('evt-1', {
+          organizadorId: 'org-1',
+          imagenes: [{ filename: 'nueva.jpg' }],
+        })
+      ).rejects.toBeInstanceOf(AggregateError);
     });
   });
 

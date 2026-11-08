@@ -388,4 +388,86 @@ describe('CompraController', () => {
       expect(mockMensajeService.enviarMensaje).not.toHaveBeenCalled();
     });
   });
+
+  describe('getMessages', () => {
+    test('permite al organizador relacionado consultar los mensajes', async () => {
+      mockCompraService.obtenerPorId.mockResolvedValue({
+        comprador: { id: 'comprador-1' },
+        evento: { organizadorId: 'org-1' },
+      });
+      mockMensajeService.obtenerMensajes.mockResolvedValue([{ id: 'm1', texto: 'Hola' }]);
+
+      await controller.getMessages(
+        { params: { id: 'c1' }, user: { id: 'org-1', rol: 'organizador' } },
+        res,
+        next
+      );
+
+      expect(mockMensajeService.obtenerMensajes).toHaveBeenCalledWith('c1');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ data: [{ id: 'm1', texto: 'Hola' }] });
+    });
+
+    test('rechaza a un usuario ajeno y no consulta los mensajes', async () => {
+      mockCompraService.obtenerPorId.mockResolvedValue({
+        comprador: { id: 'comprador-1' },
+        evento: { organizador: { id: 'org-1' } },
+      });
+
+      await controller.getMessages(
+        { params: { id: 'c1' }, user: { id: 'otro-1', rol: 'comprador' } },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(mockMensajeService.obtenerMensajes).not.toHaveBeenCalled();
+    });
+
+    test('permite la consulta sin actor autenticado', async () => {
+      mockMensajeService.obtenerMensajes.mockResolvedValue([]);
+
+      await controller.getMessages({ params: { id: 'c1' } }, res, next);
+
+      expect(mockCompraService.obtenerPorId).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe('markMessagesRead', () => {
+    test('usa el usuario autenticado y marca los mensajes como leídos', async () => {
+      mockMensajeService.marcarMensajesLeidos.mockResolvedValue([{ id: 'm1' }]);
+
+      await controller.markMessagesRead(
+        { params: { id: 'c1' }, body: {}, user: { id: 'u1', rol: 'comprador' } },
+        res,
+        next
+      );
+
+      expect(mockMensajeService.marcarMensajesLeidos).toHaveBeenCalledWith('c1', 'u1');
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('rechaza marcar mensajes en nombre de otro usuario', async () => {
+      await controller.markMessagesRead(
+        {
+          params: { id: 'c1' },
+          body: { usuarioId: 'u2' },
+          user: { id: 'u1', rol: 'comprador' },
+        },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(mockMensajeService.marcarMensajesLeidos).not.toHaveBeenCalled();
+    });
+
+    test('rechaza cuando no hay un usuario para marcar mensajes', async () => {
+      await controller.markMessagesRead({ params: { id: 'c1' }, body: {} }, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(mockMensajeService.marcarMensajesLeidos).not.toHaveBeenCalled();
+    });
+  });
 });

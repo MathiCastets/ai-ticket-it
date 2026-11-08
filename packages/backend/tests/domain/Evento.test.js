@@ -57,6 +57,21 @@ describe('Evento', () => {
       expect(Array.isArray(evento.multimedia)).toBe(true);
     });
 
+    test('normaliza multimedia y reseñas no válidas y toma la primera imagen disponible', () => {
+      const evento = crearEvento({
+        multimedia: ['imagen-principal.jpg'],
+        imagen: '',
+        resenias: null,
+      });
+      expect(evento.multimedia).toEqual(['imagen-principal.jpg']);
+      expect(evento.imagen).toBe('imagen-principal.jpg');
+      expect(evento.resenias).toEqual([]);
+
+      const eventoSinMultimedia = crearEvento({ multimedia: null, resenias: {} });
+      expect(eventoSinMultimedia.multimedia).toEqual([]);
+      expect(eventoSinMultimedia.resenias).toEqual([]);
+    });
+
     test('convierte tipos de entrada planos a instancias TipoEntrada', () => {
       const evento = new Evento({
         nombre: 'Evento Test',
@@ -176,6 +191,25 @@ describe('Evento', () => {
   });
 
   describe('toJSON y privacidad', () => {
+    test('serializa organizador y categoría representados por valores simples u objetos', () => {
+      const evento = crearEvento({
+        organizador: { id: 'org-plain', nombre: 'Organizador', email: 'privado@example.com' },
+        categoria: { id: 'cat-1', nombre: 'Música' },
+      });
+
+      const json = evento.toJSON();
+      expect(json.organizador).toEqual({ id: 'org-plain', nombre: 'Organizador' });
+      expect(json.categoriaNombre).toBe('Música');
+      expect(json.organizadorNombre).toBe('Organizador');
+      expect(json.organizadorId).toBe('org-plain');
+
+      const eventoConValoresSimples = crearEvento({ organizador: 'org-2', categoria: 'Teatro' });
+      const jsonSimple = eventoConValoresSimples.toJSON();
+      expect(jsonSimple.organizadorNombre).toBe('org-2');
+      expect(jsonSimple.organizadorId).toBe('');
+      expect(jsonSimple.categoriaNombre).toBe('Teatro');
+    });
+
     test('no expone el email del organizador en toJSON ni en JSON.stringify', () => {
       const organizador = new Usuario({
         id: 'org-test',

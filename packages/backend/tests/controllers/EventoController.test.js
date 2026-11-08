@@ -29,6 +29,17 @@ describe('EventoController', () => {
   });
 
   describe('getAll', () => {
+    test.each([
+      [{ categoria: ['cat-1'] }],
+      [{ search: ['concierto'] }],
+      [{ sortBy: ['fecha'] }],
+    ])('rechaza filtros que no son valores únicos de texto (%o)', async (query) => {
+      await controller.getAll({ query }, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(mockEventoService.listarEventos).not.toHaveBeenCalled();
+    });
+
     test('rechaza sortBy no soportado sin llamar al servicio', async () => {
       const req = { query: { sortBy: 'invalido' } };
       await controller.getAll(req, res, next);

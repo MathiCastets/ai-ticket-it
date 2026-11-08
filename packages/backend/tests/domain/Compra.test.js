@@ -60,9 +60,20 @@ describe('Compra', () => {
       expect(compra.historialCambios).toEqual([]);
     });
 
+    test('reemplaza mensajes e historial no válidos por arreglos vacíos', () => {
+      const compra = crearCompra({ mensajes: null, historialCambios: null });
+      expect(compra.mensajes).toEqual([]);
+      expect(compra.historialCambios).toEqual([]);
+    });
+
     test('inicializa reseniaRealizada en false', () => {
       const compra = crearCompra();
       expect(compra.reseniaRealizada).toBe(false);
+    });
+
+    test('normaliza reseniaRealizada a booleano', () => {
+      const compra = crearCompra({ reseniaRealizada: 'si' });
+      expect(compra.reseniaRealizada).toBe(true);
     });
 
     test('convierte fechaHora a objeto Date', () => {

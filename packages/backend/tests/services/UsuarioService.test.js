@@ -63,6 +63,8 @@ describe('UsuarioService', () => {
     test('obtiene la lista de IDs de favoritos de un usuario', async () => {
       const favs = await service.obtenerFavoritos('user-1');
       expect(favs).toEqual(['evt-1']);
+      favs.push('externo');
+      expect(comprador.favoritos).toEqual(['evt-1']);
     });
 
     test('lanza error si el usuario no existe', async () => {
@@ -96,6 +98,17 @@ describe('UsuarioService', () => {
     test('lanza error si el evento a agregar no existe', async () => {
       await expect(service.agregarFavorito('user-1', 'evt-inexistente')).rejects.toThrow(EntityNotFoundError);
     });
+
+    test('restaura favoritos si falla la persistencia', async () => {
+      usuarioRepo.save = async () => {
+        throw new Error('No se pudieron guardar favoritos');
+      };
+
+      await expect(service.agregarFavorito('user-1', 'evt-1')).rejects.toThrow(
+        'No se pudieron guardar favoritos'
+      );
+      expect(comprador.favoritos).toEqual(['evt-1']);
+    });
   });
 
   describe('removerFavorito', () => {
@@ -109,6 +122,17 @@ describe('UsuarioService', () => {
 
     test('lanza error si el evento no existe', async () => {
       await expect(service.removerFavorito('user-1', 'evt-inexistente')).rejects.toThrow(EntityNotFoundError);
+    });
+
+    test('restaura favoritos si falla la persistencia', async () => {
+      usuarioRepo.save = async () => {
+        throw new Error('No se pudieron guardar favoritos');
+      };
+
+      await expect(service.removerFavorito('user-1', 'evt-1')).rejects.toThrow(
+        'No se pudieron guardar favoritos'
+      );
+      expect(comprador.favoritos).toEqual(['evt-1']);
     });
   });
 
@@ -131,6 +155,35 @@ describe('UsuarioService', () => {
       expect(resultado.promedio).toBe(4.5);
       expect(resultado.resenias).toHaveLength(1);
       expect(resultado.resenias[0].detalle).toBe('Excelente'); // Más reciente primero
+    });
+
+    test('devuelve promedio nulo cuando el organizador todavía no tiene reseñas', async () => {
+      const resultado = await service.obtenerResenias('org-1');
+
+      expect(resultado).toMatchObject({
+        resenias: [],
+        total: 0,
+        page: 1,
+        limit: 5,
+        totalPages: 0,
+        promedio: null,
+      });
+    });
+
+    test('normaliza nombre de comprador ausente en una reseña', async () => {
+      evento.resenias = [
+        {
+          id: 'review-1',
+          comprador: {},
+          detalle: 'Comentario',
+          puntuacion: 4,
+          fechaHora: new Date('2026-01-01'),
+        },
+      ];
+
+      const resultado = await service.obtenerResenias('org-1');
+
+      expect(resultado.resenias[0].comprador).toEqual({ nombre: '', apellido: '' });
     });
   });
 });

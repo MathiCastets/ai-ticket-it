@@ -1,5 +1,10 @@
-import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll, jest } from '@jest/globals';
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { createApp } from '../src/app.js';
+import { UPLOADS_DIRECTORY } from '../src/config/uploadConfig.js';
+import { env } from '../src/config/env.js';
 
 describe('App HTTP Integration Tests', () => {
   let server;
@@ -32,6 +37,155 @@ describe('App HTTP Integration Tests', () => {
     });
   });
 
+  describe('Rutas generales y payloads inválidos', () => {
+    test('permite el origen configurado y rechaza uno no permitido', async () => {
+      const originsOriginales = env.ALLOWED_ORIGINS;
+      env.ALLOWED_ORIGINS = ['https://trusted.example'];
+      const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const corsServer = createApp().listen(0);
+      await new Promise((resolve) => corsServer.once('listening', resolve));
+      const corsUrl = `http://127.0.0.1:${corsServer.address().port}/`;
+
+      try {
+        const permitido = await fetch(corsUrl, {
+          headers: { Origin: 'https://trusted.example' },
+        });
+        expect(permitido.status).toBe(200);
+        expect(permitido.headers.get('access-control-allow-origin')).toBe(
+          'https://trusted.example'
+        );
+
+        const rechazado = await fetch(corsUrl, {
+          headers: { Origin: 'https://untrusted.example' },
+        });
+        expect(rechazado.status).toBe(500);
+        expect(errorLog).toHaveBeenCalled();
+      } finally {
+        await new Promise((resolve) => corsServer.close(resolve));
+        env.ALLOWED_ORIGINS = originsOriginales;
+        errorLog.mockRestore();
+      }
+    });
+
+    test('GET / responde información de bienvenida', async () => {
+      const res = await fetch(baseUrl.replace(/\/api$/, '/'));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data).toMatchObject({
+        name: 'AI Ticket It - API Backend',
+        status: 'online',
+        endpoints: { health: '/api/health' },
+      });
+    });
+
+    test.each([
+      ['null', 'INVALID_JSON'],
+      ['[]', 'VALIDATION_ERROR'],
+      ['"texto"', 'INVALID_JSON'],
+    ])('rechaza un body JSON que no es objeto: %s', async (body, code) => {
+        const res = await fetch(`${baseUrl}/eventos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        });
+        const data = await res.json();
+
+        expect(res.status).toBe(400);
+        expect(data.error.code).toBe(code);
+      });
+
+    test('responde 404 para una ruta desconocida', async () => {
+      const res = await fetch(`${baseUrl}/ruta-inexistente`);
+      const data = await res.json();
+
+      expect(res.status).toBe(404);
+      expect(data.error.code).toBe('ROUTE_NOT_FOUND');
+      expect(data.error.message).toContain('GET /api/ruta-inexistente');
+    });
+
+    test('sirve las imágenes con el header nosniff y sin index de directorio', async () => {
+      const filename = `coverage-${randomUUID()}.jpg`;
+      const filePath = path.join(UPLOADS_DIRECTORY, filename);
+      await mkdir(UPLOADS_DIRECTORY, { recursive: true });
+
+      try {
+        await writeFile(filePath, Buffer.from([0xff, 0xd8, 0xff]));
+        const res = await fetch(`${baseUrl.replace(/\/api$/, '')}/uploads/${filename}`);
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+        expect(Buffer.from(await res.arrayBuffer())).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+      } finally {
+        await unlink(filePath).catch((error) => {
+          if (error.code !== 'ENOENT') throw error;
+        });
+      }
+    });
+  });
+
+  describe('Carga de imágenes de eventos', () => {
+    const crearFormularioEvento = () => {
+      const formData = new FormData();
+      formData.append(
+        'evento',
+        JSON.stringify({
+          nombre: 'Evento de prueba de carga',
+          fecha: new Date(Date.now() + 86400000).toISOString(),
+          categoriaId: 'cat-recitales',
+          tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+        })
+      );
+      return formData;
+    };
+
+    test('procesa un multipart con imagen y reporta un archivo inválido', async () => {
+      const formData = crearFormularioEvento();
+      formData.append('imagenes', new Blob(['not an image'], { type: 'image/jpeg' }), 'invalid.jpg');
+      const res = await fetch(`${baseUrl}/eventos`, {
+        method: 'POST',
+        headers: { 'X-User-Id': 'user_org_sonora' },
+        body: formData,
+      });
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error.message).toBe('Solo se permiten imágenes JPEG, PNG o WebP válidas');
+    });
+
+    test('rechaza más de una imagen por solicitud', async () => {
+      const formData = crearFormularioEvento();
+      formData.append('otraImagen', new Blob(['not accepted']), 'other.jpg');
+      const res = await fetch(`${baseUrl}/eventos`, {
+        method: 'POST',
+        headers: { 'X-User-Id': 'user_org_sonora' },
+        body: formData,
+      });
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error.message).toBe('Se permite una sola imagen por evento');
+    });
+
+    test('rechaza imágenes que superan el límite de tamaño', async () => {
+      const formData = crearFormularioEvento();
+      formData.append(
+        'imagenes',
+        new Blob([Buffer.alloc(5 * 1024 * 1024 + 1)], { type: 'image/jpeg' }),
+        'large.jpg'
+      );
+      const res = await fetch(`${baseUrl}/eventos`, {
+        method: 'POST',
+        headers: { 'X-User-Id': 'user_org_sonora' },
+        body: formData,
+      });
+      const data = await res.json();
+
+      expect(res.status).toBe(413);
+      expect(data.error.code).toBe('REQUEST_TOO_LARGE');
+    });
+  });
+
   describe('Categorías', () => {
     test('GET /categorias responde lista no vacía', async () => {
       const res = await fetch(`${baseUrl}/categorias`);
@@ -53,6 +207,24 @@ describe('App HTTP Integration Tests', () => {
       for (const usuario of data.data) {
         expect(usuario).not.toHaveProperty('email');
       }
+    });
+
+    test('protege favoritos para que solo el usuario autenticado gestione su perfil', async () => {
+      const sinAutenticacion = await fetch(
+        `${baseUrl}/usuarios/user_comprador_1/favoritos`
+      );
+      expect(sinAutenticacion.status).toBe(401);
+
+      const usuarioAjeno = await fetch(
+        `${baseUrl}/usuarios/user_comprador_1/favoritos/evt-electro-2`,
+        {
+          method: 'PUT',
+          headers: { 'X-User-Id': 'user_comprador_2' },
+        }
+      );
+      const data = await usuarioAjeno.json();
+      expect(usuarioAjeno.status).toBe(403);
+      expect(data.error.code).toBe('FORBIDDEN');
     });
 
     test('GET /eventos y GET /eventos/:id no exponen emails de organizadores (Ley 25.326)', async () => {

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { MensajeService } from '../../src/services/MensajeService.js';
 import { CompraRepository } from '../../src/repositories/inMemory/CompraRepository.js';
 import { UsuarioRepository } from '../../src/repositories/inMemory/UsuarioRepository.js';
@@ -130,6 +130,36 @@ describe('MensajeService', () => {
 
       expect(compra.mensajes.length).toBe(mensajesAntes);
     });
+
+    test('propaga errores inesperados del repositorio de compras', async () => {
+      service = new MensajeService(
+        { findById: async () => { throw new Error('Repositorio caído'); } },
+        usuarioRepo
+      );
+
+      await expect(
+        service.enviarMensaje('compra-1', { usuarioId: 'comp-1', texto: 'Hola' })
+      ).rejects.toThrow('Repositorio caído');
+    });
+
+    test('propaga errores inesperados al resolver el usuario emisor', async () => {
+      service = new MensajeService(compraRepo, {
+        findById: async () => { throw new Error('Usuarios no disponibles'); },
+      });
+
+      await expect(
+        service.enviarMensaje('compra-1', { usuarioId: 'comp-1', texto: 'Hola' })
+      ).rejects.toThrow('Usuarios no disponibles');
+    });
+
+    test('reconoce al organizador cuando el evento lo representa como texto e id', async () => {
+      compra.evento.organizador = 'Organizador';
+      compra.evento.organizadorId = 'org-1';
+
+      await expect(
+        service.enviarMensaje('compra-1', { usuarioId: 'org-1', texto: 'Hola' })
+      ).resolves.toMatchObject({ mensaje: 'Hola' });
+    });
   });
 
   describe('obtenerMensajes', () => {
@@ -146,6 +176,12 @@ describe('MensajeService', () => {
 
     test('lanza ResourceNotFoundError si la compra no existe', async () => {
       await expect(service.obtenerMensajes('inexistente')).rejects.toThrow(ResourceNotFoundError);
+    });
+
+    test('devuelve una lista vacía si la compra no tiene una colección de mensajes', async () => {
+      compra.mensajes = null;
+
+      await expect(service.obtenerMensajes('compra-1')).resolves.toEqual([]);
     });
   });
 
@@ -178,6 +214,27 @@ describe('MensajeService', () => {
       await expect(
         service.marcarMensajesLeidos('inexistente', 'comp-1')
       ).rejects.toThrow(ResourceNotFoundError);
+    });
+
+    test('no persiste cambios cuando todos los mensajes ya están leídos por el usuario', async () => {
+      await service.marcarMensajesLeidos('compra-1', 'org-1');
+      const guardar = jest.spyOn(compraRepo, 'save');
+
+      await service.marcarMensajesLeidos('compra-1', 'org-1');
+
+      expect(guardar).not.toHaveBeenCalled();
+    });
+
+    test('restaura los recibos de lectura si falla la persistencia', async () => {
+      const mensaje = compra.mensajes[0];
+      compraRepo.save = async () => {
+        throw new Error('No se pudieron guardar las lecturas');
+      };
+
+      await expect(
+        service.marcarMensajesLeidos('compra-1', 'org-1')
+      ).rejects.toThrow('No se pudieron guardar las lecturas');
+      expect(mensaje.leidoPor).toEqual([]);
     });
   });
 });
