@@ -43,6 +43,34 @@ describe('CompraController', () => {
   });
 
   describe('getAll', () => {
+    test.each([
+      { compradorId: ['u1', 'u2'] },
+      { compradorId: 0 },
+      { eventoId: ['e1', 'e2'] },
+      { eventoId: 0 },
+    ])('rechaza filtros que no son texto, incluso si son cero (%o)', async (query) => {
+      await controller.getAll({ query }, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          code: 'VALIDATION_ERROR',
+          message: 'Los filtros de compra deben ser valores únicos de texto',
+        })
+      );
+      expect(mockCompraService.listarTodas).not.toHaveBeenCalled();
+    });
+
+    test('delega errores inesperados del servicio a next', async () => {
+      const error = new Error('Servicio de compras no disponible');
+      mockCompraService.listarTodas.mockRejectedValue(error);
+
+      await controller.getAll({ query: {} }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
+      expect(res.status).not.toHaveBeenCalled();
+    });
+
     test('rechaza si se envían ambos filtros (compradorId y eventoId)', async () => {
       const req = { query: { compradorId: 'u1', eventoId: 'e1' } };
       await controller.getAll(req, res, next);
@@ -122,6 +150,23 @@ describe('CompraController', () => {
       expect(res.json).toHaveBeenCalledWith({ data: [{ id: 'c1', evento: { organizador: { id: 'org-1' } } }] });
     });
 
+    test('organizador filtra eventos que exponen organizadorId plano', async () => {
+      mockCompraService.listarPorEvento.mockResolvedValue([
+        { id: 'c1', evento: { organizadorId: 'org-1' } },
+        { id: 'c2', evento: { organizadorId: 'org-otro' } },
+      ]);
+
+      await controller.getAll(
+        { query: { eventoId: 'e1' }, user: { id: 'org-1', rol: 'organizador' } },
+        res,
+        next
+      );
+
+      expect(res.json).toHaveBeenCalledWith({
+        data: [{ id: 'c1', evento: { organizadorId: 'org-1' } }],
+      });
+    });
+
     test('la respuesta de getAll no expone emails en la respuesta (Ley 25.326)', async () => {
       const comprador = new Usuario({
         id: 'u-priv',
@@ -187,6 +232,23 @@ describe('CompraController', () => {
       await controller.getById(req, res, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+    });
+
+    test('permite al organizador relacionado cuando el evento usa organizadorId plano', async () => {
+      mockCompraService.obtenerPorId.mockResolvedValue({
+        id: 'c1',
+        comprador: { id: 'u1' },
+        evento: { organizadorId: 'org-1' },
+      });
+
+      await controller.getById(
+        { params: { id: 'c1' }, user: { id: 'org-1', rol: 'organizador' } },
+        res,
+        next
+      );
+
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
     test('la respuesta de getById no expone el email del comprador ni del organizador (Ley 25.326)', async () => {
@@ -285,6 +347,19 @@ describe('CompraController', () => {
       expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
     });
+
+    test.each(['', null])('rechaza eventoId ausente (%p)', async (eventoId) => {
+      await controller.create(
+        { body: { compradorId: 'u1', eventoId, tipoEntradaId: 't1', cantidad: 1 } },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'eventoId es requerido' })
+      );
+      expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
+    });
   });
 
   describe('cancel', () => {
@@ -301,6 +376,22 @@ describe('CompraController', () => {
       );
     });
 
+    test.each([[''], ['   '], [123]])(
+      'rechaza un campo quien inválido (%o) con detalle',
+      async (quien) => {
+        await controller.cancel({ params: { id: 'c1' }, body: { quien } }, res, next);
+
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'ValidationError',
+            code: 'VALIDATION_ERROR',
+            message: 'quien debe ser un texto no vacío',
+          })
+        );
+        expect(mockCompraService.cancelarCompra).not.toHaveBeenCalled();
+      }
+    );
+
     test('pasa el actor autenticado al servicio de cancelación', async () => {
       const user = { id: 'u1', rol: 'comprador', nombre: 'Juan' };
       mockCompraService.cancelarCompra.mockResolvedValue({ id: 'c1', estado: 'REEMBOLSADA' });
@@ -310,6 +401,60 @@ describe('CompraController', () => {
 
       expect(mockCompraService.cancelarCompra).toHaveBeenCalledWith('c1', user, undefined);
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('usa el nombre indicado como actor cuando no hay usuario autenticado', async () => {
+      mockCompraService.cancelarCompra.mockResolvedValue({ id: 'c1' });
+
+      await controller.cancel(
+        { params: { id: 'c1' }, body: { quien: 'Organizador' } },
+        res,
+        next
+      );
+
+      expect(mockCompraService.cancelarCompra).toHaveBeenCalledWith(
+        'c1',
+        'Organizador',
+        'Organizador'
+      );
+    });
+  });
+
+  describe('markUsed', () => {
+    test('acredita la compra y devuelve el mensaje y resultado esperados', async () => {
+      const compra = { id: 'c1', estado: 'UTILIZADA' };
+      mockCompraService.marcarUtilizada.mockResolvedValue(compra);
+      const user = { id: 'org-1', rol: 'organizador' };
+
+      await controller.markUsed(
+        { params: { id: 'c1' }, body: { quien: 'Puerta' }, user },
+        res,
+        next
+      );
+
+      expect(mockCompraService.marcarUtilizada).toHaveBeenCalledWith('c1', user, 'Puerta');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        data: compra,
+        message: 'Entrada acreditada y marcada como UTILIZADA',
+      });
+    });
+
+    test('rechaza quien inválido antes de llamar al servicio', async () => {
+      await controller.markUsed(
+        { params: { id: 'c1' }, body: { quien: 42 } },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          code: 'VALIDATION_ERROR',
+          message: 'quien debe ser un texto no vacío',
+        })
+      );
+      expect(mockCompraService.marcarUtilizada).not.toHaveBeenCalled();
     });
   });
 
@@ -332,6 +477,10 @@ describe('CompraController', () => {
         undefined
       );
       expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        data: { id: 'c1', reseniaRealizada: true },
+        message: 'Reseña registrada con éxito',
+      });
     });
 
     test('rechaza puntuación no divisible por 0.5', async () => {
@@ -342,7 +491,13 @@ describe('CompraController', () => {
 
       await controller.rate(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          code: 'VALIDATION_ERROR',
+          message: 'La puntuación debe estar entre 0.5 y 5 en incrementos de 0.5',
+        })
+      );
       expect(mockCompraService.calificarCompra).not.toHaveBeenCalled();
     });
 
@@ -356,6 +511,33 @@ describe('CompraController', () => {
 
       expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockCompraService.calificarCompra).not.toHaveBeenCalled();
+    });
+
+    test.each([0, 5.25, 6])('rechaza puntuación fuera del rango (%p)', async (puntuacion) => {
+      await controller.rate(
+        { params: { id: 'c1' }, body: { puntuacion, comentario: 'Bueno' } },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'La puntuación debe estar entre 0.5 y 5 en incrementos de 0.5',
+        })
+      );
+      expect(mockCompraService.calificarCompra).not.toHaveBeenCalled();
+    });
+
+    test('rechaza comentario vacío con mensaje específico', async () => {
+      await controller.rate(
+        { params: { id: 'c1' }, body: { puntuacion: 5, comentario: '   ' } },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'El comentario es requerido' })
+      );
     });
   });
 

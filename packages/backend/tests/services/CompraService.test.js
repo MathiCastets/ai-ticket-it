@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { CompraService } from '../../src/services/CompraService.js';
 import { CompraRepository } from '../../src/repositories/inMemory/CompraRepository.js';
 import { EventoRepository } from '../../src/repositories/inMemory/EventoRepository.js';
@@ -61,15 +61,33 @@ describe('CompraService', () => {
       expect(tipoEntrada.disponibles).toBe(disponiblesAntes - 2);
     });
 
-    test('lanza BusinessRuleError si la cantidad es menor o igual a 0', async () => {
+    test.each([0, -1])('rechaza cantidad %i con mensaje y código específicos', async (cantidad) => {
       await expect(
         service.realizarCompra({
           compradorId: 'comp-1',
           eventoId: 'evt-1',
           tipoEntradaId: 'te-1',
-          cantidad: 0,
+          cantidad,
         })
-      ).rejects.toThrow(BusinessRuleError);
+      ).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'BUSINESS_RULE_VIOLATION',
+        message: 'La cantidad de entradas debe ser un número entero mayor a 0',
+      });
+    });
+
+    test('permite comprar exactamente el stock disponible', async () => {
+      tipoEntrada.disponibles = 2;
+
+      const compra = await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 2,
+      });
+
+      expect(compra.cantidad).toBe(2);
+      expect(tipoEntrada.disponibles).toBe(0);
     });
 
     test('lanza BusinessRuleError si la cantidad no es un entero', async () => {
@@ -176,6 +194,38 @@ describe('CompraService', () => {
       ).rejects.toThrow();
 
       expect(tipoEntrada.disponibles).toBe(disponiblesAntes);
+    });
+
+    test('expone el error original y los errores de rollback si fallan ambas compensaciones', async () => {
+      const errorCompra = new Error('Fallo al guardar la compra');
+      const errorBorrarCompra = new Error('Fallo al borrar la compra');
+      const errorRestaurarEvento = new Error('Fallo al restaurar el evento');
+      const failingCompraRepo = {
+        save: jest.fn().mockRejectedValue(errorCompra),
+        delete: jest.fn().mockRejectedValue(errorBorrarCompra),
+      };
+      const guardarEvento = jest
+        .spyOn(eventoRepo, 'save')
+        .mockResolvedValueOnce(evento)
+        .mockRejectedValueOnce(errorRestaurarEvento);
+      service = new CompraService(failingCompraRepo, eventoRepo, usuarioRepo);
+
+      await expect(
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-1',
+          cantidad: 1,
+        })
+      ).rejects.toMatchObject({
+        name: 'AggregateError',
+        message:
+          'No se pudo completar la compra de forma consistente. Además, falló una o más operaciones de rollback.',
+        errors: [errorCompra, errorBorrarCompra, errorRestaurarEvento],
+      });
+
+      expect(guardarEvento).toHaveBeenCalledTimes(2);
+      expect(failingCompraRepo.delete).toHaveBeenCalledTimes(1);
     });
   });
 

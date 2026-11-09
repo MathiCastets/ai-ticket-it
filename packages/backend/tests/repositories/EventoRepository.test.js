@@ -94,6 +94,18 @@ describe('EventoRepository', () => {
       expect(result[0].id).toBe('evt-cat-1');
     });
 
+    test('acepta categoría todos y categorías representadas como texto', async () => {
+      const e1 = crearEvento({ id: 'evt-cat-string', categoria: 'Recitales' });
+      await repository.save(e1);
+
+      const todos = await repository.findAll({ categoria: 'ToDoS' });
+      const recitales = await repository.findAll({ categoria: 'rEcItAlEs' });
+
+      expect(todos).toHaveLength(1);
+      expect(recitales).toHaveLength(1);
+      expect(recitales[0]).toBe(e1);
+    });
+
     test('filtra por término de búsqueda en nombre', async () => {
       const e1 = crearEvento({ id: 'evt-s-1', nombre: 'Festival Rock 2026' });
       const e2 = crearEvento({ id: 'evt-s-2', nombre: 'Noche Electrónica' });
@@ -103,6 +115,87 @@ describe('EventoRepository', () => {
       const result = await repository.findAll({ search: 'rock' });
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('evt-s-1');
+    });
+
+    test('busca ubicaciones y categorías sin distinguir mayúsculas y combina filtros', async () => {
+      const coincidencia = crearEvento({
+        id: 'evt-busqueda-coincide',
+        nombre: 'Noche de Jazz',
+        ubicacion: 'Buenos Aires',
+        categoria,
+      });
+      const otraCategoria = new Categoria({ id: 'cat-deportes', nombre: 'Deportes' });
+      const ubicacionOtraCategoria = crearEvento({
+        id: 'evt-busqueda-otra-categoria',
+        nombre: 'Torneo',
+        ubicacion: 'Buenos Aires',
+        categoria: otraCategoria,
+      });
+      const categoriaOtraUbicacion = crearEvento({
+        id: 'evt-busqueda-otra-ubicacion',
+        nombre: 'Festival',
+        ubicacion: 'Córdoba',
+        categoria,
+      });
+      await repository.save(coincidencia);
+      await repository.save(ubicacionOtraCategoria);
+      await repository.save(categoriaOtraUbicacion);
+
+      const porUbicacion = await repository.findAll({ search: 'bUeNoS aIRes' });
+      const porCategoria = await repository.findAll({ search: 'rEcItAlEs' });
+      const filtrosCombinados = await repository.findAll({
+        search: 'bUeNoS',
+        categoria: 'rEcItAlEs',
+      });
+
+      expect(porUbicacion.map((evento) => evento.id).sort()).toEqual([
+        'evt-busqueda-coincide',
+        'evt-busqueda-otra-categoria',
+      ].sort());
+      expect(porCategoria.map((evento) => evento.id).sort()).toEqual([
+        'evt-busqueda-coincide',
+        'evt-busqueda-otra-ubicacion',
+      ].sort());
+      expect(filtrosCombinados.map((evento) => evento.id)).toEqual([
+        'evt-busqueda-coincide',
+      ]);
+    });
+
+    test('busca también por nombre del organizador representado como objeto o texto', async () => {
+      const porObjeto = crearEvento({
+        id: 'evt-org-objeto',
+        organizador: { id: 'org-objeto', nombre: 'Teatro Colón' },
+      });
+      const porTexto = crearEvento({
+        id: 'evt-org-texto',
+        organizador: 'Productora Sur',
+      });
+      await repository.save(porObjeto);
+      await repository.save(porTexto);
+
+      const resultado = await repository.findAll({ search: 'teatro' });
+      const resultadoTexto = await repository.findAll({ search: 'PRODUCTORA' });
+
+      expect(resultado).toHaveLength(1);
+      expect(resultado[0].id).toBe('evt-org-objeto');
+      expect(resultadoTexto).toHaveLength(1);
+      expect(resultadoTexto[0].id).toBe('evt-org-texto');
+    });
+
+    test('ordena por rating cuando el valor proviene del organizador', async () => {
+      const bajo = crearEvento({ id: 'evt-rating-bajo' });
+      const alto = crearEvento({ id: 'evt-rating-alto' });
+      Object.defineProperty(bajo, 'organizadorRating', { value: 2 });
+      Object.defineProperty(alto, 'organizadorRating', { value: 5 });
+      await repository.save(bajo);
+      await repository.save(alto);
+
+      const resultado = await repository.findAll({ sortBy: 'rating' });
+
+      expect(resultado.map((evento) => evento.id)).toEqual([
+        'evt-rating-alto',
+        'evt-rating-bajo',
+      ]);
     });
 
     test('ordena por precio ascendente con sortBy=precio', async () => {

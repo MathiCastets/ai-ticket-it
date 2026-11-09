@@ -90,6 +90,39 @@ describe('EventoService', () => {
       expect(ordenados.map(e => e.id)).toEqual(['e2', 'e1', 'e3']);
     });
 
+    test('acumula reseñas de eventos del mismo organizador y admite organizadorId plano', async () => {
+      const e1 = {
+        id: 'e1',
+        organizadorId: 'org-compartido',
+        resenias: [{ puntuacion: 5 }],
+      };
+      const e2 = {
+        id: 'e2',
+        organizador: { id: 'org-otro' },
+        resenias: [{ puntuacion: 1 }, { puntuacion: 1 }],
+      };
+      const e3 = {
+        id: 'e3',
+        organizadorId: 'org-compartido',
+        resenias: [{ puntuacion: 1 }],
+      };
+      eventoRepo.findAll = async () => [e1, e2, e3];
+
+      const ordenados = await service.listarEventos({ sortBy: 'rating' });
+
+      expect(ordenados.map((item) => item.id)).toEqual(['e1', 'e3', 'e2']);
+    });
+
+    test('deja al final los eventos sin reseñas incluso cuando se comparan entre sí', async () => {
+      const sinReseniasA = { id: 'sin-a', organizadorId: 'org-a', resenias: [] };
+      const sinReseniasB = { id: 'sin-b', organizadorId: 'org-b' };
+      eventoRepo.findAll = async () => [sinReseniasB, sinReseniasA];
+
+      const ordenados = await service.listarEventos({ sortBy: 'rating' });
+
+      expect(ordenados.map((item) => item.id)).toEqual(['sin-b', 'sin-a']);
+    });
+
     test('obtiene un evento por id', async () => {
       const ev = await service.obtenerPorId('evt-1');
       expect(ev.nombre).toBe('Festival Rock');
@@ -120,7 +153,7 @@ describe('EventoService', () => {
       expect(enRepo).toBe(nuevo);
     });
 
-    test('falla si la fecha del evento es anterior o igual al momento actual', async () => {
+    test('falla con código y mensaje específicos si la fecha ya pasó', async () => {
       await expect(
         service.crearEvento({
           nombre: 'Evento Pasado',
@@ -129,7 +162,11 @@ describe('EventoService', () => {
           categoriaId: 'cat-recitales',
           tiposEntrada: [{ nombre: 'General', precio: 8000, cupo: 50 }],
         })
-      ).rejects.toThrow(BusinessRuleError);
+      ).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'FECHA_PASADA',
+        message: 'La fecha y hora del evento deben ser posteriores al momento actual.',
+      });
     });
 
     test('falla si el usuario no es organizador', async () => {
@@ -271,6 +308,34 @@ describe('EventoService', () => {
       );
     });
 
+    test('rechaza un precio negativo con mensaje y código específicos', async () => {
+      await expect(
+        service.crearEvento(
+          crearDatosEvento({
+            tiposEntrada: [{ id: 't1', nombre: 'General', precio: -1, cupo: 1 }],
+          })
+        )
+      ).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'BUSINESS_RULE_VIOLATION',
+        message: 'El precio del tipo de entrada #1 debe ser válido y no negativo',
+      });
+    });
+
+    test('rechaza el cupo cero con mensaje y código específicos', async () => {
+      await expect(
+        service.crearEvento(
+          crearDatosEvento({
+            tiposEntrada: [{ id: 't1', nombre: 'General', precio: 1, cupo: 0 }],
+          })
+        )
+      ).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'BUSINESS_RULE_VIOLATION',
+        message: 'El cupo del tipo de entrada #1 debe ser un entero positivo',
+      });
+    });
+
     test('rechaza identificadores duplicados entre tipos de entrada', async () => {
       const tiposEntrada = [
         { id: 'duplicado', nombre: 'General', precio: 10, cupo: 10 },
@@ -333,6 +398,52 @@ describe('EventoService', () => {
       expect(eliminar).toHaveBeenCalledWith(['/uploads/anterior.jpg']);
     });
 
+    test('registra pero no oculta un error al limpiar una imagen reemplazada', async () => {
+      const cleanupError = new Error('No se pudo eliminar la imagen anterior');
+      const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+      service.eventoImageStorage = {
+        guardar: jest.fn(),
+        eliminar: jest.fn().mockRejectedValue(cleanupError),
+      };
+      evento.imagen = '/uploads/anterior.jpg';
+      evento.multimedia = ['/uploads/anterior.jpg'];
+
+      await expect(
+        service.actualizarEvento('evt-1', {
+          organizadorId: 'org-1',
+          imagen: '/uploads/nueva.jpg',
+        })
+      ).resolves.toBe(evento);
+
+      expect(errorLog).toHaveBeenCalledWith(
+        '[EventoService] No se pudieron limpiar imágenes reemplazadas:',
+        cleanupError
+      );
+      errorLog.mockRestore();
+    });
+
+    test('propaga el error al guardar una imagen nueva sin modificar el evento', async () => {
+      const error = new Error('No se pudo guardar la imagen');
+      service.eventoImageStorage = {
+        guardar: jest.fn().mockRejectedValue(error),
+        eliminar: jest.fn(),
+      };
+      const guardarEvento = jest.spyOn(eventoRepo, 'save');
+      const nombreOriginal = evento.nombre;
+
+      await expect(
+        service.actualizarEvento('evt-1', {
+          organizadorId: 'org-1',
+          nombre: 'Nombre temporal',
+          imagenes: [{ filename: 'nueva.jpg' }],
+        })
+      ).rejects.toBe(error);
+
+      expect(evento.nombre).toBe(nombreOriginal);
+      expect(guardarEvento).not.toHaveBeenCalled();
+      expect(service.eventoImageStorage.eliminar).not.toHaveBeenCalled();
+    });
+
     test('restaura los valores originales y limpia la imagen si falla el guardado', async () => {
       const nombreOriginal = evento.nombre;
       const eliminar = jest.fn().mockResolvedValue(undefined);
@@ -364,12 +475,18 @@ describe('EventoService', () => {
         throw new Error('No se pudo guardar');
       };
 
-      await expect(
-        service.actualizarEvento('evt-1', {
-          organizadorId: 'org-1',
-          imagenes: [{ filename: 'nueva.jpg' }],
-        })
-      ).rejects.toBeInstanceOf(AggregateError);
+      const error = await service.actualizarEvento('evt-1', {
+        organizadorId: 'org-1',
+        imagenes: [{ filename: 'nueva.jpg' }],
+      }).catch((caught) => caught);
+
+      expect(error).toBeInstanceOf(AggregateError);
+      expect(error.message).toBe(
+        'No se pudieron guardar los cambios ni limpiar la imagen cargada.'
+      );
+      expect(error.errors).toHaveLength(2);
+      expect(error.errors[0].message).toBe('No se pudo guardar');
+      expect(error.errors[1].message).toBe('No se pudo limpiar');
     });
   });
 

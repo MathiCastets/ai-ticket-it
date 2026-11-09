@@ -18,14 +18,14 @@ export class CompraController {
   getAll = async (req, res, next) => {
     try {
       const { compradorId, eventoId } = req.query;
-      if (compradorId && eventoId) {
-        throw new ValidationError('Usá compradorId o eventoId, no ambos a la vez');
-      }
       if (
-        (compradorId && typeof compradorId !== 'string') ||
-        (eventoId && typeof eventoId !== 'string')
+        (compradorId !== undefined && typeof compradorId !== 'string') ||
+        (eventoId !== undefined && typeof eventoId !== 'string')
       ) {
         throw new ValidationError('Los filtros de compra deben ser valores únicos de texto');
+      }
+      if (compradorId && eventoId) {
+        throw new ValidationError('Usá compradorId o eventoId, no ambos a la vez');
       }
 
       const actor = req.user;
@@ -45,7 +45,10 @@ export class CompraController {
         }
         if (eventoId) {
           const todas = await this.compraService.listarPorEvento(eventoId);
-          compras = todas.filter((c) => c.evento?.organizador?.id === actor.id);
+          compras = todas.filter(
+            (c) =>
+              (c.evento?.organizador?.id || c.evento?.organizadorId) === actor.id
+          );
         } else {
           compras = await this.compraService.listarPorOrganizador(actor.id);
         }

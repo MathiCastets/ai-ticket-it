@@ -353,6 +353,34 @@ describe('Compra', () => {
   });
 
   describe('toJSON', () => {
+    test('serializa comprador y organizador planos sin exponer sus emails', () => {
+      const evento = crearEvento();
+      evento.organizador = {
+        id: 'org-plano',
+        nombre: 'Organizador Plano',
+        email: 'organizador.privado@example.com',
+      };
+      const comprador = {
+        id: 'comprador-plano',
+        nombre: 'Comprador Plano',
+        email: 'comprador.privado@example.com',
+      };
+      const compra = crearCompra({
+        comprador,
+        evento,
+        tipoEntrada: evento.tiposEntrada[0],
+      });
+
+      const json = compra.toJSON();
+
+      expect(json.comprador).toEqual({ id: 'comprador-plano', nombre: 'Comprador Plano' });
+      expect(json.evento.organizador).toEqual({
+        id: 'org-plano',
+        nombre: 'Organizador Plano',
+      });
+      expect(JSON.stringify(json)).not.toContain('privado@example.com');
+    });
+
     test('serializa la compra con eventoFecha y sin eventoFechaTexto desnormalizado', () => {
       const compra = crearCompra();
       const json = compra.toJSON();

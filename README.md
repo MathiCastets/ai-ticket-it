@@ -82,6 +82,18 @@ Verifica todos los flujos de dominio, cupos, cancelaciones y endpoints:
 npm run test:backend
 ```
 
+### Mutation testing del Backend
+Stryker prueba la capacidad de los tests para detectar cambios intencionalmente incorrectos. Empezá limitándolo a un servicio:
+```bash
+npm run test:mutation --workspace=backend -- --mutate src/services/UsuarioService.js
+```
+Para mutar todo `src/` y ejecutar la suite completa:
+```bash
+npm run test:mutation --workspace=backend
+```
+Los mutantes sobrevivientes indican casos que conviene revisar; no necesariamente son defectos, ya que algunos cambios pueden ser equivalentes.
+Stryker guarda también un reporte HTML detallado en `packages/backend/reports/mutation/mutation.html`, que podés abrir en el navegador después de la ejecución.
+
 ### 3. Ejecutar el Proyecto
 
 * **Iniciar ambos simultáneamente (Backend + Mobile):**

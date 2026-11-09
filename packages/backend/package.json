@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --testPathPatterns=tests/ --no-coverage"
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --testPathPatterns=tests/ --no-coverage",
+    "test:mutation": "stryker run"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +25,8 @@
   "type": "module",
   "devDependencies": {
     "@jest/globals": "^30.5.2",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/jest-runner": "^10.1.1",
     "jest": "^30.5.2"
   }
 }

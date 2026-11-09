@@ -15,3 +15,5 @@ yarn-error.log*
 docs/
 vistas/
 coverage/
+.stryker-tmp/
+/packages/backend/reports/

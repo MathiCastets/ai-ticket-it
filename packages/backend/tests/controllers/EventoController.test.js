@@ -29,6 +29,16 @@ describe('EventoController', () => {
   });
 
   describe('getAll', () => {
+    test('delega errores inesperados del servicio a next', async () => {
+      const error = new Error('Servicio de eventos no disponible');
+      mockEventoService.listarEventos.mockRejectedValue(error);
+
+      await controller.getAll({ query: {} }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
+      expect(res.status).not.toHaveBeenCalled();
+    });
+
     test.each([
       [{ categoria: ['cat-1'] }],
       [{ search: ['concierto'] }],
@@ -68,6 +78,17 @@ describe('EventoController', () => {
           data: expect.arrayContaining([expect.objectContaining({ id: 'e1' })]),
         })
       );
+    });
+
+    test('serializa eventos que exponen toJSON', async () => {
+      const serializado = { id: 'e-serializado', nombre: 'Evento serializado' };
+      mockEventoService.listarEventos.mockResolvedValue([
+        { toJSON: jest.fn().mockReturnValue(serializado) },
+      ]);
+
+      await controller.getAll({ query: {} }, res, next);
+
+      expect(res.json).toHaveBeenCalledWith({ data: [serializado] });
     });
 
     test('la respuesta de getAll no expone el email del organizador (Ley 25.326)', async () => {
@@ -169,6 +190,24 @@ describe('EventoController', () => {
       });
     });
 
+    test.each([
+      ['JSON inválido', '{', 'El campo evento debe contener un objeto JSON válido'],
+      ['un array JSON', '[]', 'El campo evento debe contener un objeto JSON'],
+      ['null', 'null', 'El campo evento debe contener un objeto JSON'],
+    ])('rechaza multipart con %s', async (_caso, evento, mensaje) => {
+      const req = {
+        is: (tipo) => tipo === 'multipart/form-data',
+        body: { evento },
+      };
+
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'ValidationError', code: 'VALIDATION_ERROR', message: mensaje })
+      );
+      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+
     test('rechaza con ForbiddenError si un usuario con rol comprador intenta crear un evento', async () => {
       const req = {
         is: () => false,
@@ -230,6 +269,38 @@ describe('EventoController', () => {
       expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
+
+    test('usa el organizador autenticado cuando el payload no indica organizadorId', async () => {
+      const { organizadorId: _organizadorId, ...payloadSinOrganizador } = eventoValido;
+      mockEventoService.crearEvento.mockResolvedValue({ id: 'evt-actor' });
+
+      await controller.create(
+        {
+          is: () => false,
+          body: payloadSinOrganizador,
+          user: { id: 'org-1', rol: 'organizador' },
+          files: [],
+        },
+        res,
+        next
+      );
+
+      expect(mockEventoService.crearEvento).toHaveBeenCalledWith(
+        expect.objectContaining({ organizadorId: 'org-1', imagenes: [] })
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    test('rechaza un cuerpo que no es un objeto JSON', async () => {
+      await controller.create({ is: () => false, body: [] }, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: 'El cuerpo de la solicitud debe ser un objeto JSON',
+        })
+      );
+    });
   });
 
   describe('update', () => {
@@ -276,6 +347,24 @@ describe('EventoController', () => {
       await controller.update(req, res, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ['JSON inválido', '{', 'El campo cambios debe contener un objeto JSON válido'],
+      ['un array JSON', '[]', 'El campo cambios debe contener un objeto JSON'],
+    ])('rechaza multipart con %s', async (_caso, cambios, mensaje) => {
+      await controller.update(
+        {
+          is: (tipo) => tipo === 'multipart/form-data',
+          body: { cambios },
+          params: { id: 'evt-1' },
+        },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: mensaje }));
       expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
     });
   });
