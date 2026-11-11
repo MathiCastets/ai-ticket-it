@@ -6,7 +6,13 @@
   "ignoreStatic": true,
   "concurrency": 2,
   "reporters": ["clear-text", "progress", "html"],
-  "mutate": ["src/**/*.js", "!src/repositories/seedData.js", "!src/config/**/*.js"],
+  "mutate": [
+    "src/**/*.js",
+    "!src/index.js",
+    "!src/config/**/*.js",
+    "!src/repositories/seedData.js",
+    "!src/**/errors/**/*.js"
+  ],
   "htmlReporter": {
     "fileName": "reports/mutation/mutation.html"
   },

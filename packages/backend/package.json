@@ -6,7 +6,10 @@
     "start": "node index.js",
     "dev": "node --watch index.js",
     "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --testPathPatterns=tests/ --no-coverage",
-    "test:mutation": "stryker run"
+    "test:coverage": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --testPathPatterns=tests/ --coverage",
+    "test:mutation": "stryker run",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +17,10 @@
   "description": "",
   "jest": {
     "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/tests"
+    ],
     "transform": {}
   },
   "dependencies": {

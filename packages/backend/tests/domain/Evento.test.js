@@ -190,6 +190,33 @@ describe('Evento', () => {
     });
   });
 
+  describe('esOrganizador', () => {
+    test('retorna true cuando el usuarioId coincide con el id del organizador', () => {
+      const evento = crearEvento({ organizador: crearUsuario({ id: 'org-1' }) });
+      expect(evento.esOrganizador('org-1')).toBe(true);
+    });
+
+    test('retorna false cuando el usuarioId no coincide', () => {
+      const evento = crearEvento({ organizador: crearUsuario({ id: 'org-1' }) });
+      expect(evento.esOrganizador('otro-usuario')).toBe(false);
+    });
+
+    test('retorna false cuando usuarioId es null, undefined o vacío', () => {
+      const evento = crearEvento({ organizador: crearUsuario({ id: 'org-1' }) });
+      expect(evento.esOrganizador(null)).toBe(false);
+      expect(evento.esOrganizador(undefined)).toBe(false);
+      expect(evento.esOrganizador('')).toBe(false);
+    });
+
+    test('retorna false cuando organizador no es un objeto', () => {
+      const evento = crearEvento({ organizador: 'org-string-id' });
+      expect(evento.esOrganizador('org-string-id')).toBe(false);
+
+      const eventoSinOrg = crearEvento({ organizador: null });
+      expect(eventoSinOrg.esOrganizador('org-1')).toBe(false);
+    });
+  });
+
   describe('toJSON y privacidad', () => {
     test('serializa organizador y categoría representados por valores simples u objetos', () => {
       const evento = crearEvento({

@@ -1,5 +1,5 @@
 import { usuarioRepository } from '../repositories/inMemory/UsuarioRepository.js';
-import { UnauthorizedError } from './errors/AuthErrors.js';
+import { UnauthorizedError } from '../services/errors/index.js';
 
 export function createAuthHandler(repo = usuarioRepository) {
   return async function authMiddleware(req, res, next) {

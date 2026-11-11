@@ -6,7 +6,7 @@ import { Compra } from '../domain/entities/Compra.js';
 import { Mensaje } from '../domain/entities/Mensaje.js';
 import { EstadoCompra } from '../domain/enums/EstadoCompra.js';
 
-function crearFechaRelativa(diasOffset, horas = 20, minutos = 0) {
+function crearFechaRelativa(diasOffset, horas, minutos) {
   const fecha = new Date(Date.now() + diasOffset * 24 * 60 * 60 * 1000);
   fecha.setHours(horas, minutos, 0, 0);
   return fecha;

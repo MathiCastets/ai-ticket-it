@@ -441,6 +441,47 @@ describe('CompraService', () => {
     });
   });
 
+  // ─── listarPorEvento ───────────────────────────────────────────────────────
+
+  describe('listarPorEvento', () => {
+    test('retorna todas las compras del evento si no se especifica organizadorId', async () => {
+      await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+
+      const compras = await service.listarPorEvento('evt-1');
+      expect(compras).toHaveLength(1);
+      expect(compras[0].evento.id).toBe('evt-1');
+    });
+
+    test('retorna las compras del evento si organizadorId coincide con el organizador', async () => {
+      await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+
+      const comprasOrg = await service.listarPorEvento('evt-1', 'org-1');
+      expect(comprasOrg).toHaveLength(1);
+    });
+
+    test('retorna un arreglo vacío si organizadorId no coincide con el organizador del evento', async () => {
+      await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+
+      const comprasOtroOrg = await service.listarPorEvento('evt-1', 'org-otro');
+      expect(comprasOtroOrg).toEqual([]);
+    });
+  });
+
   // ─── listarPorOrganizador ─────────────────────────────────────────────────
 
   describe('listarPorOrganizador', () => {

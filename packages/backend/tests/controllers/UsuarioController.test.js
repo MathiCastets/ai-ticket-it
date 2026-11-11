@@ -1,6 +1,5 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { UsuarioController } from '../../src/controllers/UsuarioController.js';
-import { ValidationError } from '../../src/controllers/errors/ValidationError.js';
 
 describe('UsuarioController', () => {
   let mockUsuarioService;
@@ -34,6 +33,15 @@ describe('UsuarioController', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ data: [{ id: 'u1', nombre: 'Test' }] });
     });
+
+    test('delega error inesperado en getAll a next', async () => {
+      const error = new Error('Error al listar usuarios');
+      mockUsuarioService.listarUsuarios.mockRejectedValue(error);
+
+      await controller.getAll({}, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
+    });
   });
 
   describe('getFavorites', () => {
@@ -44,6 +52,15 @@ describe('UsuarioController', () => {
       expect(mockUsuarioService.obtenerFavoritos).toHaveBeenCalledWith('u1');
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ data: ['evt-1'] });
+    });
+
+    test('delega error inesperado en getFavorites a next', async () => {
+      const error = new Error('Error al obtener favoritos');
+      mockUsuarioService.obtenerFavoritos.mockRejectedValue(error);
+
+      await controller.getFavorites({ params: { id: 'u1' } }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 
@@ -63,7 +80,12 @@ describe('UsuarioController', () => {
 
       await controller.getReviews(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/page debe ser positivo y limit debe estar entre 1 y 20/i),
+        })
+      );
       expect(mockUsuarioService.obtenerResenias).not.toHaveBeenCalled();
     });
 
@@ -72,8 +94,22 @@ describe('UsuarioController', () => {
 
       await controller.getReviews(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/page debe ser positivo y limit debe estar entre 1 y 20/i),
+        })
+      );
       expect(mockUsuarioService.obtenerResenias).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en getReviews a next', async () => {
+      const error = new Error('Error al obtener reseñas');
+      mockUsuarioService.obtenerResenias.mockRejectedValue(error);
+
+      await controller.getReviews({ params: { id: 'org-1' }, query: {} }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 
@@ -88,6 +124,29 @@ describe('UsuarioController', () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
+    test('rechaza addFavorite si falta eventoId', async () => {
+      const req = { params: { id: 'u1' } };
+
+      await controller.addFavorite(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/eventoId es requerido/i),
+        })
+      );
+      expect(mockUsuarioService.agregarFavorito).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en addFavorite a next', async () => {
+      const error = new Error('Error al agregar favorito');
+      mockUsuarioService.agregarFavorito.mockRejectedValue(error);
+
+      await controller.addFavorite({ params: { id: 'u1', eventoId: 'evt-1' } }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
+    });
+
     test('remueve favorito y responde 200', async () => {
       mockUsuarioService.removerFavorito.mockResolvedValue([]);
       const req = { params: { id: 'u1', eventoId: 'evt-1' } };
@@ -96,6 +155,29 @@ describe('UsuarioController', () => {
 
       expect(mockUsuarioService.removerFavorito).toHaveBeenCalledWith('u1', 'evt-1');
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('rechaza removeFavorite si falta eventoId', async () => {
+      const req = { params: { id: 'u1' } };
+
+      await controller.removeFavorite(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/eventoId es requerido/i),
+        })
+      );
+      expect(mockUsuarioService.removerFavorito).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en removeFavorite a next', async () => {
+      const error = new Error('Error al remover favorito');
+      mockUsuarioService.removerFavorito.mockRejectedValue(error);
+
+      await controller.removeFavorite({ params: { id: 'u1', eventoId: 'evt-1' } }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 });

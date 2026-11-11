@@ -29,9 +29,7 @@ class CompraRepository {
   }
 
   async findByOrganizadorId(organizadorId) {
-    return this.compras.filter(
-      (c) => (c.evento?.organizador?.id || c.evento?.organizadorId) === organizadorId
-    );
+    return this.compras.filter((c) => c.esOrganizador(organizadorId));
   }
 
   async save(compra) {

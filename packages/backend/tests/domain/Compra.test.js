@@ -334,6 +334,19 @@ describe('Compra', () => {
       });
       expect(compra.estaConversacionCerrada(Date.now())).toBe(true);
     });
+
+    test('retorna false si la fecha del evento es inválida', () => {
+      const compra = crearCompra();
+      compra.evento = { fecha: 'fecha-invalida' };
+      expect(compra.estaConversacionCerrada()).toBe(false);
+    });
+
+    test('ignora mensajes con fechas de envío inválidas y retorna false si ahora no es válido', () => {
+      const compra = crearCompra();
+      compra.mensajes = [{ enviado: 'invalido' }];
+      expect(compra.estaConversacionCerrada('invalido')).toBe(false);
+      expect(compra.estaConversacionCerrada()).toBe(false);
+    });
   });
 
   describe('diasFaltantes', () => {
@@ -430,6 +443,156 @@ describe('Compra', () => {
       expect(str).not.toContain('comprador.secreto@example.com');
       expect(str).not.toContain('organizador.secreto@example.com');
       expect(str).not.toContain('"email"');
+    });
+
+    test('mantiene consistencia entre organizadorNombre y evento.organizadorNombre con nombre y apellido', () => {
+      const organizador = new Usuario({
+        id: 'user_org_sonora',
+        nombre: 'Producciones Sonora',
+        apellido: '(Oficial)',
+        rol: 'organizador',
+      });
+      const evento = new Evento({
+        id: 'evt-sonora',
+        nombre: 'Festival Sonora',
+        fecha: new Date(Date.now() + 86400000),
+        organizador,
+        tiposEntrada: [new TipoEntrada({ id: 't1', nombre: 'General', precio: 5000, cupo: 50 })],
+      });
+      const compra = new Compra({
+        id: 'compra-sonora',
+        comprador: crearUsuario(),
+        evento,
+        tipoEntrada: evento.tiposEntrada[0],
+      });
+
+      const json = compra.toJSON();
+      expect(json.organizadorNombre).toBe('Producciones Sonora (Oficial)');
+      expect(json.evento.organizadorNombre).toBe('Producciones Sonora (Oficial)');
+      expect(json.organizadorNombre).toBe(json.evento.organizadorNombre);
+    });
+
+    test('serializa organizadorNombre cuando el evento es un objeto plano con organizador string', () => {
+      const compra = new Compra({
+        id: 'comp-plano-str',
+        comprador: crearUsuario(),
+        evento: { id: 'evt-plano', organizador: 'Org En String', fecha: new Date(Date.now() + 10000) },
+        tipoEntrada: { id: 'te-1', precio: 1000 },
+        cantidad: 1,
+        total: 1000,
+      });
+      const json = compra.toJSON();
+      expect(json.organizadorNombre).toBe('Org En String');
+      expect(json.organizadorId).toBe('');
+    });
+
+    test('serializa organizadorNombre cuando el evento es un objeto plano con organizador solo con nombre', () => {
+      const compra = new Compra({
+        id: 'comp-plano-obj',
+        comprador: crearUsuario(),
+        evento: { id: 'evt-plano', organizador: { nombre: 'Club Baires' }, fecha: new Date(Date.now() + 10000) },
+        tipoEntrada: { id: 'te-1', precio: 1000 },
+        cantidad: 1,
+        total: 1000,
+      });
+      const json = compra.toJSON();
+      expect(json.organizadorNombre).toBe('Club Baires');
+    });
+
+    test('serializa compradorNombre con apellido si comprador es un objeto plano', () => {
+      const compra = new Compra({
+        id: 'comp-plano-user',
+        comprador: { id: 'u-1', nombre: 'Juan', apellido: 'Pérez' },
+        evento: crearEvento(),
+        tipoEntrada: { id: 'te-1', precio: 1000 },
+        cantidad: 1,
+        total: 1000,
+      });
+      const json = compra.toJSON();
+      expect(json.compradorNombre).toBe('Juan Pérez');
+    });
+  });
+
+  describe('esComprador', () => {
+    test('retorna true cuando usuarioId coincide con el comprador', () => {
+      const compra = crearCompra();
+      expect(compra.esComprador('comp-1')).toBe(true);
+    });
+
+    test('retorna false cuando usuarioId no coincide', () => {
+      const compra = crearCompra();
+      expect(compra.esComprador('otro-usuario')).toBe(false);
+    });
+
+    test('retorna false si usuarioId es null, undefined o vacío', () => {
+      const compra = crearCompra();
+      expect(compra.esComprador(null)).toBe(false);
+      expect(compra.esComprador(undefined)).toBe(false);
+      expect(compra.esComprador('')).toBe(false);
+    });
+  });
+
+  describe('esOrganizador', () => {
+    test('retorna true para el organizador con instancia Evento', () => {
+      const compra = crearCompra();
+      expect(compra.esOrganizador('org-1')).toBe(true);
+    });
+
+    test('retorna true con evento plano que tiene organizador: { id }', () => {
+      const compra = new Compra({
+        id: 'comp-plano-1',
+        comprador: crearUsuario(),
+        evento: { id: 'evt-plano', organizador: { id: 'org-plano-id' }, fecha: new Date(Date.now() + 10000) },
+        tipoEntrada: { id: 'te-1', precio: 1000 },
+        cantidad: 1,
+        total: 1000,
+      });
+      expect(compra.esOrganizador('org-plano-id')).toBe(true);
+    });
+
+    test('retorna true con evento plano que tiene organizadorId directo', () => {
+      const compra = new Compra({
+        id: 'comp-plano-2',
+        comprador: crearUsuario(),
+        evento: { id: 'evt-plano', organizadorId: 'org-directo-id', fecha: new Date(Date.now() + 10000) },
+        tipoEntrada: { id: 'te-1', precio: 1000 },
+        cantidad: 1,
+        total: 1000,
+      });
+      expect(compra.esOrganizador('org-directo-id')).toBe(true);
+    });
+
+    test('retorna false para otro usuario, null o undefined', () => {
+      const compra = crearCompra();
+      expect(compra.esOrganizador('otro-usuario')).toBe(false);
+      expect(compra.esOrganizador(null)).toBe(false);
+      expect(compra.esOrganizador(undefined)).toBe(false);
+      expect(compra.esOrganizador('')).toBe(false);
+    });
+  });
+
+  describe('puedeSerVistaPor', () => {
+    test('retorna true para el comprador', () => {
+      const compra = crearCompra();
+      expect(compra.puedeSerVistaPor({ id: 'comp-1' })).toBe(true);
+    });
+
+    test('retorna true para el organizador', () => {
+      const compra = crearCompra();
+      expect(compra.puedeSerVistaPor({ id: 'org-1' })).toBe(true);
+    });
+
+    test('retorna false para un tercero', () => {
+      const compra = crearCompra();
+      expect(compra.puedeSerVistaPor({ id: 'tercero' })).toBe(false);
+    });
+
+    test('retorna false para null, undefined o actor sin id', () => {
+      const compra = crearCompra();
+      expect(compra.puedeSerVistaPor(null)).toBe(false);
+      expect(compra.puedeSerVistaPor(undefined)).toBe(false);
+      expect(compra.puedeSerVistaPor({})).toBe(false);
+      expect(compra.puedeSerVistaPor({ nombre: 'Sin ID' })).toBe(false);
     });
   });
 });

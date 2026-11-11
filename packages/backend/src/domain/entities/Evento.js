@@ -68,6 +68,27 @@ export class Evento {
     return this.resenias.length;
   }
 
+  get organizadorId() {
+    if (this._organizadorId) return this._organizadorId;
+    return typeof this.organizador === 'object' && this.organizador !== null
+      ? this.organizador.id || ''
+      : '';
+  }
+
+  set organizadorId(value) {
+    this._organizadorId = value;
+  }
+
+  get organizadorNombre() {
+    return typeof this.organizador === 'object' && this.organizador !== null
+      ? this.organizador.nombreCompleto || this.organizador.nombre || ''
+      : this.organizador || '';
+  }
+
+  esOrganizador(usuarioId) {
+    return Boolean(usuarioId) && this.organizadorId === usuarioId;
+  }
+
   agregarResenia(resenia) {
     this.resenias.unshift(resenia);
   }
@@ -95,11 +116,8 @@ export class Evento {
       imagen: this.imagen,
       destacado: this.destacado,
       organizador: organizadorJson,
-      organizadorNombre:
-        typeof this.organizador === 'object' && this.organizador !== null
-          ? this.organizador.nombreCompleto || this.organizador.nombre
-          : this.organizador || '',
-      organizadorId: typeof this.organizador === 'object' && this.organizador !== null ? this.organizador.id : '',
+      organizadorNombre: this.organizadorNombre,
+      organizadorId: this.organizadorId,
       organizadorRating: this.organizadorRating,
       totalResenias: this.totalResenias,
       tiposEntrada: this.tiposEntrada.map((t) => (typeof t?.toJSON === 'function' ? t.toJSON() : t)),

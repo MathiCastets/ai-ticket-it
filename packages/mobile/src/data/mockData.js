@@ -10,30 +10,35 @@ const crearFechaRelativa = (horasAtras) => {
   };
 };
 
+const crearFechaFutura = (diasAdelante, hora, minutos = 0) => {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + diasAdelante);
+  fecha.setHours(hora, minutos, 0, 0);
+  return fecha;
+};
+
+const formatearFechaEvento = (fecha) =>
+  `${fecha.toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })} • ${fecha.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })} hs`;
+
 const fechaCompraConfirmada = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 const fechaCompraPendiente = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+const fechaEventoUtn = crearFechaFutura(7, 20);
+const fechaEventoElectro = crearFechaFutura(15, 23);
+const fechaEventoConferencia = crearFechaFutura(25, 9);
 const fechaEventoTeatro = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
 fechaEventoTeatro.setHours(20, 30, 0, 0);
-const fechaTextoEventoTeatro = `${fechaEventoTeatro.toLocaleDateString('es-AR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-})} • ${fechaEventoTeatro.toLocaleTimeString('es-AR', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-})} hs`;
+const fechaTextoEventoTeatro = formatearFechaEvento(fechaEventoTeatro);
 const fechaCompraUtilizada = new Date(fechaEventoTeatro.getTime() - 48 * 60 * 60 * 1000).toISOString();
 const fechaEventoTerminado = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-const fechaTextoEventoTerminado = `${fechaEventoTerminado.toLocaleDateString('es-AR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-})} • ${fechaEventoTerminado.toLocaleTimeString('es-AR', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-})} hs`;
+const fechaTextoEventoTerminado = formatearFechaEvento(fechaEventoTerminado);
 const fechaCompraEventoTerminado = new Date(
   fechaEventoTerminado.getTime() - 7 * 24 * 60 * 60 * 1000
 ).toISOString();
@@ -113,8 +118,8 @@ export const EVENTOS_INICIALES = [
     id: 'evt-utn-2026',
     nombre: 'Festival de Música UTN 2026',
     destacado: true,
-    fecha: '2026-11-10T20:00:00',
-    fechaTexto: '10 de Noviembre 2026 • 20:00 hs',
+    fecha: fechaEventoUtn.toISOString(),
+    fechaTexto: formatearFechaEvento(fechaEventoUtn),
     apertura: '18:30 hs',
     ubicacion: 'Estadio Obras Sanitarias / Predio UTN',
     direccion: 'Av. del Libertador 7395, Núñez, CABA',
@@ -173,8 +178,8 @@ export const EVENTOS_INICIALES = [
     id: 'evt-electro-2',
     nombre: 'Noche Electrónica Underground',
     destacado: false,
-    fecha: '2026-11-18T23:00:00',
-    fechaTexto: '18 de Noviembre 2026 • 23:00 hs',
+    fecha: fechaEventoElectro.toISOString(),
+    fechaTexto: formatearFechaEvento(fechaEventoElectro),
     apertura: '22:00 hs',
     ubicacion: 'Club Niceto • Palermo',
     direccion: 'Niceto Vega 5510, Palermo, CABA',
@@ -261,8 +266,8 @@ export const EVENTOS_INICIALES = [
     id: 'evt-conf-4',
     nombre: 'DevFest & Cloud Summit 2026',
     destacado: false,
-    fecha: '2026-12-05T09:00:00',
-    fechaTexto: '5 de Diciembre 2026 • 09:00 hs',
+    fecha: fechaEventoConferencia.toISOString(),
+    fechaTexto: formatearFechaEvento(fechaEventoConferencia),
     apertura: '08:00 hs',
     ubicacion: 'Centro de Convenciones Buenos Aires',
     direccion: 'Av. Figueroa Alcorta 2099, Recoleta, CABA',
@@ -321,8 +326,8 @@ export const COMPRAS_INICIALES = [
     ordenCodigo: '#TK-84920',
     eventoId: 'evt-utn-2026',
     eventoNombre: 'Festival de Música UTN 2026',
-    eventoFecha: '2026-11-10T20:00:00',
-    eventoFechaTexto: '10 de Noviembre 2026 • 20:00 hs',
+    eventoFecha: fechaEventoUtn.toISOString(),
+    eventoFechaTexto: formatearFechaEvento(fechaEventoUtn),
     fechaHora: fechaCompraConfirmada,
     tipoEntradaId: 'te-gen-1',
     tipoEntradaNombre: 'General',
@@ -358,8 +363,8 @@ export const COMPRAS_INICIALES = [
     ordenCodigo: '#TK-39218',
     eventoId: 'evt-electro-2',
     eventoNombre: 'Noche Electrónica Underground',
-    eventoFecha: '2026-11-18T23:00:00',
-    eventoFechaTexto: '18 de Noviembre 2026 • 23:00 hs',
+    eventoFecha: fechaEventoElectro.toISOString(),
+    eventoFechaTexto: formatearFechaEvento(fechaEventoElectro),
     fechaHora: fechaCompraPendiente,
     tipoEntradaId: 'te-under-gen',
     tipoEntradaNombre: 'Entrada General',

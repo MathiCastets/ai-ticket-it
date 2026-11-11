@@ -73,24 +73,9 @@ export default function DetalleEventoScreen({ route, navigation }) {
       };
     }
     if (!evento) {
-      return (
-        <View style={styles.screenContainer}>
-          <Header
-            title="AI Ticket It"
-            subtitle="Detalle Evento"
-            showBack
-            onBack={() => navigation.goBack()}
-          />
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-            <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: '700' }}>
-              No encontramos el evento
-            </Text>
-            <Text style={{ color: COLORS.textSecondary, marginTop: 8, textAlign: 'center' }}>
-              Volvé a explorar y seleccioná otro evento.
-            </Text>
-          </View>
-        </View>
-      );
+      return () => {
+        active = false;
+      };
     }
 
     obtenerReseniasOrganizador(organizadorId, { page: 1, limit: 5 })
@@ -114,6 +99,26 @@ export default function DetalleEventoScreen({ route, navigation }) {
     };
   }, [organizadorId, obtenerReseniasOrganizador]);
 
+  if (!evento) {
+    return (
+      <View style={styles.screenContainer}>
+        <Header
+          title="AI Ticket It"
+          subtitle="Detalle Evento"
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: '700' }}>
+            No encontramos el evento
+          </Text>
+          <Text style={{ color: COLORS.textSecondary, marginTop: 8, textAlign: 'center' }}>
+            Volvé a explorar y seleccioná otro evento.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   if (currentUser?.rol === 'organizador') {
     return (

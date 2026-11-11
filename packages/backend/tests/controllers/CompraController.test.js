@@ -1,7 +1,5 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { CompraController } from '../../src/controllers/CompraController.js';
-import { ValidationError } from '../../src/controllers/errors/ValidationError.js';
-import { ForbiddenError } from '../../src/services/errors/index.js';
 import { Compra } from '../../src/domain/entities/Compra.js';
 import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
@@ -42,6 +40,24 @@ describe('CompraController', () => {
     next = jest.fn();
   });
 
+  function crearCompraMock({ id = 'c1', compradorId = 'u1', organizadorId = 'org-1' } = {}) {
+    const comprador = new Usuario({ id: compradorId, nombre: 'Comprador' });
+    const organizador = new Usuario({ id: organizadorId, nombre: 'Organizador', rol: 'organizador' });
+    const evento = new Evento({
+      id: 'e1',
+      nombre: 'Evento',
+      fecha: new Date(Date.now() + 10000),
+      organizador,
+      tiposEntrada: [new TipoEntrada({ id: 't1', nombre: 'Gen', precio: 100, cupo: 10 })],
+    });
+    return new Compra({
+      id,
+      comprador,
+      evento,
+      tipoEntrada: evento.tiposEntrada[0],
+    });
+  }
+
   describe('getAll', () => {
     test.each([
       { compradorId: ['u1', 'u2'] },
@@ -75,7 +91,12 @@ describe('CompraController', () => {
       const req = { query: { compradorId: 'u1', eventoId: 'e1' } };
       await controller.getAll(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/Usá compradorId o eventoId, no ambos a la vez/i),
+        })
+      );
       expect(mockCompraService.listarTodas).not.toHaveBeenCalled();
     });
 
@@ -120,12 +141,27 @@ describe('CompraController', () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
+    test('permite al comprador listar enviando su propio compradorId', async () => {
+      mockCompraService.listarPorComprador.mockResolvedValue([{ id: 'c1' }]);
+      const req = { query: { compradorId: 'u1' }, user: { id: 'u1', rol: 'comprador' } };
+
+      await controller.getAll(req, res, next);
+
+      expect(mockCompraService.listarPorComprador).toHaveBeenCalledWith('u1');
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
     test('rechaza con ForbiddenError si el comprador intenta ver compras de otro usuario', async () => {
       const req = { query: { compradorId: 'u2' }, user: { id: 'u1', rol: 'comprador' } };
 
       await controller.getAll(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No tienes permiso para ver compras de otros usuarios/i),
+        })
+      );
       expect(mockCompraService.listarPorComprador).not.toHaveBeenCalled();
     });
 
@@ -134,37 +170,56 @@ describe('CompraController', () => {
 
       await controller.getAll(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/Solo el organizador puede consultar las compras del evento/i),
+        })
+      );
       expect(mockCompraService.listarPorEvento).not.toHaveBeenCalled();
     });
 
-    test('organizador con ?eventoId= solo recibe compras de sus propios eventos', async () => {
-      mockCompraService.listarPorEvento.mockResolvedValue([
-        { id: 'c1', evento: { organizador: { id: 'org-1' } } },
-        { id: 'c2', evento: { organizador: { id: 'org-otro' } } },
-      ]);
+    test('organizador con ?eventoId= delega el filtrado al servicio con su id de organizador', async () => {
+      mockCompraService.listarPorEvento.mockResolvedValue([{ id: 'c1' }]);
       const req = { query: { eventoId: 'e1' }, user: { id: 'org-1', rol: 'organizador' } };
       await controller.getAll(req, res, next);
-      expect(mockCompraService.listarPorEvento).toHaveBeenCalledWith('e1');
+      expect(mockCompraService.listarPorEvento).toHaveBeenCalledWith('e1', 'org-1');
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ data: [{ id: 'c1', evento: { organizador: { id: 'org-1' } } }] });
+      expect(res.json).toHaveBeenCalledWith({ data: [{ id: 'c1' }] });
     });
 
-    test('organizador filtra eventos que exponen organizadorId plano', async () => {
-      mockCompraService.listarPorEvento.mockResolvedValue([
-        { id: 'c1', evento: { organizadorId: 'org-1' } },
-        { id: 'c2', evento: { organizadorId: 'org-otro' } },
-      ]);
+    test('organizador es rechazado con ForbiddenError si intenta filtrar por otro compradorId', async () => {
+      const req = { query: { compradorId: 'u2' }, user: { id: 'org-1', rol: 'organizador' } };
 
-      await controller.getAll(
-        { query: { eventoId: 'e1' }, user: { id: 'org-1', rol: 'organizador' } },
-        res,
-        next
+      await controller.getAll(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No tienes permiso para ver compras de otros usuarios/i),
+        })
       );
+      expect(mockCompraService.listarPorOrganizador).not.toHaveBeenCalled();
+    });
 
-      expect(res.json).toHaveBeenCalledWith({
-        data: [{ id: 'c1', evento: { organizadorId: 'org-1' } }],
-      });
+    test('organizador puede listar con su propio compradorId', async () => {
+      mockCompraService.listarPorOrganizador.mockResolvedValue([{ id: 'c1' }]);
+      const req = { query: { compradorId: 'org-1' }, user: { id: 'org-1', rol: 'organizador' } };
+
+      await controller.getAll(req, res, next);
+
+      expect(mockCompraService.listarPorOrganizador).toHaveBeenCalledWith('org-1');
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('organizador lista todas sus compras sin pasar eventoId', async () => {
+      mockCompraService.listarPorOrganizador.mockResolvedValue([{ id: 'c1' }]);
+      const req = { query: {}, user: { id: 'org-1', rol: 'organizador' } };
+
+      await controller.getAll(req, res, next);
+
+      expect(mockCompraService.listarPorOrganizador).toHaveBeenCalledWith('org-1');
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
     test('la respuesta de getAll no expone emails en la respuesta (Ley 25.326)', async () => {
@@ -208,11 +263,8 @@ describe('CompraController', () => {
 
   describe('getById', () => {
     test('obtiene una compra por id y responde 200 al comprador dueño', async () => {
-      mockCompraService.obtenerPorId.mockResolvedValue({
-        id: 'c1',
-        comprador: { id: 'u1' },
-        evento: { organizador: { id: 'org-1' } },
-      });
+      const compra = crearCompraMock({ id: 'c1', compradorId: 'u1', organizadorId: 'org-1' });
+      mockCompraService.obtenerPorId.mockResolvedValue(compra);
       const req = { params: { id: 'c1' }, user: { id: 'u1', rol: 'comprador' } };
 
       await controller.getById(req, res, next);
@@ -222,24 +274,42 @@ describe('CompraController', () => {
     });
 
     test('rechaza con ForbiddenError si un usuario ajeno intenta ver la compra', async () => {
-      mockCompraService.obtenerPorId.mockResolvedValue({
-        id: 'c1',
-        comprador: { id: 'u1' },
-        evento: { organizador: { id: 'org-1' } },
-      });
+      const compra = crearCompraMock({ id: 'c1', compradorId: 'u1', organizadorId: 'org-1' });
+      mockCompraService.obtenerPorId.mockResolvedValue(compra);
       const req = { params: { id: 'c1' }, user: { id: 'u-intruso', rol: 'comprador' } };
 
       await controller.getById(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No tienes permiso para ver esta compra/i),
+        })
+      );
+    });
+
+    test('permite consultar la compra sin actor autenticado', async () => {
+      const compra = crearCompraMock({ id: 'c1', compradorId: 'u1', organizadorId: 'org-1' });
+      mockCompraService.obtenerPorId.mockResolvedValue(compra);
+
+      await controller.getById({ params: { id: 'c1' } }, res, next);
+
+      expect(mockCompraService.obtenerPorId).toHaveBeenCalledWith('c1');
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('delega error inesperado en getById a next', async () => {
+      const error = new Error('Error de base de datos');
+      mockCompraService.obtenerPorId.mockRejectedValue(error);
+
+      await controller.getById({ params: { id: 'c1' } }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
     });
 
     test('permite al organizador relacionado cuando el evento usa organizadorId plano', async () => {
-      mockCompraService.obtenerPorId.mockResolvedValue({
-        id: 'c1',
-        comprador: { id: 'u1' },
-        evento: { organizadorId: 'org-1' },
-      });
+      const compra = crearCompraMock({ id: 'c1', compradorId: 'u1', organizadorId: 'org-1' });
+      mockCompraService.obtenerPorId.mockResolvedValue(compra);
 
       await controller.getById(
         { params: { id: 'c1' }, user: { id: 'org-1', rol: 'organizador' } },
@@ -311,7 +381,12 @@ describe('CompraController', () => {
     test('rechaza con ForbiddenError si el actor no tiene rol comprador al intentar comprar', async () => {
       const req = { body: { compradorId: 'org-1', eventoId: 'e1', tipoEntradaId: 't1', cantidad: 1 }, user: { id: 'org-1', rol: 'organizador' } };
       await controller.create(req, res, next);
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/Solo los compradores pueden realizar compras/i),
+        })
+      );
       expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
     });
 
@@ -326,7 +401,12 @@ describe('CompraController', () => {
 
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No puedes realizar compras en nombre de otro usuario/i),
+        })
+      );
       expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
     });
 
@@ -334,7 +414,12 @@ describe('CompraController', () => {
       const req = { body: { eventoId: 'e1', tipoEntradaId: 't1', cantidad: 1 } };
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/compradorId es requerido/i),
+        })
+      );
       expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
     });
 
@@ -344,7 +429,12 @@ describe('CompraController', () => {
       };
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/cantidad debe ser un número entero positivo/i),
+        })
+      );
       expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
     });
 
@@ -359,6 +449,32 @@ describe('CompraController', () => {
         expect.objectContaining({ message: 'eventoId es requerido' })
       );
       expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
+    });
+
+    test('rechaza si falta tipoEntradaId sin invocar el servicio', async () => {
+      const req = { body: { compradorId: 'u1', eventoId: 'e1', cantidad: 1 } };
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/tipoEntradaId es requerido/i),
+        })
+      );
+      expect(mockCompraService.realizarCompra).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en create a next', async () => {
+      const error = new Error('Fallo al crear compra');
+      mockCompraService.realizarCompra.mockRejectedValue(error);
+
+      await controller.create(
+        { body: { compradorId: 'u1', eventoId: 'e1', tipoEntradaId: 't1', cantidad: 1 } },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 
@@ -418,6 +534,15 @@ describe('CompraController', () => {
         'Organizador'
       );
     });
+
+    test('delega error inesperado en cancel a next', async () => {
+      const error = new Error('Error al cancelar');
+      mockCompraService.cancelarCompra.mockRejectedValue(error);
+
+      await controller.cancel({ params: { id: 'c1' }, body: {} }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
+    });
   });
 
   describe('markUsed', () => {
@@ -440,6 +565,34 @@ describe('CompraController', () => {
       });
     });
 
+    test('acredita la compra sin actor usando quien', async () => {
+      const compra = { id: 'c1', estado: 'UTILIZADA' };
+      mockCompraService.marcarUtilizada.mockResolvedValue(compra);
+
+      await controller.markUsed(
+        { params: { id: 'c1' }, body: { quien: 'Puerta' } },
+        res,
+        next
+      );
+
+      expect(mockCompraService.marcarUtilizada).toHaveBeenCalledWith('c1', 'Puerta', 'Puerta');
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('acredita la compra sin actor y sin quien', async () => {
+      const compra = { id: 'c1', estado: 'UTILIZADA' };
+      mockCompraService.marcarUtilizada.mockResolvedValue(compra);
+
+      await controller.markUsed(
+        { params: { id: 'c1' }, body: {} },
+        res,
+        next
+      );
+
+      expect(mockCompraService.marcarUtilizada).toHaveBeenCalledWith('c1', undefined, undefined);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
     test('rechaza quien inválido antes de llamar al servicio', async () => {
       await controller.markUsed(
         { params: { id: 'c1' }, body: { quien: 42 } },
@@ -455,6 +608,15 @@ describe('CompraController', () => {
         })
       );
       expect(mockCompraService.marcarUtilizada).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en markUsed a next', async () => {
+      const error = new Error('Error al acreditar');
+      mockCompraService.marcarUtilizada.mockRejectedValue(error);
+
+      await controller.markUsed({ params: { id: 'c1' }, body: {} }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 
@@ -509,7 +671,12 @@ describe('CompraController', () => {
 
       await controller.rate(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/comentario no puede superar los 250 caracteres/i),
+        })
+      );
       expect(mockCompraService.calificarCompra).not.toHaveBeenCalled();
     });
 
@@ -539,6 +706,19 @@ describe('CompraController', () => {
         expect.objectContaining({ message: 'El comentario es requerido' })
       );
     });
+
+    test('delega error inesperado en rate a next', async () => {
+      const error = new Error('Error al calificar');
+      mockCompraService.calificarCompra.mockRejectedValue(error);
+
+      await controller.rate(
+        { params: { id: 'c1' }, body: { puntuacion: 4, comentario: 'Bueno' } },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(error);
+    });
   });
 
   describe('sendMessage', () => {
@@ -566,17 +746,75 @@ describe('CompraController', () => {
 
       await controller.sendMessage(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/El texto del mensaje no puede estar vacío/i),
+        })
+      );
       expect(mockMensajeService.enviarMensaje).not.toHaveBeenCalled();
+    });
+
+    test('rechaza con ForbiddenError si actor intenta enviar mensaje con usuarioId distinto', async () => {
+      await controller.sendMessage(
+        {
+          params: { id: 'c1' },
+          body: { usuarioId: 'u2', texto: 'Hola' },
+          user: { id: 'u1', rol: 'comprador' },
+        },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No puedes enviar mensajes en nombre de otro usuario/i),
+        })
+      );
+      expect(mockMensajeService.enviarMensaje).not.toHaveBeenCalled();
+    });
+
+    test('rechaza con ValidationError si falta usuarioId y no hay actor', async () => {
+      await controller.sendMessage(
+        {
+          params: { id: 'c1' },
+          body: { texto: 'Hola' },
+        },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/usuarioId es requerido para enviar un mensaje/i),
+        })
+      );
+      expect(mockMensajeService.enviarMensaje).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en sendMessage a next', async () => {
+      const error = new Error('Error al enviar mensaje');
+      mockMensajeService.enviarMensaje.mockRejectedValue(error);
+
+      await controller.sendMessage(
+        {
+          params: { id: 'c1' },
+          body: { usuarioId: 'u1', texto: 'Hola' },
+        },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 
   describe('getMessages', () => {
     test('permite al organizador relacionado consultar los mensajes', async () => {
-      mockCompraService.obtenerPorId.mockResolvedValue({
-        comprador: { id: 'comprador-1' },
-        evento: { organizadorId: 'org-1' },
-      });
+      const compra = crearCompraMock({ id: 'c1', compradorId: 'comprador-1', organizadorId: 'org-1' });
+      mockCompraService.obtenerPorId.mockResolvedValue(compra);
       mockMensajeService.obtenerMensajes.mockResolvedValue([{ id: 'm1', texto: 'Hola' }]);
 
       await controller.getMessages(
@@ -591,10 +829,8 @@ describe('CompraController', () => {
     });
 
     test('rechaza a un usuario ajeno y no consulta los mensajes', async () => {
-      mockCompraService.obtenerPorId.mockResolvedValue({
-        comprador: { id: 'comprador-1' },
-        evento: { organizador: { id: 'org-1' } },
-      });
+      const compra = crearCompraMock({ id: 'c1', compradorId: 'comprador-1', organizadorId: 'org-1' });
+      mockCompraService.obtenerPorId.mockResolvedValue(compra);
 
       await controller.getMessages(
         { params: { id: 'c1' }, user: { id: 'otro-1', rol: 'comprador' } },
@@ -602,7 +838,12 @@ describe('CompraController', () => {
         next
       );
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No tienes permiso para ver los mensajes de esta compra/i),
+        })
+      );
       expect(mockMensajeService.obtenerMensajes).not.toHaveBeenCalled();
     });
 
@@ -613,6 +854,15 @@ describe('CompraController', () => {
 
       expect(mockCompraService.obtenerPorId).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('delega error inesperado en getMessages a next', async () => {
+      const error = new Error('Error al obtener mensajes');
+      mockMensajeService.obtenerMensajes.mockRejectedValue(error);
+
+      await controller.getMessages({ params: { id: 'c1' } }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 
@@ -641,15 +891,38 @@ describe('CompraController', () => {
         next
       );
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No puedes marcar mensajes leídos en nombre de otro usuario/i),
+        })
+      );
       expect(mockMensajeService.marcarMensajesLeidos).not.toHaveBeenCalled();
     });
 
     test('rechaza cuando no hay un usuario para marcar mensajes', async () => {
       await controller.markMessagesRead({ params: { id: 'c1' }, body: {} }, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/usuarioId es requerido para marcar los mensajes como leídos/i),
+        })
+      );
       expect(mockMensajeService.marcarMensajesLeidos).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en markMessagesRead a next', async () => {
+      const error = new Error('Error al marcar leídos');
+      mockMensajeService.marcarMensajesLeidos.mockRejectedValue(error);
+
+      await controller.markMessagesRead(
+        { params: { id: 'c1' }, body: {}, user: { id: 'u1', rol: 'comprador' } },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(error);
     });
   });
 });

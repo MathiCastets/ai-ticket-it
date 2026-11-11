@@ -63,8 +63,10 @@ export class CompraService {
     return await this.compraRepository.findByCompradorId(compradorId);
   }
 
-  async listarPorEvento(eventoId) {
-    return await this.compraRepository.findByEventoId(eventoId);
+  async listarPorEvento(eventoId, organizadorId = null) {
+    const compras = await this.compraRepository.findByEventoId(eventoId);
+    if (!organizadorId) return compras;
+    return compras.filter((c) => c.esOrganizador(organizadorId));
   }
 
   async listarPorOrganizador(organizadorId) {
@@ -162,22 +164,14 @@ export class CompraService {
     return this.#serializarMutacion(async () => {
       const compra = await this.obtenerPorId(compraId);
 
-      if (actorObj && actorObj.id) {
-        const actorId = actorObj.id;
-        const esDuenio = compra.comprador?.id === actorId;
-        const organizadorId = compra.evento?.organizador?.id || compra.evento?.organizadorId;
-        const esOrganizador = organizadorId === actorId;
-        if (!esDuenio && !esOrganizador) {
-          throw new ForbiddenError(
-            'Solo el comprador o el organizador del evento pueden cancelar esta compra',
-            'CANCELACION_NO_AUTORIZADA'
-          );
-        }
+      if (actorObj && actorObj.id && !compra.puedeSerVistaPor(actorObj)) {
+        throw new ForbiddenError(
+          'Solo el comprador o el organizador del evento pueden cancelar esta compra',
+          'CANCELACION_NO_AUTORIZADA'
+        );
       }
 
-      if (!compra.puedeCancelarse().puede) {
-        compra.cancelarParaReembolso(quienTexto);
-      }
+      compra.assertPuedeCancelarse();
 
       const tipoEntrada = compra.evento.obtenerTipoEntrada(compra.tipoEntrada.id);
       if (!tipoEntrada) {
@@ -231,16 +225,11 @@ export class CompraService {
     return this.#serializarMutacion(async () => {
       const compra = await this.obtenerPorId(compraId);
 
-      if (actorObj && actorObj.id) {
-        const actorId = actorObj.id;
-        const organizadorId = compra.evento?.organizador?.id || compra.evento?.organizadorId;
-        const esOrganizador = organizadorId === actorId;
-        if (!esOrganizador) {
-          throw new ForbiddenError(
-            'Solo el organizador del evento puede acreditar entradas',
-            'ACREDITACION_NO_AUTORIZADA'
-          );
-        }
+      if (actorObj && actorObj.id && !compra.esOrganizador(actorObj.id)) {
+        throw new ForbiddenError(
+          'Solo el organizador del evento puede acreditar entradas',
+          'ACREDITACION_NO_AUTORIZADA'
+        );
       }
 
       const estadoAntes = compra.estado;
@@ -264,14 +253,11 @@ export class CompraService {
     return this.#serializarMutacion(async () => {
       const compra = await this.obtenerPorId(compraId);
 
-      if (actor && typeof actor === 'object' && actor.id) {
-        const esDuenio = compra.comprador?.id === actor.id;
-        if (!esDuenio) {
-          throw new ForbiddenError(
-            'Solo el comprador de la entrada puede calificar el evento',
-            'CALIFICACION_NO_AUTORIZADA'
-          );
-        }
+      if (actor && typeof actor === 'object' && actor.id && !compra.esComprador(actor.id)) {
+        throw new ForbiddenError(
+          'Solo el comprador de la entrada puede calificar el evento',
+          'CALIFICACION_NO_AUTORIZADA'
+        );
       }
 
       if (compra.estado !== EstadoCompra.UTILIZADA) {

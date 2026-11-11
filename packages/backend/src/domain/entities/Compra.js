@@ -75,7 +75,7 @@ export class Compra {
     }
     if (this.estado === nuevoEstado) return;
 
-    const permitidos = TRANSICIONES_PERMITIDAS[this.estado] || [];
+    const permitidos = TRANSICIONES_PERMITIDAS[this.estado];
     if (!permitidos.includes(nuevoEstado)) {
       throw new EstadoCompraInvalidoError(
         this.estado,
@@ -110,11 +110,15 @@ export class Compra {
     return { puede: true };
   }
 
-  cancelarParaReembolso(quien) {
+  assertPuedeCancelarse() {
     const check = this.puedeCancelarse();
     if (!check.puede) {
       throw new ReglaNegocioError(check.razon, 'CANCELACION_NO_PERMITIDA');
     }
+  }
+
+  cancelarParaReembolso(quien) {
+    this.assertPuedeCancelarse();
     const estadoDestino = this.estado === EstadoCompra.PENDIENTE
       ? EstadoCompra.CANCELADA
       : EstadoCompra.REEMBOLSADA;
@@ -149,6 +153,24 @@ export class Compra {
     return Number.isFinite(ahoraMs) && ahoraMs - ultimaActividad >= MARGEN_CIERRE_CONVERSACION_MS;
   }
 
+  esComprador(usuarioId) {
+    return Boolean(usuarioId) && this.comprador.id === usuarioId;
+  }
+
+  esOrganizador(usuarioId) {
+    if (!usuarioId) return false;
+    if (typeof this.evento.esOrganizador === 'function') {
+      return this.evento.esOrganizador(usuarioId);
+    }
+    const orgId = this.evento.organizador?.id || this.evento.organizadorId;
+    return orgId === usuarioId;
+  }
+
+  puedeSerVistaPor(actor) {
+    if (!actor || !actor.id) return false;
+    return this.esComprador(actor.id) || this.esOrganizador(actor.id);
+  }
+
   diasFaltantes() {
     const diffTime = this.evento.fecha.getTime() - Date.now();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -157,19 +179,28 @@ export class Compra {
 
   toJSON() {
     let compradorJson = this.comprador;
-    if (typeof this.comprador?.toJSON === 'function') {
+    if (typeof this.comprador.toJSON === 'function') {
       compradorJson = this.comprador.toJSON();
     } else if (typeof this.comprador === 'object' && this.comprador !== null) {
       const { email: _email, ...resto } = this.comprador;
       compradorJson = resto;
     }
 
-    const eventoJson = typeof this.evento?.toJSON === 'function' ? this.evento.toJSON() : this.evento;
+    const eventoJson = typeof this.evento.toJSON === 'function' ? this.evento.toJSON() : this.evento;
     const tipoEntradaJson =
-      typeof this.tipoEntrada?.toJSON === 'function' ? this.tipoEntrada.toJSON() : this.tipoEntrada;
+      typeof this.tipoEntrada.toJSON === 'function' ? this.tipoEntrada.toJSON() : this.tipoEntrada;
     const mensajesJson = this.mensajes.map((m) =>
       typeof m?.toJSON === 'function' ? m.toJSON() : m
     );
+
+    const organizadorNombre =
+      eventoJson.organizadorNombre ||
+      (typeof this.evento.organizador === 'object' && this.evento.organizador !== null
+        ? this.evento.organizador.nombreCompleto || this.evento.organizador.nombre
+        : this.evento.organizador || '');
+
+    const organizadorId =
+      this.evento.organizadorId || this.evento.organizador?.id || '';
 
     return {
       id: this.id,
@@ -185,17 +216,17 @@ export class Compra {
       historialCambios: this.historialCambios,
       reseniaRealizada: this.reseniaRealizada,
       // Helpers calculados para serialización REST / compatibilidad de vistas
-      compradorId: this.comprador?.id,
-      compradorNombre: this.comprador ? `${this.comprador.nombre} ${this.comprador.apellido || ''}`.trim() : '',
-      eventoId: this.evento?.id,
-      eventoNombre: this.evento?.nombre,
-      eventoFecha: this.evento?.fecha,
-      tipoEntradaId: this.tipoEntrada?.id,
-      tipoEntradaNombre: this.tipoEntrada?.nombre,
-      organizadorId: this.evento?.organizador?.id || '',
-      organizadorNombre: typeof this.evento?.organizador === 'object' ? this.evento.organizador?.nombre : (this.evento?.organizador || ''),
-      imagen: this.evento?.imagen || '',
-      ubicacion: this.evento?.ubicacion || '',
+      compradorId: this.comprador.id,
+      compradorNombre: this.comprador.nombreCompleto || `${this.comprador.nombre} ${this.comprador.apellido || ''}`.trim(),
+      eventoId: this.evento.id,
+      eventoNombre: this.evento.nombre,
+      eventoFecha: this.evento.fecha,
+      tipoEntradaId: this.tipoEntrada.id,
+      tipoEntradaNombre: this.tipoEntrada.nombre,
+      organizadorId,
+      organizadorNombre,
+      imagen: this.evento.imagen || '',
+      ubicacion: this.evento.ubicacion || '',
       conversacionCerrada: this.estaConversacionCerrada(),
     };
   }

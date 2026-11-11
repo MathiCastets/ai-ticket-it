@@ -1,6 +1,5 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { createAuthHandler } from '../../src/middlewares/authHandler.js';
-import { UnauthorizedError } from '../../src/middlewares/errors/AuthErrors.js';
 
 describe('authHandler middleware', () => {
   let mockUsuarioRepo;
@@ -23,7 +22,12 @@ describe('authHandler middleware', () => {
 
     await authMiddleware(req, res, next);
 
-    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'UnauthorizedError',
+        message: expect.stringMatching(/Header X-User-Id es requerido para autenticación/i),
+      })
+    );
     expect(next.mock.calls[0][0].status).toBe(401);
     expect(req.user).toBeUndefined();
   });
@@ -33,18 +37,44 @@ describe('authHandler middleware', () => {
 
     await authMiddleware(req, res, next);
 
-    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'UnauthorizedError',
+        message: expect.stringMatching(/Header X-User-Id es requerido para autenticación/i),
+      })
+    );
     expect(req.user).toBeUndefined();
   });
 
-  test('rechaza con UnauthorizedError si el usuario no existe en el repositorio', async () => {
+  test('rechaza con UnauthorizedError si el repositorio lanza error al buscar usuario', async () => {
     req = { headers: { 'x-user-id': 'user_inexistente' } };
     mockUsuarioRepo.findById.mockRejectedValue(new Error('EntityNotFoundError'));
 
     await authMiddleware(req, res, next);
 
     expect(mockUsuarioRepo.findById).toHaveBeenCalledWith('user_inexistente');
-    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'UnauthorizedError',
+        message: expect.stringMatching(/Usuario con id 'user_inexistente' no encontrado/i),
+      })
+    );
+    expect(req.user).toBeUndefined();
+  });
+
+  test('rechaza con UnauthorizedError si el usuario no existe (retorna null) en el repositorio', async () => {
+    req = { headers: { 'x-user-id': 'user_nulo' } };
+    mockUsuarioRepo.findById.mockResolvedValue(null);
+
+    await authMiddleware(req, res, next);
+
+    expect(mockUsuarioRepo.findById).toHaveBeenCalledWith('user_nulo');
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'UnauthorizedError',
+        message: expect.stringMatching(/Usuario con id 'user_nulo' no encontrado/i),
+      })
+    );
     expect(req.user).toBeUndefined();
   });
 

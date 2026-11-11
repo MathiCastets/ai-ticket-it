@@ -44,11 +44,7 @@ export class CompraController {
           throw new ForbiddenError('No tienes permiso para ver compras de otros usuarios');
         }
         if (eventoId) {
-          const todas = await this.compraService.listarPorEvento(eventoId);
-          compras = todas.filter(
-            (c) =>
-              (c.evento?.organizador?.id || c.evento?.organizadorId) === actor.id
-          );
+          compras = await this.compraService.listarPorEvento(eventoId, actor.id);
         } else {
           compras = await this.compraService.listarPorOrganizador(actor.id);
         }
@@ -73,13 +69,8 @@ export class CompraController {
       const { id } = req.params;
       const compra = await this.compraService.obtenerPorId(id);
       const actor = req.user;
-      if (actor) {
-        const esDuenio = compra.comprador?.id === actor.id;
-        const organizadorId = compra.evento?.organizador?.id || compra.evento?.organizadorId;
-        const esOrganizador = organizadorId === actor.id;
-        if (!esDuenio && !esOrganizador) {
-          throw new ForbiddenError('No tienes permiso para ver esta compra');
-        }
+      if (actor && !compra.puedeSerVistaPor(actor)) {
+        throw new ForbiddenError('No tienes permiso para ver esta compra');
       }
       res.status(200).json({ data: serializarCompra(compra) });
     } catch (error) {
@@ -133,7 +124,7 @@ export class CompraController {
       const actor = req.user;
       const compraCancelada = await this.compraService.cancelarCompra(
         id,
-        actor || quien || 'Comprador',
+        actor || quien,
         quien
       );
       res.status(200).json({
@@ -155,7 +146,7 @@ export class CompraController {
       const actor = req.user;
       const compraUtilizada = await this.compraService.marcarUtilizada(
         id,
-        actor || quien || 'Acreditación en Puerta',
+        actor || quien,
         quien
       );
       res.status(200).json({
@@ -239,10 +230,7 @@ export class CompraController {
       const actor = req.user;
       if (actor) {
         const compra = await this.compraService.obtenerPorId(id);
-        const esDuenio = compra.comprador?.id === actor.id;
-        const organizadorId = compra.evento?.organizador?.id || compra.evento?.organizadorId;
-        const esOrganizador = organizadorId === actor.id;
-        if (!esDuenio && !esOrganizador) {
+        if (!compra.puedeSerVistaPor(actor)) {
           throw new ForbiddenError('No tienes permiso para ver los mensajes de esta compra');
         }
       }

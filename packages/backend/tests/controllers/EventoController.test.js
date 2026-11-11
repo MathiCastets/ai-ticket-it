@@ -1,7 +1,5 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { EventoController } from '../../src/controllers/EventoController.js';
-import { ValidationError } from '../../src/controllers/errors/ValidationError.js';
-import { ForbiddenError } from '../../src/services/errors/index.js';
 import { Evento } from '../../src/domain/entities/Evento.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
 
@@ -46,7 +44,12 @@ describe('EventoController', () => {
     ])('rechaza filtros que no son valores únicos de texto (%o)', async (query) => {
       await controller.getAll({ query }, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/Los filtros de eventos deben ser valores únicos de texto/i),
+        })
+      );
       expect(mockEventoService.listarEventos).not.toHaveBeenCalled();
     });
 
@@ -54,7 +57,12 @@ describe('EventoController', () => {
       const req = { query: { sortBy: 'invalido' } };
       await controller.getAll(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/sortBy debe ser fecha, precio o rating/i),
+        })
+      );
       expect(mockEventoService.listarEventos).not.toHaveBeenCalled();
     });
 
@@ -161,6 +169,15 @@ describe('EventoController', () => {
       expect(resString).not.toContain('entradas.privadas@teatrocolon.org.ar');
       expect(jsonLlamada.data.organizador?.email).toBeUndefined();
     });
+
+    test('delega error inesperado en getById a next', async () => {
+      const error = new Error('Error al obtener evento');
+      mockEventoService.obtenerPorId.mockRejectedValue(error);
+
+      await controller.getById({ params: { id: 'e1' } }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
+    });
   });
 
   describe('create', () => {
@@ -217,7 +234,12 @@ describe('EventoController', () => {
 
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/Solo los organizadores pueden crear eventos/i),
+        })
+      );
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
 
@@ -230,7 +252,12 @@ describe('EventoController', () => {
 
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No puedes crear eventos a nombre de otro organizador/i),
+        })
+      );
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
 
@@ -242,7 +269,30 @@ describe('EventoController', () => {
 
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/El nombre del evento es requerido/i),
+        })
+      );
+      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+
+    test('rechaza si falta la fecha del evento', async () => {
+      const { fecha: _f, ...sinFecha } = eventoValido;
+      const req = {
+        is: () => false,
+        body: sinFecha,
+      };
+
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/La fecha del evento es requerida/i),
+        })
+      );
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
 
@@ -254,7 +304,65 @@ describe('EventoController', () => {
 
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/La fecha del evento debe ser una fecha válida/i),
+        })
+      );
+      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+
+    test('rechaza si faltan tanto categoria como categoriaId', async () => {
+      const { categoria: _c, categoriaId: _cid, ...sinCategoria } = eventoValido;
+      const req = {
+        is: () => false,
+        body: sinCategoria,
+      };
+
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/La categoría del evento es requerida/i),
+        })
+      );
+      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+
+    test('rechaza si falta organizadorId y no hay actor autenticado', async () => {
+      const { organizadorId: _org, ...sinOrg } = eventoValido;
+      const req = {
+        is: () => false,
+        body: sinOrg,
+      };
+
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/organizadorId es requerido/i),
+        })
+      );
+      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+
+    test('rechaza si organizadorId solo contiene espacios', async () => {
+      const req = {
+        is: () => false,
+        body: { ...eventoValido, organizadorId: '   ' },
+      };
+
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/organizadorId debe ser un texto no vacío/i),
+        })
+      );
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
 
@@ -266,8 +374,22 @@ describe('EventoController', () => {
 
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/Debe incluir al menos un tipo de entrada con su precio y cupo/i),
+        })
+      );
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en create a next', async () => {
+      const error = new Error('Error al crear evento');
+      mockEventoService.crearEvento.mockRejectedValue(error);
+
+      await controller.create({ is: () => false, body: eventoValido }, res, next);
+
+      expect(next).toHaveBeenCalledWith(error);
     });
 
     test('usa el organizador autenticado cuando el payload no indica organizadorId', async () => {
@@ -332,7 +454,12 @@ describe('EventoController', () => {
 
       await controller.update(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/Solo los organizadores pueden modificar eventos/i),
+        })
+      );
       expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
     });
 
@@ -346,8 +473,62 @@ describe('EventoController', () => {
 
       await controller.update(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ForbiddenError',
+          message: expect.stringMatching(/No puedes modificar eventos a nombre de otro organizador/i),
+        })
+      );
       expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
+    });
+
+    test('rechaza si falta organizadorId al modificar el evento y no hay actor', async () => {
+      const req = {
+        is: () => false,
+        params: { id: 'evt-1' },
+        body: { nombre: 'Nuevo Nombre' },
+      };
+      await controller.update(req, res, next);
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/organizadorId es requerido para modificar el evento/i),
+        })
+      );
+      expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
+    });
+
+    test('rechaza si organizadorId solo contiene espacios al modificar el evento', async () => {
+      const req = {
+        is: () => false,
+        params: { id: 'evt-1' },
+        body: { organizadorId: '   ', nombre: 'Nuevo Nombre' },
+      };
+      await controller.update(req, res, next);
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/organizadorId es requerido para modificar el evento/i),
+        })
+      );
+      expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
+    });
+
+    test('delega error inesperado en update a next', async () => {
+      const error = new Error('Error al actualizar evento');
+      mockEventoService.actualizarEvento.mockRejectedValue(error);
+
+      await controller.update(
+        {
+          is: () => false,
+          params: { id: 'evt-1' },
+          body: { organizadorId: 'org-1', nombre: 'Nuevo Nombre' },
+        },
+        res,
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith(error);
     });
 
     test.each([

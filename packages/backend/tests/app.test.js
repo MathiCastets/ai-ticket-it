@@ -231,9 +231,7 @@ describe('App HTTP Integration Tests', () => {
       const resList = await fetch(`${baseUrl}/eventos`);
       const rawTextList = await resList.text();
       expect(resList.status).toBe(200);
-      expect(rawTextList).not.toContain('@example.com');
-      expect(rawTextList).not.toContain('@festivalba.com');
-      expect(rawTextList).not.toContain('@teatrocolon.org.ar');
+      expect(rawTextList).not.toMatch(/"email"/);
 
       const dataList = JSON.parse(rawTextList);
       expect(dataList.data.length).toBeGreaterThan(0);
@@ -245,8 +243,7 @@ describe('App HTTP Integration Tests', () => {
       const resDetalle = await fetch(`${baseUrl}/eventos/${primerEventoId}`);
       const rawTextDetalle = await resDetalle.text();
       expect(resDetalle.status).toBe(200);
-      expect(rawTextDetalle).not.toContain('@example.com');
-      expect(rawTextDetalle).not.toContain('@teatrocolon.org.ar');
+      expect(rawTextDetalle).not.toMatch(/"email"/);
       const dataDetalle = JSON.parse(rawTextDetalle);
       expect(dataDetalle.data.organizador?.email).toBeUndefined();
     });
@@ -257,9 +254,7 @@ describe('App HTTP Integration Tests', () => {
       });
       const rawTextCompras = await resCompras.text();
       expect(resCompras.status).toBe(200);
-      expect(rawTextCompras).not.toContain('@example.com');
-      expect(rawTextCompras).not.toContain('lucia.gomez@');
-      expect(rawTextCompras).not.toContain('carlos.rodriguez@');
+      expect(rawTextCompras).not.toMatch(/"email"/);
 
       const dataCompras = JSON.parse(rawTextCompras);
       expect(dataCompras.data.length).toBeGreaterThan(0);
@@ -271,8 +266,7 @@ describe('App HTTP Integration Tests', () => {
       });
       const rawTextDetalle = await resDetalle.text();
       expect(resDetalle.status).toBe(200);
-      expect(rawTextDetalle).not.toContain('@example.com');
-      expect(rawTextDetalle).not.toContain('lucia.gomez@');
+      expect(rawTextDetalle).not.toMatch(/"email"/);
       const dataDetalle = JSON.parse(rawTextDetalle);
       expect(dataDetalle.data.comprador?.email).toBeUndefined();
       expect(dataDetalle.data.evento?.organizador?.email).toBeUndefined();
