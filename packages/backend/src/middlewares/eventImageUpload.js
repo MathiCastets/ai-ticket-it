@@ -10,22 +10,28 @@ const upload = multer({
   },
 });
 
-export function receiveEventImages(req, res, next) {
-  upload.array('imagenes', MAX_EVENT_IMAGES)(req, res, (error) => {
-    if (!error) return next();
+export function createEventImageUpload(
+  uploadMiddleware = upload.array('imagenes', MAX_EVENT_IMAGES)
+) {
+  return function receiveEventImages(req, res, next) {
+    uploadMiddleware(req, res, (error) => {
+      if (!error) return next();
 
-    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-      error.type = 'entity.too.large';
-      error.message = 'Cada imagen debe pesar 5 MB o menos';
-      return next(error);
-    }
+      if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+        error.type = 'entity.too.large';
+        error.message = 'Cada imagen debe pesar 5 MB o menos';
+        return next(error);
+      }
 
-    return next(
-      new ValidationError(
-        error instanceof multer.MulterError && error.code === 'LIMIT_UNEXPECTED_FILE'
-          ? 'Se permite una sola imagen por evento'
-          : 'No se pudieron procesar las imágenes del evento'
-      )
-    );
-  });
+      return next(
+        new ValidationError(
+          error instanceof multer.MulterError && error.code === 'LIMIT_UNEXPECTED_FILE'
+            ? 'Se permite una sola imagen por evento'
+            : 'No se pudieron procesar las imágenes del evento'
+        )
+      );
+    });
+  };
 }
+
+export const receiveEventImages = createEventImageUpload();

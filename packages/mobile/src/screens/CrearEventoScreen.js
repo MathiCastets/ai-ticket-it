@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,6 +8,9 @@ import {
   ScrollView,
   Image,
   Modal,
+  KeyboardAvoidingView,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -40,6 +43,46 @@ export default function CrearEventoScreen({ navigation, route }) {
   const [tiposEntrada, setTiposEntrada] = useState([
     { id: String(Date.now()), nombre: '', precio: '', cupo: '' },
   ]);
+
+  const scrollViewRef = useRef(null);
+  const sectionOffsets = useRef({});
+  const fieldOffsets = useRef({});
+  const tipoOffsets = useRef({});
+  const activeTargetY = useRef(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    const eventoMostrar = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const eventoOcultar = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const mostrarSub = Keyboard.addListener(eventoMostrar, (e) => {
+      const altura = e?.endCoordinates?.height || 280;
+      setKeyboardHeight(altura);
+
+      if (activeTargetY.current !== null) {
+        setTimeout(() => {
+          if (activeTargetY.current !== null) {
+            scrollViewRef.current?.scrollTo({
+              y: activeTargetY.current,
+              animated: true,
+            });
+          }
+        }, Platform.OS === 'android' ? 100 : 50);
+      }
+    });
+
+    const ocultarSub = Keyboard.addListener(eventoOcultar, () => {
+      setKeyboardHeight(0);
+      activeTargetY.current = null;
+    });
+
+    return () => {
+      mostrarSub.remove();
+      ocultarSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const evento = route?.params?.duplicateEvento;
@@ -102,11 +145,42 @@ export default function CrearEventoScreen({ navigation, route }) {
     });
   };
 
+  const ejecutarScroll = (posY) => {
+    if (typeof posY !== 'number') return;
+    const targetY = Math.max(0, posY - 20);
+    activeTargetY.current = targetY;
+
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo({
+        y: targetY,
+        animated: true,
+      });
+    });
+  };
+
+  const handleFocusField = (campo) => {
+    if (Platform.OS === 'web') return;
+    const sec1 = sectionOffsets.current.section1 || 0;
+    const fld = fieldOffsets.current[campo] || 0;
+    ejecutarScroll(sec1 + fld);
+  };
+
+  const handleFocusTipo = (tipoId) => {
+    if (Platform.OS === 'web') return;
+    const sec2 = sectionOffsets.current.section2 || 0;
+    const cardY = tipoOffsets.current[tipoId] || 0;
+    ejecutarScroll(sec2 + cardY);
+  };
+
   const handleAddTipo = () => {
+    const nuevoId = String(Date.now());
     setTiposEntrada((prev) => [
       ...prev,
-      { id: String(Date.now()), nombre: '', precio: '', cupo: '' },
+      { id: nuevoId, nombre: '', precio: '', cupo: '' },
     ]);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 120);
   };
 
   const handleRemoveTipo = (id) => {
@@ -118,6 +192,7 @@ export default function CrearEventoScreen({ navigation, route }) {
       });
       return;
     }
+    delete tipoOffsets.current[id];
     setTiposEntrada((prev) => prev.filter((t) => t.id !== id));
   };
 
@@ -194,6 +269,7 @@ export default function CrearEventoScreen({ navigation, route }) {
   };
 
   const reiniciarFormulario = () => {
+    activeTargetY.current = null;
     setNombre('');
     setCategoria('');
     setFechaEvento(null);
@@ -216,6 +292,7 @@ export default function CrearEventoScreen({ navigation, route }) {
   };
 
   const handlePublicar = async () => {
+    Keyboard.dismiss();
     const nuevosErrores = {};
     if (!nombre.trim()) nuevosErrores.nombre = 'Debe completar el nombre del evento.';
     if (!categoria) nuevosErrores.categoria = 'Debe seleccionar una categoría.';
@@ -291,10 +368,31 @@ export default function CrearEventoScreen({ navigation, route }) {
   };
 
   return (
-    <View style={styles.screenContainer}>
+    <KeyboardAvoidingView
+      style={styles.screenContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <Header title="AI Ticket It" subtitle="Crear Evento" />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingBottom:
+              keyboardHeight > 0
+                ? Platform.OS === 'android'
+                  ? keyboardHeight + 80
+                  : 100
+                : 40,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerTitleBox}>
           <Text style={styles.pageTitle}>
             {modoDuplicar ? 'Duplicar evento' : 'Publicar Nuevo Evento'}
@@ -310,12 +408,22 @@ export default function CrearEventoScreen({ navigation, route }) {
         </View>
 
         {/* Section 1: Main Info */}
-        <View style={styles.cardSection}>
+        <View
+          style={styles.cardSection}
+          onLayout={(e) => {
+            sectionOffsets.current.section1 = e.nativeEvent.layout.y;
+          }}
+        >
           <View style={styles.cardSectionHeader}>
             <Text style={styles.cardSectionTitle}>1. Información Principal</Text>
           </View>
 
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(e) => {
+              fieldOffsets.current.nombre = e.nativeEvent.layout.y;
+            }}
+          >
             <Text style={styles.inputLabel}>Nombre del Evento</Text>
             <TextInput
               style={[styles.textInput, errores.nombre && styles.inputError]}
@@ -323,6 +431,7 @@ export default function CrearEventoScreen({ navigation, route }) {
               onChangeText={(value) => cambiarCampo(setNombre, 'nombre', value)}
               placeholder="Ej. Recital Acústico 2026"
               placeholderTextColor={COLORS.textMuted}
+              onFocus={() => handleFocusField('nombre')}
             />
             {errores.nombre ? <Text style={styles.errorLabel}>{errores.nombre}</Text> : null}
           </View>
@@ -363,7 +472,12 @@ export default function CrearEventoScreen({ navigation, route }) {
             />
           </View>
 
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(e) => {
+              fieldOffsets.current.ubicacion = e.nativeEvent.layout.y;
+            }}
+          >
             <Text style={styles.inputLabel}>Lugar / Predio</Text>
             <TextInput
               style={[styles.textInput, errores.ubicacion && styles.inputError]}
@@ -371,11 +485,17 @@ export default function CrearEventoScreen({ navigation, route }) {
               onChangeText={(value) => cambiarCampo(setUbicacion, 'ubicacion', value)}
               placeholder="Ej. Estadio Central"
               placeholderTextColor={COLORS.textMuted}
+              onFocus={() => handleFocusField('ubicacion')}
             />
             {errores.ubicacion ? <Text style={styles.errorLabel}>{errores.ubicacion}</Text> : null}
           </View>
 
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(e) => {
+              fieldOffsets.current.direccion = e.nativeEvent.layout.y;
+            }}
+          >
             <Text style={styles.inputLabel}>Dirección</Text>
             <TextInput
               style={[styles.textInput, errores.direccion && styles.inputError]}
@@ -383,11 +503,17 @@ export default function CrearEventoScreen({ navigation, route }) {
               onChangeText={(value) => cambiarCampo(setDireccion, 'direccion', value)}
               placeholder="Ej. Av. Corrientes 1234, CABA"
               placeholderTextColor={COLORS.textMuted}
+              onFocus={() => handleFocusField('direccion')}
             />
             {errores.direccion ? <Text style={styles.errorLabel}>{errores.direccion}</Text> : null}
           </View>
 
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(e) => {
+              fieldOffsets.current.descripcion = e.nativeEvent.layout.y;
+            }}
+          >
             <Text style={styles.inputLabel}>Descripción del Evento</Text>
             <TextInput
               style={[styles.textInput, styles.textArea, errores.descripcion && styles.inputError]}
@@ -397,6 +523,7 @@ export default function CrearEventoScreen({ navigation, route }) {
               placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={3}
+              onFocus={() => handleFocusField('descripcion')}
             />
             {errores.descripcion ? <Text style={styles.errorLabel}>{errores.descripcion}</Text> : null}
           </View>
@@ -454,7 +581,7 @@ export default function CrearEventoScreen({ navigation, route }) {
                   {isPickingImages ? 'ABRIENDO...' : 'BUSCAR FOTOS'}
                 </Text>
                 <Text style={styles.imagePickerDropHint}>
-                  Seleccioná una imágen deste la galería de tu celular.
+                  Seleccioná una imagen desde la galería de tu celular.
                 </Text>
               </TouchableOpacity>
             )}
@@ -462,7 +589,12 @@ export default function CrearEventoScreen({ navigation, route }) {
         </View>
 
         {/* Section 2: Ticket Types & Quotas (TP Explicit Requirement) */}
-        <View style={styles.cardSection}>
+        <View
+          style={styles.cardSection}
+          onLayout={(e) => {
+            sectionOffsets.current.section2 = e.nativeEvent.layout.y;
+          }}
+        >
           <View style={styles.cardSectionHeader}>
             <Text style={styles.cardSectionTitle}>2. Tipos de Entrada y Cupos</Text>
             <TouchableOpacity style={styles.addTypeBtn} onPress={handleAddTipo} activeOpacity={0.8}>
@@ -475,7 +607,13 @@ export default function CrearEventoScreen({ navigation, route }) {
           </Text>
 
           {tiposEntrada.map((tipo, idx) => (
-            <View key={tipo.id} style={styles.tipoRowCard}>
+            <View
+              key={tipo.id}
+              style={styles.tipoRowCard}
+              onLayout={(e) => {
+                tipoOffsets.current[tipo.id] = e.nativeEvent.layout.y;
+              }}
+            >
               <View style={styles.tipoHeader}>
                 <Text style={styles.tipoNumber}>Entrada #{idx + 1}</Text>
                 {tiposEntrada.length > 1 && (
@@ -491,6 +629,7 @@ export default function CrearEventoScreen({ navigation, route }) {
                 onChangeText={(val) => handleUpdateTipo(tipo.id, 'nombre', val)}
                 placeholder="Nombre (ej. Platea VIP, General)"
                 placeholderTextColor={COLORS.textMuted}
+                onFocus={() => handleFocusTipo(tipo.id)}
               />
               {errores[`tipo-${tipo.id}-nombre`] ? (
                 <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-nombre`]}</Text>
@@ -506,6 +645,7 @@ export default function CrearEventoScreen({ navigation, route }) {
                     placeholder="8000"
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="numeric"
+                    onFocus={() => handleFocusTipo(tipo.id)}
                   />
                   {errores[`tipo-${tipo.id}-precio`] ? (
                     <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-precio`]}</Text>
@@ -521,6 +661,7 @@ export default function CrearEventoScreen({ navigation, route }) {
                     placeholder="150"
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="numeric"
+                    onFocus={() => handleFocusTipo(tipo.id)}
                   />
                   {errores[`tipo-${tipo.id}-cupo`] ? (
                     <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-cupo`]}</Text>
@@ -602,7 +743,7 @@ export default function CrearEventoScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

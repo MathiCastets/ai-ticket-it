@@ -227,6 +227,7 @@ export class Compra {
       organizadorNombre,
       imagen: this.evento.imagen || '',
       ubicacion: this.evento.ubicacion || '',
+      diasFaltantes: this.diasFaltantes(),
       conversacionCerrada: this.estaConversacionCerrada(),
     };
   }

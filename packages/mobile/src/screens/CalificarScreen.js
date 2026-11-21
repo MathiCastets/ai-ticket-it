@@ -118,35 +118,6 @@ export default function CalificarScreen({ route, navigation }) {
     }
   };
 
-  if (!puedeCalificar) {
-    return (
-      <View style={styles.screenContainer}>
-        <Header
-          title="Calificar Evento"
-          subtitle="Acceso no disponible"
-          showBack
-          onBack={() => navigation.goBack()}
-        />
-        <View style={styles.accessErrorContainer}>
-          <Ionicons name="lock-closed-outline" size={38} color={COLORS.textMuted} />
-          <Text style={styles.accessErrorTitle}>No podés calificar esta compra</Text>
-          <Text style={styles.accessErrorText}>
-            {!compra
-              ? 'No encontramos el ticket solicitado.'
-              : 'Esta compra no corresponde al perfil actual.'}
-          </Text>
-          <TouchableOpacity
-            style={styles.accessBackButton}
-            onPress={() => navigation.goBack()}
-            accessibilityRole="button"
-          >
-            <Text style={styles.accessBackButtonText}>Volver</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   if (reseniaPublicada || (compra.reseniaRealizada && !isSubmitting)) {
     return (
       <View style={styles.screenContainer}>
@@ -256,7 +227,7 @@ export default function CalificarScreen({ route, navigation }) {
 
         {/* Written Review */}
         <View style={styles.commentCard}>
-          <Text style={[styles.sectionTitle, styles.commentTitle]}>Contanos que te pareció</Text>
+          <Text style={[styles.sectionTitle, styles.commentTitle]}>Contanos qué te pareció</Text>
           <Text style={styles.sectionSubtitle}>
             Contanos sobre el sonido, organización, puntualidad y accesos al lugar:
           </Text>
@@ -314,37 +285,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-  },
-  accessErrorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    gap: 10,
-  },
-  accessErrorTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 17,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  accessErrorText: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-  accessBackButton: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 11,
-    borderRadius: 22,
-    backgroundColor: COLORS.accentElectric,
-  },
-  accessBackButtonText: {
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    fontWeight: '800',
   },
   successContainer: {
     flex: 1,

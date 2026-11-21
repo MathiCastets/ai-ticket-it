@@ -83,10 +83,17 @@ export class EventoService {
     }
   ) {
     const evento = await this.obtenerPorId(id);
-    if (evento.organizador?.id !== organizadorId) {
+    if (!evento.esOrganizador(organizadorId)) {
       throw new ForbiddenError(
         'Solo el organizador del evento puede modificarlo',
         'ORGANIZADOR_EVENTO_INVALIDO'
+      );
+    }
+
+    if (typeof evento.estaCerrado === 'function' ? evento.estaCerrado() : new Date(evento.fecha).getTime() <= Date.now()) {
+      throw new BusinessRuleError(
+        'No se puede editar un evento que ya ha finalizado o está cerrado',
+        'EVENTO_CERRADO'
       );
     }
 
@@ -274,7 +281,7 @@ export class EventoService {
       ? await this.eventoImageStorage.guardar(imagenes)
       : [];
     try {
-      const eventImages = [...uploadedImages, ...(Array.isArray(multimedia) ? multimedia : [])];
+      const eventImages = [...uploadedImages, ...multimedia];
       const evento = new Evento({
         ...resto,
         nombre: nombre.trim(),

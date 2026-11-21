@@ -10,6 +10,7 @@ export default defineConfig([
       "**/.expo/**",
       "**/dist/**",
       "vistas/**",
+      "**/.stryker-tmp/**",
     ],
   },
   {

@@ -4,6 +4,7 @@ import { TipoEntrada } from '../domain/entities/TipoEntrada.js';
 import { Evento } from '../domain/entities/Evento.js';
 import { Compra } from '../domain/entities/Compra.js';
 import { Mensaje } from '../domain/entities/Mensaje.js';
+import { Resenia } from '../domain/entities/Resenia.js';
 import { EstadoCompra } from '../domain/enums/EstadoCompra.js';
 
 function crearFechaRelativa(diasOffset, horas, minutos) {
@@ -147,6 +148,16 @@ export function createSeedData() {
     organizador: orgTeatros,
     descripcion: 'Aclamada comedia dramática sobre cuatro postulantes compitiendo ferozmente por un codiciado puesto ejecutivo.',
     tiposEntrada: [teTeatroPlatea, teTeatroPullman],
+    resenias: [
+      new Resenia({
+        id: 'res-seed-teatro-1',
+        comprador: compradorMathi,
+        eventoId: 'evt-teatro-3',
+        puntuacion: 4.5,
+        detalle: 'Excelente puesta en escena y actuaciones impecables de principio a fin.',
+        fechaHora: new Date(fechaEvento3.getTime() + 24 * 60 * 60 * 1000),
+      }),
+    ],
   });
 
   const fechaEvento4 = crearFechaRelativa(30, 9, 0);
@@ -187,6 +198,16 @@ export function createSeedData() {
     organizador: orgSonora,
     descripcion: 'Una noche especial para celebrar un nuevo aniversario de Producciones Sonora.',
     tiposEntrada: [teSonoraTerminado],
+    resenias: [
+      new Resenia({
+        id: 'res-seed-sonora-1',
+        comprador: compradoraLucia,
+        eventoId: 'evt-sonora-aniversario',
+        puntuacion: 5,
+        detalle: 'Sonido increíble, muy buena organización y acceso ágil desde el ingreso.',
+        fechaHora: new Date(fechaEventoTerminado.getTime() + 24 * 60 * 60 * 1000),
+      }),
+    ],
   });
 
   const eventos = [evento1, evento2, evento3, evento4, eventoSonoraTerminado];

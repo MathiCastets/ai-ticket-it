@@ -40,7 +40,7 @@ export class UsuarioService {
 
     const eventos = await this.eventoRepository.findAll();
     const resenias = eventos
-      .filter((evento) => evento.organizador?.id === organizadorId)
+      .filter((evento) => evento.esOrganizador(organizadorId))
       .flatMap((evento) =>
         evento.resenias.map((resenia) => ({
           id: resenia.id,

@@ -7,7 +7,7 @@ import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { ValidationError } from './controllers/errors/ValidationError.js';
 
-export function createApp() {
+export function createApp(customAllowedOrigins = env.ALLOWED_ORIGINS) {
   const app = express();
 
   // 1. Middlewares generales
@@ -23,7 +23,7 @@ export function createApp() {
     return next();
   });
 
-  const allowedOrigins = env.ALLOWED_ORIGINS;
+  const allowedOrigins = customAllowedOrigins;
   app.use(
     cors({
       origin: (origin, callback) => {
@@ -56,6 +56,7 @@ export function createApp() {
         eventos: '/api/eventos',
         compras: '/api/compras',
         categorias: '/api/categorias',
+        usuarios: '/api/usuarios',
       },
     });
   });

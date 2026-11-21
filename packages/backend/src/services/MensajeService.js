@@ -39,12 +39,11 @@ export class MensajeService {
       throw error;
     }
 
-    const organizadorId =
-      typeof compra.evento.organizador === 'object'
-        ? compra.evento.organizador?.id
-        : compra.evento.organizadorId;
-    if (usuario.id !== compra.comprador.id && usuario.id !== organizadorId) {
-      throw new ForbiddenError('Solo el comprador y el organizador del evento pueden participar en este chat.', 'MENSAJERO_NO_AUTORIZADO');
+    if (!compra.puedeSerVistaPor(usuario)) {
+      throw new ForbiddenError(
+        'Solo el comprador y el organizador del evento pueden participar en este chat.',
+        'MENSAJERO_NO_AUTORIZADO'
+      );
     }
 
     if (compra.estaConversacionCerrada()) {
@@ -89,12 +88,11 @@ export class MensajeService {
       throw error;
     }
 
-    const organizadorId =
-      typeof compra.evento.organizador === 'object'
-        ? compra.evento.organizador?.id
-        : compra.evento.organizadorId;
-    if (usuarioId !== compra.comprador.id && usuarioId !== organizadorId) {
-      throw new ForbiddenError('Solo el comprador y el organizador del evento pueden leer este chat.', 'LECTOR_NO_AUTORIZADO');
+    if (!compra.esComprador(usuarioId) && !compra.esOrganizador(usuarioId)) {
+      throw new ForbiddenError(
+        'Solo el comprador y el organizador del evento pueden leer este chat.',
+        'LECTOR_NO_AUTORIZADO'
+      );
     }
 
     const mensajesAnteriores = compra.mensajes.map((mensaje) => ({

@@ -198,6 +198,25 @@ describe('EventoRepository', () => {
       ]);
     });
 
+    test('ordena por rating dejando al final los eventos sin reseñas (organizadorRating === null)', async () => {
+      const sinResenias = crearEvento({ id: 'evt-sin-resenias' });
+      const bajo = crearEvento({ id: 'evt-rating-bajo' });
+      const alto = crearEvento({ id: 'evt-rating-alto' });
+      Object.defineProperty(bajo, 'organizadorRating', { value: 2 });
+      Object.defineProperty(alto, 'organizadorRating', { value: 5 });
+      await repository.save(bajo);
+      await repository.save(sinResenias);
+      await repository.save(alto);
+
+      const resultado = await repository.findAll({ sortBy: 'rating' });
+
+      expect(resultado.map((evento) => evento.id)).toEqual([
+        'evt-rating-alto',
+        'evt-rating-bajo',
+        'evt-sin-resenias',
+      ]);
+    });
+
     test('ordena por precio ascendente con sortBy=precio', async () => {
       const teCaro = new TipoEntrada({ id: 'te-caro', nombre: 'VIP', precio: 50000, cupo: 10 });
       const teBarato = new TipoEntrada({ id: 'te-barato', nombre: 'General', precio: 5000, cupo: 100 });

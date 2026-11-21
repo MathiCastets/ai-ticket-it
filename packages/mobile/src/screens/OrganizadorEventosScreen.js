@@ -114,6 +114,15 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
     );
 
   const abrirEdicion = (evento) => {
+    const estado = obtenerEstadoEvento(evento, Date.now());
+    if (estado === 'terminados' || evento.cerrado) {
+      notify({
+        title: 'Evento no editable',
+        message: 'No se puede editar un evento que ya ha finalizado o está cerrado.',
+        type: 'warning',
+      });
+      return;
+    }
     setEventoEditando(evento);
     setFormulario(crearFormulario(evento));
   };
@@ -189,6 +198,17 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
   };
 
   const guardarCambios = async () => {
+    if (!eventoEditando || !formulario) return;
+    const estadoActual = obtenerEstadoEvento(eventoEditando, Date.now());
+    if (estadoActual === 'terminados' || eventoEditando.cerrado) {
+      notify({
+        title: 'Evento no editable',
+        message: 'No se puede editar un evento que ya ha finalizado o está cerrado.',
+        type: 'warning',
+      });
+      cerrarEdicion();
+      return;
+    }
     if (!formulario.nombre.trim()) {
       notify({
         title: 'Falta el nombre',
@@ -462,13 +482,34 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
                     </View>
                     <View style={styles.actions}>
                       <TouchableOpacity
-                        style={styles.secondaryButton}
+                        style={[
+                          styles.secondaryButton,
+                          (estado === 'terminados' || evento.cerrado) && styles.disabledSecondaryButton,
+                        ]}
                         onPress={() => abrirEdicion(evento)}
+                        disabled={estado === 'terminados' || Boolean(evento.cerrado)}
+                        activeOpacity={(estado === 'terminados' || evento.cerrado) ? 1 : 0.7}
                         accessibilityRole="button"
-                        accessibilityLabel={`Editar ${evento.nombre}`}
+                        accessibilityLabel={
+                          (estado === 'terminados' || evento.cerrado)
+                            ? `Evento finalizado, no se puede editar ${evento.nombre}`
+                            : `Editar ${evento.nombre}`
+                        }
+                        accessibilityState={{ disabled: estado === 'terminados' || Boolean(evento.cerrado) }}
                       >
-                        <Feather name="edit-2" size={15} color={COLORS.tertiary} />
-                        <Text style={styles.secondaryButtonText}>Editar</Text>
+                        <Feather
+                          name="edit-2"
+                          size={15}
+                          color={(estado === 'terminados' || evento.cerrado) ? COLORS.textMuted : COLORS.tertiary}
+                        />
+                        <Text
+                          style={[
+                            styles.secondaryButtonText,
+                            (estado === 'terminados' || evento.cerrado) && styles.disabledSecondaryButtonText,
+                          ]}
+                        >
+                          Editar
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.primaryButton}
@@ -781,7 +822,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: COLORS.surfaceContainerLow,
   },
+  disabledSecondaryButton: {
+    opacity: 0.45,
+    backgroundColor: COLORS.surfaceContainerLowest,
+  },
   secondaryButtonText: { color: COLORS.tertiary, fontSize: 12, fontWeight: '700' },
+  disabledSecondaryButtonText: { color: COLORS.textMuted },
   primaryButton: {
     flex: 1,
     minHeight: 40,

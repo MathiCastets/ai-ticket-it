@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from '@jest/globals';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { EventoImageStorage } from '../../src/services/EventoImageStorage.js';
+import { UPLOADS_DIRECTORY } from '../../src/config/uploadConfig.js';
 
 describe('EventoImageStorage', () => {
   let directory;
@@ -60,5 +61,32 @@ describe('EventoImageStorage', () => {
       storage.eliminar([imagePath, '/uploads/already-removed.jpg'])
     ).resolves.toBeUndefined();
     await expect(readdir(directory)).resolves.toEqual([]);
+  });
+
+  test('eliminar relanza errores que no sean ENOENT (por ejemplo al intentar unlink de un subdirectorio)', async () => {
+    await mkdir(path.join(directory, 'subdir'));
+    await expect(storage.eliminar(['/uploads/subdir'])).rejects.toThrow();
+  });
+
+  test.each([
+    ['image/jpeg con primer byte alterado', 'image/jpeg', Buffer.from([0x00, 0xd8, 0xff])],
+    ['image/jpeg con segundo byte alterado', 'image/jpeg', Buffer.from([0xff, 0x00, 0xff])],
+    ['image/jpeg con tercer byte alterado', 'image/jpeg', Buffer.from([0xff, 0xd8, 0x00])],
+    ['image/webp sin header WEBP', 'image/webp', Buffer.from('RIFF0000WAVE', 'ascii')],
+    ['image/webp sin header RIFF', 'image/webp', Buffer.from('XXXX0000WEBP', 'ascii')],
+    ['image/png con byte final alterado', 'image/png', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x00])],
+  ])('rechaza magic bytes invalidos para %s', async (_desc, mimetype, buffer) => {
+    await expect(
+      storage.guardar([{ mimetype, buffer }])
+    ).rejects.toMatchObject({
+      name: 'BusinessRuleError',
+      code: 'FORMATO_IMAGEN_INVALIDO',
+      message: 'Solo se permiten imágenes JPEG, PNG o WebP válidas',
+    });
+  });
+
+  test('instanciacion sin argumentos usa el directorio por defecto UPLOADS_DIRECTORY', () => {
+    const defaultStorage = new EventoImageStorage();
+    expect(defaultStorage.directory).toBe(UPLOADS_DIRECTORY);
   });
 });

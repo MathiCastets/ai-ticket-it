@@ -35,6 +35,7 @@ function BottomTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
           backgroundColor: COLORS.surfaceContainerLowest,
           borderTopColor: 'rgba(255, 255, 255, 0.08)',

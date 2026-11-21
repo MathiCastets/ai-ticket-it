@@ -39,7 +39,14 @@ class EventoRepository {
     if (sortBy === 'precio') {
       result.sort((a, b) => a.precioMinimo() - b.precioMinimo());
     } else if (sortBy === 'rating') {
-      result.sort((a, b) => b.organizadorRating - a.organizadorRating);
+      result.sort((a, b) => {
+        const rA = a.organizadorRating ?? null;
+        const rB = b.organizadorRating ?? null;
+        if (rA === null && rB === null) return 0;
+        if (rA === null) return 1;
+        if (rB === null) return -1;
+        return rB - rA;
+      });
     } else {
       result.sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
     }

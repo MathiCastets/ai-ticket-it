@@ -30,6 +30,10 @@ export default function ExplorarScreen({ navigation }) {
 
   const getCat = (c) => (typeof c === 'object' && c !== null ? c.nombre || '' : c || '');
   const getOrg = (o) => (typeof o === 'object' && o !== null ? o.nombre || '' : o || '');
+  const getMinPrice = (evento) =>
+    evento.tiposEntrada?.length
+      ? Math.min(...evento.tiposEntrada.map((t) => t.precio))
+      : 0;
   const categoriasDisponibles = useMemo(
     () =>
       [
@@ -48,7 +52,10 @@ export default function ExplorarScreen({ navigation }) {
     eventos.forEach((evento) => {
       const organizadorId = evento.organizadorId || evento.organizadorObj?.id;
       const totalResenias = Number(evento.totalResenias);
-      const rating = Number(evento.organizadorRating);
+      const rating =
+        evento.organizadorRating !== null && evento.organizadorRating !== undefined
+          ? Number(evento.organizadorRating)
+          : NaN;
       if (
         !organizadorId ||
         !Number.isFinite(totalResenias) ||
@@ -108,7 +115,6 @@ export default function ExplorarScreen({ navigation }) {
     if (selectedSort === 'fecha') {
       result.sort((a, b) => direction * (new Date(a.fecha).getTime() - new Date(b.fecha).getTime()));
     } else if (selectedSort === 'precio') {
-      const getMinPrice = (e) => (e.tiposEntrada && e.tiposEntrada.length > 0 ? Math.min(...e.tiposEntrada.map((t) => t.precio)) : 0);
       result.sort((a, b) => direction * (getMinPrice(a) - getMinPrice(b)));
     } else if (selectedSort === 'rating') {
       result.sort(
@@ -334,7 +340,7 @@ export default function ExplorarScreen({ navigation }) {
                       <Text style={styles.eventPrice}>
                         Desde{' '}
                         <Text style={styles.eventPriceAmount}>
-                          ${item.tiposEntrada[0]?.precio?.toLocaleString('es-AR')}
+                          ${getMinPrice(item).toLocaleString('es-AR')}
                         </Text>
                       </Text>
                     </View>

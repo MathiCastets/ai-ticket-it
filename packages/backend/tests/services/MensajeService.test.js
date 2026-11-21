@@ -7,7 +7,6 @@ import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
 import { EstadoCompra } from '../../src/domain/enums/EstadoCompra.js';
-import { BusinessRuleError, ForbiddenError, ResourceNotFoundError } from '../../src/services/errors/index.js';
 
 describe('MensajeService', () => {
   let compraRepo;
@@ -72,7 +71,11 @@ describe('MensajeService', () => {
     test('un usuario ajeno no puede enviar mensajes', async () => {
       await expect(
         service.enviarMensaje('compra-1', { usuarioId: 'otro-1', texto: 'Mensaje no autorizado' })
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toMatchObject({
+        name: 'ForbiddenError',
+        code: 'MENSAJERO_NO_AUTORIZADO',
+        message: 'Solo el comprador y el organizador del evento pueden participar en este chat.',
+      });
 
       await service.enviarMensaje('compra-1', {
         usuarioId: 'comp-1',
@@ -81,16 +84,32 @@ describe('MensajeService', () => {
       expect(compra.mensajes.some((m) => m.mensaje === 'Mensaje no autorizado')).toBe(false);
     });
 
-    test('no puede enviarse con texto vacío', async () => {
+    test('no puede enviarse con texto vacío o solo espacios', async () => {
       await expect(
         service.enviarMensaje('compra-1', { usuarioId: 'comp-1', texto: '' })
-      ).rejects.toThrow(BusinessRuleError);
+      ).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'BUSINESS_RULE_VIOLATION',
+        message: 'El texto del mensaje no puede estar vacío',
+      });
+
+      await expect(
+        service.enviarMensaje('compra-1', { usuarioId: 'comp-1', texto: '   ' })
+      ).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'BUSINESS_RULE_VIOLATION',
+        message: 'El texto del mensaje no puede estar vacío',
+      });
     });
 
     test('no puede enviarse con texto que no es string', async () => {
       await expect(
         service.enviarMensaje('compra-1', { usuarioId: 'comp-1', texto: 42 })
-      ).rejects.toThrow(BusinessRuleError);
+      ).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'BUSINESS_RULE_VIOLATION',
+        message: 'El texto del mensaje no puede estar vacío',
+      });
     });
 
     test('lanza error si la conversación está cerrada', async () => {
@@ -100,19 +119,29 @@ describe('MensajeService', () => {
 
       await expect(
         service.enviarMensaje('compra-1', { usuarioId: 'comp-1', texto: 'Mensaje tardío' })
-      ).rejects.toThrow(BusinessRuleError);
+      ).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'CONVERSACION_CERRADA',
+        message: 'Esta conversación se encuentra cerrada.',
+      });
     });
 
     test('lanza ResourceNotFoundError si la compra no existe', async () => {
       await expect(
         service.enviarMensaje('inexistente', { usuarioId: 'comp-1', texto: 'Hola' })
-      ).rejects.toThrow(ResourceNotFoundError);
+      ).rejects.toMatchObject({
+        name: 'ResourceNotFoundError',
+        message: expect.stringContaining('Compra'),
+      });
     });
 
     test('lanza ResourceNotFoundError si el usuario no existe', async () => {
       await expect(
         service.enviarMensaje('compra-1', { usuarioId: 'user-no-existe', texto: 'Hola' })
-      ).rejects.toThrow(ResourceNotFoundError);
+      ).rejects.toMatchObject({
+        name: 'ResourceNotFoundError',
+        message: expect.stringContaining('Usuario'),
+      });
     });
 
     test('rollback: no persiste mensaje si falla el save', async () => {
@@ -175,7 +204,17 @@ describe('MensajeService', () => {
     });
 
     test('lanza ResourceNotFoundError si la compra no existe', async () => {
-      await expect(service.obtenerMensajes('inexistente')).rejects.toThrow(ResourceNotFoundError);
+      await expect(service.obtenerMensajes('inexistente')).rejects.toMatchObject({
+        name: 'ResourceNotFoundError',
+        message: expect.stringContaining('Compra'),
+      });
+    });
+
+    test('propaga errores inesperados del repositorio de compras al obtener mensajes', async () => {
+      compraRepo.findById = async () => {
+        throw new Error('Fallo de base de datos al obtener');
+      };
+      await expect(service.obtenerMensajes('compra-1')).rejects.toThrow('Fallo de base de datos al obtener');
     });
 
     test('devuelve una lista vacía si la compra no tiene una colección de mensajes', async () => {
@@ -207,13 +246,29 @@ describe('MensajeService', () => {
     test('un usuario ajeno no puede marcar mensajes', async () => {
       await expect(
         service.marcarMensajesLeidos('compra-1', 'otro-1')
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toMatchObject({
+        name: 'ForbiddenError',
+        code: 'LECTOR_NO_AUTORIZADO',
+        message: 'Solo el comprador y el organizador del evento pueden leer este chat.',
+      });
     });
 
     test('lanza ResourceNotFoundError si la compra no existe', async () => {
       await expect(
         service.marcarMensajesLeidos('inexistente', 'comp-1')
-      ).rejects.toThrow(ResourceNotFoundError);
+      ).rejects.toMatchObject({
+        name: 'ResourceNotFoundError',
+        message: expect.stringContaining('Compra'),
+      });
+    });
+
+    test('propaga errores inesperados del repositorio de compras al marcar leídos', async () => {
+      compraRepo.findById = async () => {
+        throw new Error('Fallo inesperado al buscar compra');
+      };
+      await expect(service.marcarMensajesLeidos('compra-1', 'comp-1')).rejects.toThrow(
+        'Fallo inesperado al buscar compra'
+      );
     });
 
     test('no persiste cambios cuando todos los mensajes ya están leídos por el usuario', async () => {

@@ -53,8 +53,7 @@ export class EventoController {
         if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
           throw new ValidationError('El campo evento debe contener un objeto JSON');
         }
-      }
-      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      } else if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
         throw new ValidationError('El cuerpo de la solicitud debe ser un objeto JSON');
       }
 
@@ -87,17 +86,8 @@ export class EventoController {
       ) {
         throw new ValidationError('La categoría del evento es requerida');
       }
-      if (
-        (categoria !== undefined && typeof categoria !== 'string') ||
-        (categoriaId !== undefined && typeof categoriaId !== 'string')
-      ) {
-        throw new ValidationError('La categoría debe indicarse mediante un nombre o id de texto');
-      }
-      if (!finalOrganizadorId) {
-        throw new ValidationError('organizadorId es requerido');
-      }
       if (typeof finalOrganizadorId !== 'string' || !finalOrganizadorId.trim()) {
-        throw new ValidationError('organizadorId debe ser un texto no vacío');
+        throw new ValidationError('organizadorId es requerido');
       }
       if (!Array.isArray(tiposEntrada) || tiposEntrada.length === 0) {
         throw new ValidationError('Debe incluir al menos un tipo de entrada con su precio y cupo');
@@ -126,6 +116,8 @@ export class EventoController {
         if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
           throw new ValidationError('El campo cambios debe contener un objeto JSON');
         }
+      } else if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw new ValidationError('El cuerpo de la solicitud debe ser un objeto JSON');
       }
 
       const {

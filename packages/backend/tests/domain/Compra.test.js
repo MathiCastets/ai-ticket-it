@@ -407,6 +407,20 @@ describe('Compra', () => {
       expect(typeof json.conversacionCerrada).toBe('boolean');
     });
 
+    test('expone diasFaltantes en toJSON para eventos futuros y pasados', () => {
+      const compraFutura = crearCompra();
+      const jsonFutura = compraFutura.toJSON();
+      expect(Number.isInteger(jsonFutura.diasFaltantes)).toBe(true);
+      expect(jsonFutura.diasFaltantes).toBeGreaterThan(0);
+
+      const eventoPasado = crearEvento(-24 * 60 * 60 * 1000);
+      const compraPasada = crearCompra({
+        evento: eventoPasado,
+        tipoEntrada: eventoPasado.tiposEntrada[0],
+      });
+      expect(compraPasada.toJSON().diasFaltantes).toBe(0);
+    });
+
     test('no expone el email del comprador ni del organizador en toJSON', () => {
       const comprador = new Usuario({
         id: 'u-priv',

@@ -227,6 +227,36 @@ describe('CompraService', () => {
       expect(guardarEvento).toHaveBeenCalledTimes(2);
       expect(failingCompraRepo.delete).toHaveBeenCalledTimes(1);
     });
+
+    test('propaga errores inesperados al buscar el comprador', async () => {
+      usuarioRepo.findById = async () => {
+        throw new Error('Fallo inesperado comprador');
+      };
+
+      await expect(
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-1',
+          cantidad: 1,
+        })
+      ).rejects.toThrow('Fallo inesperado comprador');
+    });
+
+    test('propaga errores inesperados al buscar el evento', async () => {
+      eventoRepo.findById = async () => {
+        throw new Error('Fallo inesperado evento');
+      };
+
+      await expect(
+        service.realizarCompra({
+          compradorId: 'comp-1',
+          eventoId: 'evt-1',
+          tipoEntradaId: 'te-1',
+          cantidad: 1,
+        })
+      ).rejects.toThrow('Fallo inesperado evento');
+    });
   });
 
   // ─── cancelarCompra ───────────────────────────────────────────────────────
@@ -312,6 +342,57 @@ describe('CompraService', () => {
       expect(compra.estado).toBe(estadoAntes);
       expect(compra.historialCambios.length).toBe(historialAntes);
     });
+
+    test('registra actor string en historial al cancelar compra', async () => {
+      const compra = await realizarCompra(1);
+      await service.cancelarCompra(compra.id, 'Juan Pérez');
+      expect(compra.estado).toBe(EstadoCompra.REEMBOLSADA);
+      expect(compra.historialCambios[compra.historialCambios.length - 1].quien).toBe('Juan Pérez');
+    });
+
+    test('registra actor objeto con nombreCompleto o nombre en historial al cancelar', async () => {
+      const compra1 = await realizarCompra(1);
+      await service.cancelarCompra(compra1.id, { id: 'comp-1', nombreCompleto: 'Juan Completo' });
+      expect(compra1.historialCambios[compra1.historialCambios.length - 1].quien).toBe('Juan Completo');
+
+      const compra2 = await realizarCompra(1);
+      await service.cancelarCompra(compra2.id, { id: 'comp-1', nombre: 'Juan Nombre' });
+      expect(compra2.historialCambios[compra2.historialCambios.length - 1].quien).toBe('Juan Nombre');
+
+      const compra3 = await realizarCompra(1);
+      await service.cancelarCompra(compra3.id, { id: 'comp-1' });
+      expect(compra3.historialCambios[compra3.historialCambios.length - 1].quien).toBe('Comprador');
+    });
+
+    test('usa quien explícito en cancelarCompra si se provee', async () => {
+      const compra = await realizarCompra(1);
+      await service.cancelarCompra(compra.id, comprador, 'Soporte Técnico');
+      expect(compra.historialCambios[compra.historialCambios.length - 1].quien).toBe('Soporte Técnico');
+    });
+
+    test('lanza BusinessRuleError si el tipo de entrada ya no existe en el evento al cancelar', async () => {
+      const compra = await realizarCompra(1);
+      evento.tiposEntrada = [];
+      await expect(service.cancelarCompra(compra.id)).rejects.toMatchObject({
+        name: 'BusinessRuleError',
+        code: 'TIPO_ENTRADA_NO_DISPONIBLE',
+        message: expect.stringMatching(/ya no existe en el evento/i),
+      });
+    });
+
+    test('lanza AggregateError si falla el rollback en cancelarCompra', async () => {
+      const compra = await realizarCompra(1);
+      const errorOriginal = new Error('Error al guardar compra cancelada');
+      const errorRollback = new Error('Error al revertir compra cancelada');
+      compraRepo.save = jest.fn()
+        .mockRejectedValueOnce(errorOriginal)
+        .mockRejectedValueOnce(errorRollback);
+
+      await expect(service.cancelarCompra(compra.id)).rejects.toMatchObject({
+        name: 'AggregateError',
+        message: expect.stringMatching(/No se pudo completar la cancelación de forma consistente/i),
+      });
+    });
   });
 
   // ─── marcarUtilizada ──────────────────────────────────────────────────────
@@ -379,6 +460,66 @@ describe('CompraService', () => {
 
       await expect(service.marcarUtilizada(compra.id)).rejects.toThrow();
     });
+
+    test('registra actor string en historial al marcarUtilizada', async () => {
+      const compra = await service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1 });
+      await service.marcarUtilizada(compra.id, 'Portería');
+      expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
+      expect(compra.historialCambios[compra.historialCambios.length - 1].quien).toBe('Portería');
+    });
+
+    test('registra actor objeto con nombreCompleto o nombre en historial al marcarUtilizada', async () => {
+      const compra1 = await service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1 });
+      await service.marcarUtilizada(compra1.id, { id: 'org-1', nombreCompleto: 'Staff Mayor' });
+      expect(compra1.historialCambios[compra1.historialCambios.length - 1].quien).toBe('Staff Mayor');
+
+      const compra2 = await service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1 });
+      await service.marcarUtilizada(compra2.id, { id: 'org-1', nombre: 'Staff Menor' });
+      expect(compra2.historialCambios[compra2.historialCambios.length - 1].quien).toBe('Staff Menor');
+
+      const compra3 = await service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1 });
+      await service.marcarUtilizada(compra3.id, { id: 'org-1' });
+      expect(compra3.historialCambios[compra3.historialCambios.length - 1].quien).toBe('Acreditación en Puerta');
+    });
+
+    test('usa quien explícito en marcarUtilizada', async () => {
+      const compra = await service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1 });
+      await service.marcarUtilizada(compra.id, organizador, 'Seguridad');
+      expect(compra.historialCambios[compra.historialCambios.length - 1].quien).toBe('Seguridad');
+    });
+
+    test('rollback: restaura estado si falla save en marcarUtilizada', async () => {
+      const compra = await service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1 });
+      const estadoPrevio = compra.estado;
+      const historialPrevio = compra.historialCambios.length;
+
+      let saveCount = 0;
+      const failingRepo = {
+        findById: (...args) => compraRepo.findById(...args),
+        save: async (c) => {
+          saveCount += 1;
+          if (saveCount === 1) throw new Error('Fallo al acreditar compra');
+          return c;
+        },
+      };
+      service = new CompraService(failingRepo, eventoRepo, usuarioRepo);
+
+      await expect(service.marcarUtilizada(compra.id)).rejects.toThrow('Fallo al acreditar compra');
+      expect(compra.estado).toBe(estadoPrevio);
+      expect(compra.historialCambios).toHaveLength(historialPrevio);
+    });
+
+    test('lanza AggregateError si falla el rollback en marcarUtilizada', async () => {
+      const compra = await service.realizarCompra({ compradorId: 'comp-1', eventoId: 'evt-1', tipoEntradaId: 'te-1', cantidad: 1 });
+      compraRepo.save = jest.fn()
+        .mockRejectedValueOnce(new Error('Fallo acreditar'))
+        .mockRejectedValueOnce(new Error('Fallo rollback acreditar'));
+
+      await expect(service.marcarUtilizada(compra.id)).rejects.toMatchObject({
+        name: 'AggregateError',
+        message: expect.stringMatching(/No se pudo completar la acreditación de forma consistente/i),
+      });
+    });
   });
 
   // ─── calificarCompra ──────────────────────────────────────────────────────
@@ -438,6 +579,83 @@ describe('CompraService', () => {
       await expect(
         service.calificarCompra(compra.id, { puntuacion: 5, comentario: 'Segunda calificación' })
       ).rejects.toThrow(BusinessRuleError);
+    });
+
+    test('rollback: restaura resenias y reseniaRealizada si falla save en calificarCompra', async () => {
+      const compra = await prepararCompraUtilizada();
+      const reseniasAntes = [...compra.evento.resenias];
+      const reseniaRealizadaAntes = compra.reseniaRealizada;
+
+      let saveCount = 0;
+      const failingRepo = {
+        findById: (...args) => compraRepo.findById(...args),
+        save: async (c) => {
+          saveCount += 1;
+          if (saveCount === 1) throw new Error('Fallo al guardar compra calificada');
+          return c;
+        },
+      };
+      service = new CompraService(failingRepo, eventoRepo, usuarioRepo);
+
+      await expect(
+        service.calificarCompra(compra.id, { puntuacion: 5, comentario: 'Genial' })
+      ).rejects.toThrow('Fallo al guardar compra calificada');
+
+      expect(compra.evento.resenias).toEqual(reseniasAntes);
+      expect(compra.reseniaRealizada).toBe(reseniaRealizadaAntes);
+    });
+
+    test('lanza AggregateError si falla el rollback en calificarCompra', async () => {
+      const compra = await prepararCompraUtilizada();
+      compraRepo.save = jest.fn()
+        .mockRejectedValueOnce(new Error('Fallo al calificar'))
+        .mockRejectedValueOnce(new Error('Fallo rollback calificar'));
+
+      await expect(
+        service.calificarCompra(compra.id, { puntuacion: 5, comentario: 'Genial' })
+      ).rejects.toMatchObject({
+        name: 'AggregateError',
+        message: expect.stringMatching(/No se pudo completar la calificación de forma consistente/i),
+      });
+    });
+  });
+
+  // ─── listarPorComprador ───────────────────────────────────────────────────
+
+  describe('listarPorComprador', () => {
+    test('retorna las compras del comprador', async () => {
+      const compra = await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+
+      const compras = await service.listarPorComprador('comp-1');
+      expect(compras).toHaveLength(1);
+      expect(compras[0].id).toBe(compra.id);
+
+      const comprasOtro = await service.listarPorComprador('otro-comprador');
+      expect(comprasOtro).toEqual([]);
+    });
+  });
+
+  // ─── listarTodas ──────────────────────────────────────────────────────────
+
+  describe('listarTodas', () => {
+    test('retorna todas las compras registradas', async () => {
+      expect(await service.listarTodas()).toEqual([]);
+
+      const compra = await service.realizarCompra({
+        compradorId: 'comp-1',
+        eventoId: 'evt-1',
+        tipoEntradaId: 'te-1',
+        cantidad: 1,
+      });
+
+      const todas = await service.listarTodas();
+      expect(todas).toHaveLength(1);
+      expect(todas[0].id).toBe(compra.id);
     });
   });
 

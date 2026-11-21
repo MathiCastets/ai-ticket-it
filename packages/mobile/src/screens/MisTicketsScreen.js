@@ -74,6 +74,7 @@ export default function MisTicketsScreen({ navigation }) {
       if (activeTab === 'pendientes' && compra.estado !== 'PENDIENTE') return false;
       if (activeTab === 'utilizadas' && compra.estado !== 'UTILIZADA') return false;
       if (activeTab === 'reembolsadas' && compra.estado !== 'REEMBOLSADA') return false;
+      if (activeTab === 'canceladas' && compra.estado !== 'CANCELADA') return false;
 
       if (!textoBusqueda) return true;
       return normalizarTexto(
@@ -192,6 +193,11 @@ export default function MisTicketsScreen({ navigation }) {
               label: 'Reembolsadas',
               count: comprasDelUsuario.filter((c) => c.estado === 'REEMBOLSADA').length,
             },
+            {
+              id: 'canceladas',
+              label: 'Canceladas',
+              count: comprasDelUsuario.filter((c) => c.estado === 'CANCELADA').length,
+            },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -228,7 +234,9 @@ export default function MisTicketsScreen({ navigation }) {
             </View>
           ) : (
             filteredCompras.map((compra) => {
-              const dias = getDiasRestantes(compra.eventoFecha);
+              const dias = Number.isFinite(compra.diasFaltantes)
+                ? compra.diasFaltantes
+                : getDiasRestantes(compra.eventoFecha);
               const isConfirmada = compra.estado === 'CONFIRMADA';
               const isUtilizada = compra.estado === 'UTILIZADA';
               const isPendiente = compra.estado === 'PENDIENTE';

@@ -16,6 +16,7 @@ export class Evento {
     destacado = false,
     organizador,    // Usuario (referencia directa)
     resenias = [],
+    estado = '',
   }) {
     if (!nombre || !fecha) {
       throw new Error('Evento requiere nombre y fecha válidos');
@@ -34,6 +35,7 @@ export class Evento {
     this.destacado   = Boolean(destacado);
     this.organizador = organizador; // Usuario
     this.resenias    = Array.isArray(resenias) ? resenias : [];
+    this.estado      = estado || '';
 
     // Tipos de entrada como entidades TipoEntrada
     this.tiposEntrada = tiposEntrada.map((t) =>
@@ -59,7 +61,7 @@ export class Evento {
 
   // Calcula rating promedio a partir de las reseñas reales
   get organizadorRating() {
-    if (this.resenias.length === 0) return 5.0;
+    if (this.resenias.length === 0) return null;
     const suma = this.resenias.reduce((acc, r) => acc + r.puntuacion, 0);
     return Number((suma / this.resenias.length).toFixed(1));
   }
@@ -93,6 +95,16 @@ export class Evento {
     this.resenias.unshift(resenia);
   }
 
+  estaCerrado(ahora = Date.now()) {
+    if (this.estado === 'cerrado' || this.estado === 'finalizado') {
+      return true;
+    }
+    const fechaMs = this.fecha instanceof Date ? this.fecha.getTime() : new Date(this.fecha).getTime();
+    if (!Number.isFinite(fechaMs)) return false;
+    const ahoraMs = ahora instanceof Date ? ahora.getTime() : Number(ahora);
+    return fechaMs <= ahoraMs;
+  }
+
   toJSON() {
     let organizadorJson = this.organizador;
     if (typeof this.organizador?.toJSON === 'function') {
@@ -122,6 +134,7 @@ export class Evento {
       totalResenias: this.totalResenias,
       tiposEntrada: this.tiposEntrada.map((t) => (typeof t?.toJSON === 'function' ? t.toJSON() : t)),
       resenias: this.resenias.map((r) => (typeof r?.toJSON === 'function' ? r.toJSON() : r)),
+      cerrado: this.estaCerrado(),
     };
   }
 }

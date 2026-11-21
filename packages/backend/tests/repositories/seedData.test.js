@@ -48,6 +48,31 @@ describe('Seed Data (Datos Semilla)', () => {
     expect(compra3.reseniaRealizada).toBe(false);
   });
 
+  test('los eventos pasados incluyen reseñas iniciales válidas sin pisar compras pendientes de calificar', () => {
+    const { eventos, compras } = createSeedData();
+
+    for (const eventoId of ['evt-sonora-aniversario', 'evt-teatro-3']) {
+      const evento = eventos.find((e) => e.id === eventoId);
+      expect(evento).toBeDefined();
+      expect(evento.resenias.length).toBeGreaterThanOrEqual(1);
+
+      for (const resenia of evento.resenias) {
+        expect(resenia.puntuacion).toBeGreaterThanOrEqual(0.5);
+        expect(resenia.puntuacion).toBeLessThanOrEqual(5);
+        expect(resenia.detalle.trim().length).toBeGreaterThan(0);
+        expect(resenia.comprador).toBeDefined();
+        expect(resenia.fechaHora.getTime()).toBeGreaterThan(evento.fecha.getTime());
+      }
+    }
+
+    for (const compraId of ['compra-3', 'compra-4']) {
+      const compra = compras.find((c) => c.id === compraId);
+      expect(compra).toBeDefined();
+      expect(compra.estado).toBe('UTILIZADA');
+      expect(compra.reseniaRealizada).toBe(false);
+    }
+  });
+
   test('la disponibilidad de cupos en seed coincide con las compras vendidas', () => {
     const { eventos, compras } = createSeedData();
 

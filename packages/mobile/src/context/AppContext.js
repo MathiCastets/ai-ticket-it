@@ -867,6 +867,10 @@ export const AppProvider = ({ children }) => {
     if (!eventoActual || eventoActual.organizadorId !== currentUser.id) {
       return { success: false, error: 'Este evento no pertenece al organizador seleccionado.' };
     }
+    const fechaMs = new Date(eventoActual.fecha).getTime();
+    if (eventoActual.cerrado || (Number.isFinite(fechaMs) && fechaMs <= Date.now())) {
+      return { success: false, error: 'No se puede editar un evento que ya ha finalizado o está cerrado.' };
+    }
     const { imagenes = [], ...datosCambios } = cambios;
 
     if (await backendDisponible()) {

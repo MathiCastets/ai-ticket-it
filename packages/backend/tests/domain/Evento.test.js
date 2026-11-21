@@ -151,8 +151,8 @@ describe('Evento', () => {
       comprador = new Usuario({ id: 'comp-1', nombre: 'Comprador', rol: 'comprador' });
     });
 
-    test('retorna 5.0 como rating cuando no hay reseñas', () => {
-      expect(evento.organizadorRating).toBe(5.0);
+    test('retorna null como rating cuando no hay reseñas', () => {
+      expect(evento.organizadorRating).toBeNull();
     });
 
     test('retorna 0 como totalResenias cuando no hay reseñas', () => {
@@ -276,6 +276,40 @@ describe('Evento', () => {
 
       const str = JSON.stringify(evento);
       expect(str).not.toContain('comprador.oculto@example.com');
+    });
+
+    test('incluye la propiedad cerrado en toJSON', () => {
+      const eventoFuturo = crearEvento({ fecha: new Date(Date.now() + 86400000).toISOString() });
+      expect(eventoFuturo.toJSON().cerrado).toBe(false);
+
+      const eventoPasado = crearEvento({ fecha: new Date(Date.now() - 86400000).toISOString() });
+      expect(eventoPasado.toJSON().cerrado).toBe(true);
+    });
+  });
+
+  describe('estaCerrado', () => {
+    test('retorna false para un evento futuro', () => {
+      const evento = crearEvento({ fecha: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() });
+      expect(evento.estaCerrado()).toBe(false);
+    });
+
+    test('retorna true para un evento en el pasado', () => {
+      const evento = crearEvento({ fecha: new Date(Date.now() - 1000).toISOString() });
+      expect(evento.estaCerrado()).toBe(true);
+    });
+
+    test('retorna true si el estado es cerrado o finalizado independientemente de la fecha', () => {
+      const eventoCerrado = crearEvento({
+        fecha: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        estado: 'cerrado',
+      });
+      expect(eventoCerrado.estaCerrado()).toBe(true);
+
+      const eventoFinalizado = crearEvento({
+        fecha: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        estado: 'finalizado',
+      });
+      expect(eventoFinalizado.estaCerrado()).toBe(true);
     });
   });
 });

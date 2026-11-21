@@ -39,8 +39,11 @@ describe('EventoController', () => {
 
     test.each([
       [{ categoria: ['cat-1'] }],
+      [{ categoria: 123 }],
       [{ search: ['concierto'] }],
+      [{ search: 123 }],
       [{ sortBy: ['fecha'] }],
+      [{ sortBy: 123 }],
     ])('rechaza filtros que no son valores únicos de texto (%o)', async (query) => {
       await controller.getAll({ query }, res, next);
 
@@ -64,6 +67,35 @@ describe('EventoController', () => {
         })
       );
       expect(mockEventoService.listarEventos).not.toHaveBeenCalled();
+    });
+
+    test.each(['fecha', 'precio', 'rating'])(
+      'permite sortBy válido: %s',
+      async (sortBy) => {
+        await controller.getAll({ query: { sortBy } }, res, next);
+
+        expect(mockEventoService.listarEventos).toHaveBeenCalledWith({
+          categoria: undefined,
+          search: undefined,
+          sortBy,
+        });
+        expect(res.status).toHaveBeenCalledWith(200);
+      }
+    );
+
+    test('permite filtrar por categoria y search', async () => {
+      await controller.getAll(
+        { query: { categoria: 'recitales', search: 'rock' } },
+        res,
+        next
+      );
+
+      expect(mockEventoService.listarEventos).toHaveBeenCalledWith({
+        categoria: 'recitales',
+        search: 'rock',
+        sortBy: undefined,
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
     test('obtiene y responde con lista de eventos y 200', async () => {
@@ -261,10 +293,10 @@ describe('EventoController', () => {
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
 
-    test('rechaza si falta el nombre sin llamar al servicio', async () => {
+    test.each(['', '   ', 123])('rechaza si el nombre no es texto válido (%o)', async (nombre) => {
       const req = {
         is: () => false,
-        body: { ...eventoValido, nombre: '' },
+        body: { ...eventoValido, nombre },
       };
 
       await controller.create(req, res, next);
@@ -331,11 +363,60 @@ describe('EventoController', () => {
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
 
-    test('rechaza si falta organizadorId y no hay actor autenticado', async () => {
+    test('rechaza si categoria y categoriaId contienen solo espacios', async () => {
+      const req = {
+        is: () => false,
+        body: { ...eventoValido, categoria: '   ', categoriaId: '   ' },
+      };
+
+      await controller.create(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: expect.stringMatching(/La categoría del evento es requerida/i),
+        })
+      );
+      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+    });
+
+    test('permite crear indicando solo categoria (sin categoriaId)', async () => {
+      const { categoriaId: _cid, ...soloCategoria } = eventoValido;
+      mockEventoService.crearEvento.mockResolvedValue({ id: 'evt-cat', ...soloCategoria, categoria: 'Festivales' });
+      const req = {
+        is: () => false,
+        body: { ...soloCategoria, categoria: 'Festivales' },
+      };
+
+      await controller.create(req, res, next);
+
+      expect(mockEventoService.crearEvento).toHaveBeenCalledWith(
+        expect.objectContaining({ categoria: 'Festivales' })
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    test('permite crear indicando solo categoriaId (sin categoria)', async () => {
+      const { categoria: _c, ...soloCategoriaId } = eventoValido;
+      mockEventoService.crearEvento.mockResolvedValue({ id: 'evt-cat-id', ...soloCategoriaId });
+      const req = {
+        is: () => false,
+        body: soloCategoriaId,
+      };
+
+      await controller.create(req, res, next);
+
+      expect(mockEventoService.crearEvento).toHaveBeenCalledWith(
+        expect.objectContaining({ categoriaId: 'cat-1' })
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    test.each(['', '   ', 12345])('rechaza si falta o es inválido organizadorId (%o)', async (organizadorId) => {
       const { organizadorId: _org, ...sinOrg } = eventoValido;
       const req = {
         is: () => false,
-        body: sinOrg,
+        body: organizadorId !== undefined ? { ...sinOrg, organizadorId } : sinOrg,
       };
 
       await controller.create(req, res, next);
@@ -349,21 +430,36 @@ describe('EventoController', () => {
       expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
     });
 
-    test('rechaza si organizadorId solo contiene espacios', async () => {
+    test('crea evento incluyendo imagenes cuando req.files está presente', async () => {
+      mockEventoService.crearEvento.mockResolvedValue({ id: 'evt-files' });
+      const files = [{ filename: 'foto.jpg' }];
       const req = {
         is: () => false,
-        body: { ...eventoValido, organizadorId: '   ' },
+        body: eventoValido,
+        files,
       };
 
       await controller.create(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'ValidationError',
-          message: expect.stringMatching(/organizadorId debe ser un texto no vacío/i),
-        })
+      expect(mockEventoService.crearEvento).toHaveBeenCalledWith(
+        expect.objectContaining({ imagenes: files })
       );
-      expect(mockEventoService.crearEvento).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    test('crea evento con imagenes vacias cuando req.files no está presente', async () => {
+      mockEventoService.crearEvento.mockResolvedValue({ id: 'evt-no-files' });
+      const req = {
+        is: () => false,
+        body: eventoValido,
+      };
+
+      await controller.create(req, res, next);
+
+      expect(mockEventoService.crearEvento).toHaveBeenCalledWith(
+        expect.objectContaining({ imagenes: [] })
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
     });
 
     test('rechaza si no tiene tipos de entrada', async () => {
@@ -413,16 +509,19 @@ describe('EventoController', () => {
       expect(res.status).toHaveBeenCalledWith(201);
     });
 
-    test('rechaza un cuerpo que no es un objeto JSON', async () => {
-      await controller.create({ is: () => false, body: [] }, res, next);
+    test.each([null, [], 'texto', 123])(
+      'rechaza en create un cuerpo que no es un objeto JSON (%o)',
+      async (body) => {
+        await controller.create({ is: () => false, body }, res, next);
 
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'ValidationError',
-          message: 'El cuerpo de la solicitud debe ser un objeto JSON',
-        })
-      );
-    });
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'ValidationError',
+            message: 'El cuerpo de la solicitud debe ser un objeto JSON',
+          })
+        );
+      }
+    );
   });
 
   describe('update', () => {
@@ -534,6 +633,8 @@ describe('EventoController', () => {
     test.each([
       ['JSON inválido', '{', 'El campo cambios debe contener un objeto JSON válido'],
       ['un array JSON', '[]', 'El campo cambios debe contener un objeto JSON'],
+      ['null', 'null', 'El campo cambios debe contener un objeto JSON'],
+      ['un primitivo', '"texto"', 'El campo cambios debe contener un objeto JSON'],
     ])('rechaza multipart con %s', async (_caso, cambios, mensaje) => {
       await controller.update(
         {
@@ -547,6 +648,110 @@ describe('EventoController', () => {
 
       expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: mensaje }));
       expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
+    });
+
+    test('actualiza el evento vía multipart/form-data con éxito', async () => {
+      const eventoModificado = { id: 'evt-1', nombre: 'Modificado Multipart' };
+      mockEventoService.actualizarEvento.mockResolvedValue(eventoModificado);
+      const req = {
+        is: (tipo) => tipo === 'multipart/form-data',
+        params: { id: 'evt-1' },
+        body: { cambios: JSON.stringify({ organizadorId: 'org-1', nombre: 'Modificado Multipart' }) },
+        user: { id: 'org-1', rol: 'organizador' },
+      };
+
+      await controller.update(req, res, next);
+
+      expect(mockEventoService.actualizarEvento).toHaveBeenCalledWith(
+        'evt-1',
+        expect.objectContaining({ nombre: 'Modificado Multipart', organizadorId: 'org-1' })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ data: eventoModificado });
+    });
+
+    test('actualiza con imagenes cuando req.files está presente', async () => {
+      const eventoModificado = { id: 'evt-1', nombre: 'Modificado', imagenes: ['foto1.jpg'] };
+      mockEventoService.actualizarEvento.mockResolvedValue(eventoModificado);
+      const req = {
+        is: () => false,
+        params: { id: 'evt-1' },
+        body: { organizadorId: 'org-1', nombre: 'Modificado' },
+        files: [{ filename: 'foto1.jpg' }],
+        user: { id: 'org-1', rol: 'organizador' },
+      };
+
+      await controller.update(req, res, next);
+
+      expect(mockEventoService.actualizarEvento).toHaveBeenCalledWith(
+        'evt-1',
+        expect.objectContaining({
+          nombre: 'Modificado',
+          organizadorId: 'org-1',
+          imagenes: [{ filename: 'foto1.jpg' }],
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ data: eventoModificado });
+    });
+
+    test('actualiza sin imagenes cuando req.files es undefined', async () => {
+      const eventoModificado = { id: 'evt-1', nombre: 'Modificado', imagenes: [] };
+      mockEventoService.actualizarEvento.mockResolvedValue(eventoModificado);
+      const req = {
+        is: () => false,
+        params: { id: 'evt-1' },
+        body: { organizadorId: 'org-1', nombre: 'Modificado' },
+        user: { id: 'org-1', rol: 'organizador' },
+      };
+
+      await controller.update(req, res, next);
+
+      expect(mockEventoService.actualizarEvento).toHaveBeenCalledWith(
+        'evt-1',
+        expect.objectContaining({
+          nombre: 'Modificado',
+          organizadorId: 'org-1',
+          imagenes: [],
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ data: eventoModificado });
+    });
+
+    test.each([null, [], 'texto', 123])(
+      'rechaza update si body no es un objeto JSON en petición regular (%o)',
+      async (body) => {
+        await controller.update(
+          { is: () => false, body, params: { id: 'evt-1' } },
+          res,
+          next
+        );
+
+        expect(next).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'ValidationError',
+            message: 'El cuerpo de la solicitud debe ser un objeto JSON',
+          })
+        );
+        expect(mockEventoService.actualizarEvento).not.toHaveBeenCalled();
+      }
+    );
+
+    test('pasa el error a next cuando el servicio rechaza la actualización de un evento cerrado', async () => {
+      const errorCerrado = new Error('No se puede editar un evento que ya ha finalizado o está cerrado');
+      mockEventoService.actualizarEvento.mockRejectedValue(errorCerrado);
+
+      const req = {
+        is: () => false,
+        params: { id: 'evt-1' },
+        body: { organizadorId: 'org-1', nombre: 'Cambio' },
+        user: { id: 'org-1', rol: 'organizador' },
+      };
+
+      await controller.update(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(errorCerrado);
     });
   });
 

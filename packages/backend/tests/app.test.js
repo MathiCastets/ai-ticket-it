@@ -4,7 +4,6 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createApp } from '../src/app.js';
 import { UPLOADS_DIRECTORY } from '../src/config/uploadConfig.js';
-import { env } from '../src/config/env.js';
 
 describe('App HTTP Integration Tests', () => {
   let server;
@@ -34,15 +33,14 @@ describe('App HTTP Integration Tests', () => {
 
       expect(res.status).toBe(200);
       expect(data.status).toBe('ok');
+      expect(typeof data.timestamp).toBe('string');
     });
   });
 
   describe('Rutas generales y payloads inválidos', () => {
-    test('permite el origen configurado y rechaza uno no permitido', async () => {
-      const originsOriginales = env.ALLOWED_ORIGINS;
-      env.ALLOWED_ORIGINS = ['https://trusted.example'];
+    test('permite el origen configurado y rechaza uno no permitido con credenciales', async () => {
       const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
-      const corsServer = createApp().listen(0);
+      const corsServer = createApp(['https://trusted.example']).listen(0);
       await new Promise((resolve) => corsServer.once('listening', resolve));
       const corsUrl = `http://127.0.0.1:${corsServer.address().port}/`;
 
@@ -54,36 +52,114 @@ describe('App HTTP Integration Tests', () => {
         expect(permitido.headers.get('access-control-allow-origin')).toBe(
           'https://trusted.example'
         );
+        expect(permitido.headers.get('access-control-allow-credentials')).toBe('true');
 
         const rechazado = await fetch(corsUrl, {
           headers: { Origin: 'https://untrusted.example' },
         });
         expect(rechazado.status).toBe(500);
-        expect(errorLog).toHaveBeenCalled();
+        const dataRechazado = await rechazado.json();
+        expect(dataRechazado.error.code).toBe('INTERNAL_SERVER_ERROR');
+        expect(errorLog).toHaveBeenCalledWith(
+          '[Unhandled Error]:',
+          expect.objectContaining({ message: 'Origen https://untrusted.example no permitido por CORS' })
+        );
+
+        const sinOrigin = await fetch(corsUrl);
+        expect(sinOrigin.status).toBe(200);
       } finally {
         await new Promise((resolve) => corsServer.close(resolve));
-        env.ALLOWED_ORIGINS = originsOriginales;
         errorLog.mockRestore();
       }
     });
 
-    test('GET / responde información de bienvenida', async () => {
+    test('createApp permite cualquier origen cuando se configura con *', async () => {
+      const serverWild = createApp(['*']).listen(0);
+      await new Promise((resolve) => serverWild.once('listening', resolve));
+      const url = `http://127.0.0.1:${serverWild.address().port}`;
+      try {
+        const res = await fetch(`${url}/`, {
+          headers: { Origin: 'https://otro-origen.com' },
+        });
+        expect(res.status).toBe(200);
+        expect(res.headers.get('access-control-allow-origin')).toBe('https://otro-origen.com');
+      } finally {
+        await new Promise((resolve) => serverWild.close(resolve));
+      }
+    });
+
+    test('monta la api bajo /api y la raíz bajo /', async () => {
+      const appInstance = createApp();
+      const srv = appInstance.listen(0);
+      await new Promise((resolve) => srv.once('listening', resolve));
+      const url = `http://127.0.0.1:${srv.address().port}`;
+      try {
+        const resRoot = await fetch(`${url}/`);
+        expect(resRoot.status).toBe(200);
+        const rootData = await resRoot.json();
+        expect(rootData.name).toBe('AI Ticket It - API Backend');
+
+        const resApi = await fetch(`${url}/api/health`);
+        expect(resApi.status).toBe(200);
+
+        const resSinApi = await fetch(`${url}/health`);
+        expect(resSinApi.status).toBe(404);
+      } finally {
+        await new Promise((resolve) => srv.close(resolve));
+      }
+    });
+
+    test('express.json procesa payloads JSON válidos', async () => {
+      const appInstance = createApp();
+      const srv = appInstance.listen(0);
+      await new Promise((resolve) => srv.once('listening', resolve));
+      const url = `http://127.0.0.1:${srv.address().port}`;
+      try {
+        const res = await fetch(`${url}/api/eventos`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': 'user_org_sonora',
+          },
+          body: JSON.stringify({
+            nombre: 'Evento Con JSON Valido',
+            fecha: new Date(Date.now() + 86400000).toISOString(),
+            categoriaId: 'cat-recitales',
+            tiposEntrada: [{ nombre: 'General', precio: 1000, cupo: 10 }],
+          }),
+        });
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        expect(data.data.nombre).toBe('Evento Con JSON Valido');
+      } finally {
+        await new Promise((resolve) => srv.close(resolve));
+      }
+    });
+
+    test('GET / responde información de bienvenida completa', async () => {
       const res = await fetch(baseUrl.replace(/\/api$/, '/'));
       const data = await res.json();
 
       expect(res.status).toBe(200);
-      expect(data).toMatchObject({
+      expect(data).toEqual({
         name: 'AI Ticket It - API Backend',
+        version: '1.0.0',
         status: 'online',
-        endpoints: { health: '/api/health' },
+        endpoints: {
+          health: '/api/health',
+          eventos: '/api/eventos',
+          compras: '/api/compras',
+          categorias: '/api/categorias',
+          usuarios: '/api/usuarios',
+        },
       });
     });
 
     test.each([
-      ['null', 'INVALID_JSON'],
-      ['[]', 'VALIDATION_ERROR'],
-      ['"texto"', 'INVALID_JSON'],
-    ])('rechaza un body JSON que no es objeto: %s', async (body, code) => {
+      ['null', 'INVALID_JSON', 'El cuerpo de la solicitud contiene JSON inválido'],
+      ['[]', 'VALIDATION_ERROR', 'El cuerpo de la solicitud debe ser un objeto JSON'],
+      ['"texto"', 'INVALID_JSON', 'El cuerpo de la solicitud contiene JSON inválido'],
+    ])('rechaza un body JSON que no es objeto: %s', async (body, code, message) => {
         const res = await fetch(`${baseUrl}/eventos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -93,31 +169,47 @@ describe('App HTTP Integration Tests', () => {
 
         expect(res.status).toBe(400);
         expect(data.error.code).toBe(code);
+        expect(data.error.message).toBe(message);
       });
 
-    test('responde 404 para una ruta desconocida', async () => {
+    test('responde 404 para una ruta desconocida dentro y fuera de /api', async () => {
       const res = await fetch(`${baseUrl}/ruta-inexistente`);
       const data = await res.json();
 
       expect(res.status).toBe(404);
       expect(data.error.code).toBe('ROUTE_NOT_FOUND');
       expect(data.error.message).toContain('GET /api/ruta-inexistente');
+
+      const resGlobal = await fetch(baseUrl.replace(/\/api$/, '/otra-ruta-inexistente'));
+      const dataGlobal = await resGlobal.json();
+      expect(resGlobal.status).toBe(404);
+      expect(dataGlobal.error.code).toBe('ROUTE_NOT_FOUND');
+      expect(dataGlobal.error.message).toContain('GET /otra-ruta-inexistente');
     });
 
-    test('sirve las imágenes con el header nosniff y sin index de directorio', async () => {
+    test('sirve las imágenes con el header nosniff, sin index y bloquea dotfiles', async () => {
       const filename = `coverage-${randomUUID()}.jpg`;
       const filePath = path.join(UPLOADS_DIRECTORY, filename);
+      const dotFilePath = path.join(UPLOADS_DIRECTORY, '.hidden-test');
       await mkdir(UPLOADS_DIRECTORY, { recursive: true });
 
       try {
         await writeFile(filePath, Buffer.from([0xff, 0xd8, 0xff]));
+        await writeFile(dotFilePath, 'secreto');
         const res = await fetch(`${baseUrl.replace(/\/api$/, '')}/uploads/${filename}`);
 
         expect(res.status).toBe(200);
         expect(res.headers.get('x-content-type-options')).toBe('nosniff');
         expect(Buffer.from(await res.arrayBuffer())).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+
+        // Verificar bloqueo de index o dotfile
+        const resDot = await fetch(`${baseUrl.replace(/\/api$/, '')}/uploads/.hidden-test`);
+        expect([403, 404]).toContain(resDot.status);
       } finally {
         await unlink(filePath).catch((error) => {
+          if (error.code !== 'ENOENT') throw error;
+        });
+        await unlink(dotFilePath).catch((error) => {
           if (error.code !== 'ENOENT') throw error;
         });
       }
@@ -614,7 +706,7 @@ describe('App HTTP Integration Tests', () => {
         body: JSON.stringify({
           compradorId: 'user_comprador_1',
           eventoId: 'evt-sonora-aniversario', // Evento en el pasado según seedData
-          tipoEntradaId: 't-sonora-gen',
+          tipoEntradaId: 'te-sonora-aniversario-gen',
           cantidad: 1,
         }),
       });

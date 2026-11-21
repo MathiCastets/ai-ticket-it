@@ -175,6 +175,19 @@ export default function ChatScreen({ route, navigation }) {
     );
   }
 
+  const esOrganizador = currentUser?.rol === 'organizador';
+  const nombreContraparte = esOrganizador
+    ? compra.compradorNombre ||
+      (typeof compra.comprador === 'object' && compra.comprador !== null
+        ? `${compra.comprador.nombre || ''} ${compra.comprador.apellido || ''}`.trim()
+        : compra.comprador) ||
+      'Comprador'
+    : compra.organizadorNombre ||
+      (typeof compra.evento?.organizador === 'object' && compra.evento.organizador !== null
+        ? compra.evento.organizador.nombre
+        : compra.evento?.organizador) ||
+      'Organizador';
+
   return (
     <KeyboardAvoidingView
       style={styles.screenContainer}
@@ -191,14 +204,16 @@ export default function ChatScreen({ route, navigation }) {
       <View style={styles.contextBanner}>
         <View style={styles.contextLeft}>
           <View style={styles.orgAvatar}>
-            <Ionicons name="business" size={18} color={COLORS.badgeCyanGlow} />
+            <Ionicons name={esOrganizador ? 'person' : 'business'} size={18} color={COLORS.badgeCyanGlow} />
           </View>
           <View style={styles.contextDetails}>
             <View style={styles.orgNameRow}>
               <Text style={styles.orgName} numberOfLines={1}>
-                {compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador'}
+                {nombreContraparte}
               </Text>
-              <Ionicons name="checkmark-circle" size={13} color={COLORS.statusSuccess} />
+              {!esOrganizador ? (
+                <Ionicons name="checkmark-circle" size={13} color={COLORS.statusSuccess} />
+              ) : null}
             </View>
             <Text style={styles.contextSub} numberOfLines={1} ellipsizeMode="tail">
               {compra.eventoNombre || compra.evento?.nombre} ({compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} x{compra.cantidad})

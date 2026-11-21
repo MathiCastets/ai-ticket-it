@@ -241,10 +241,13 @@ export default function PanelVentasScreen({ route, navigation }) {
             comprasDelEvento.map((compra) => {
               const isConfirmada = compra.estado === 'CONFIRMADA';
               const isUtilizada = compra.estado === 'UTILIZADA';
+              const isPendiente = compra.estado === 'PENDIENTE';
               const statusColor = isConfirmada
                 ? COLORS.statusSuccess
                 : isUtilizada
                 ? COLORS.secondary
+                : isPendiente
+                ? COLORS.statusWarning
                 : COLORS.statusDanger;
 
               return (
