@@ -17,3 +17,4 @@ vistas/
 coverage/
 .stryker-tmp/
 /packages/backend/reports/
+.claude/

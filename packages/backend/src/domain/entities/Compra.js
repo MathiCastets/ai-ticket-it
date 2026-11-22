@@ -1,9 +1,6 @@
 import { EstadoCompra, EstadosValidos } from '../enums/EstadoCompra.js';
 import { CambioEstadoCompra } from './CambioEstadoCompra.js';
-import {
-  EstadoCompraInvalidoError,
-  ReglaNegocioError,
-} from '../errors/index.js';
+import { EstadoCompraInvalidoError, ReglaNegocioError } from '../errors/index.js';
 
 const MARGEN_CIERRE_CONVERSACION_MS = 48 * 60 * 60 * 1000;
 
@@ -26,9 +23,9 @@ export class Compra {
   constructor({
     id,
     ordenCodigo,
-    comprador,   // Usuario (referencia directa)
-    evento,      // Evento (referencia directa)
-    tipoEntrada, // TipoEntrada (referencia directa al tipo dentro de evento)
+    comprador, 
+    evento,
+    tipoEntrada,
     cantidad = 1,
     total = 0,
     estado = EstadoCompra.CONFIRMADA,
