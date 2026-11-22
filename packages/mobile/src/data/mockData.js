@@ -1,0 +1,427 @@
+const crearFechaRelativa = (horasAtras) => {
+  const fecha = new Date(Date.now() - horasAtras * 60 * 60 * 1000);
+  return {
+    enviado: fecha.toISOString(),
+    fechaHora: fecha.toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }),
+  };
+};
+
+const crearFechaFutura = (diasAdelante, hora, minutos = 0) => {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + diasAdelante);
+  fecha.setHours(hora, minutos, 0, 0);
+  return fecha;
+};
+
+const formatearFechaEvento = (fecha) =>
+  `${fecha.toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })} • ${fecha.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })} hs`;
+
+const fechaCompraConfirmada = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+const fechaCompraPendiente = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+const fechaEventoUtn = crearFechaFutura(7, 20);
+const fechaEventoElectro = crearFechaFutura(15, 23);
+const fechaEventoConferencia = crearFechaFutura(25, 9);
+const fechaEventoTeatro = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
+fechaEventoTeatro.setHours(20, 30, 0, 0);
+const fechaTextoEventoTeatro = formatearFechaEvento(fechaEventoTeatro);
+const fechaCompraUtilizada = new Date(fechaEventoTeatro.getTime() - 48 * 60 * 60 * 1000).toISOString();
+const fechaEventoTerminado = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+const fechaTextoEventoTerminado = formatearFechaEvento(fechaEventoTerminado);
+const fechaCompraEventoTerminado = new Date(
+  fechaEventoTerminado.getTime() - 7 * 24 * 60 * 60 * 1000
+).toISOString();
+
+export const CATEGORIAS = [
+  'Todos',
+  'Recitales',
+  'Festivales',
+  'Teatro',
+  'Conferencias',
+  'Deportes',
+];
+
+export const USUARIOS = [
+  {
+    id: 'user_comprador_1',
+    nombre: 'Mathi',
+    apellido: 'Castets',
+    nombreCompleto: 'Mathi Castets',
+    rol: 'comprador',
+    favoritos: ['evt-utn-2026'],
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'user_comprador_2',
+    nombre: 'Lucía',
+    apellido: 'Fernández',
+    nombreCompleto: 'Lucía Fernández',
+    rol: 'comprador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'user_org_sonora',
+    nombre: 'Producciones Sonora',
+    apellido: '(Oficial)',
+    nombreCompleto: 'Producciones Sonora (Oficial)',
+    rol: 'organizador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?auto=format&fit=crop&w=200&q=80',
+    rating: 4.9,
+    totalResenias: 120,
+  },
+  {
+    id: 'user_org_underground',
+    nombre: 'Club Underground',
+    apellido: '',
+    nombreCompleto: 'Club Underground',
+    rol: 'organizador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=200&q=80',
+    rating: 4.7,
+    totalResenias: 45,
+  },
+  {
+    id: 'user_org_teatros',
+    nombre: 'Teatros Porteños',
+    apellido: '',
+    nombreCompleto: 'Teatros Porteños',
+    rol: 'organizador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'user_org_tech',
+    nombre: 'Tech Community BA',
+    apellido: '',
+    nombreCompleto: 'Tech Community BA',
+    rol: 'organizador',
+    favoritos: [],
+    avatar: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=200&q=80',
+  },
+];
+
+export const EVENTOS_INICIALES = [
+  {
+    id: 'evt-utn-2026',
+    nombre: 'Festival de Música UTN 2026',
+    destacado: true,
+    fecha: fechaEventoUtn.toISOString(),
+    fechaTexto: formatearFechaEvento(fechaEventoUtn),
+    apertura: '18:30 hs',
+    ubicacion: 'Estadio Obras Sanitarias / Predio UTN',
+    direccion: 'Av. del Libertador 7395, Núñez, CABA',
+    categoria: 'Festivales',
+    imagen: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+    organizador: 'Producciones Sonora',
+    organizadorId: 'user_org_sonora',
+    organizadorRating: 4.9,
+    totalResenias: 120,
+    descripcion:
+      'El festival universitario de música electrónica, rock e indie más esperado del año. Más de 12 artistas en vivo en dos escenarios simultáneos con tecnología visual y sonido inmersivo.',
+    tiposEntrada: [
+      {
+        id: 'te-gen-1',
+        nombre: 'General',
+        descripcion: 'Acceso a campo general y sector gastronómico',
+        precio: 15000,
+        cupo: 500,
+        disponibles: 498,
+      },
+      {
+        id: 'te-vip-1',
+        nombre: 'Campo VIP',
+        descripcion: 'Acceso preferencial frente al escenario + consumición',
+        precio: 28000,
+        cupo: 150,
+        disponibles: 150,
+      },
+      {
+        id: 'te-lounge-1',
+        nombre: 'Experiencia Sonora Lounge',
+        descripcion: 'Terraza exclusiva elevada con barra libre y catering',
+        precio: 45000,
+        cupo: 40,
+        disponibles: 40,
+      },
+    ],
+    reseniasAnteriores: [
+      {
+        id: 'res-1',
+        comprador: 'Lucas M.',
+        puntuacion: 5,
+        detalle: 'Excelente organización el año pasado, el sonido fue impecable y no hubo demoras en la entrada.',
+        fecha: 'Hace 2 meses',
+      },
+      {
+        id: 'res-2',
+        comprador: 'Camila V.',
+        puntuacion: 4.8,
+        detalle: 'Muy buena propuesta y atención del organizador en todo momento.',
+        fecha: 'Hace 4 meses',
+      },
+    ],
+  },
+  {
+    id: 'evt-electro-2',
+    nombre: 'Noche Electrónica Underground',
+    destacado: false,
+    fecha: fechaEventoElectro.toISOString(),
+    fechaTexto: formatearFechaEvento(fechaEventoElectro),
+    apertura: '22:00 hs',
+    ubicacion: 'Club Niceto • Palermo',
+    direccion: 'Niceto Vega 5510, Palermo, CABA',
+    categoria: 'Recitales',
+    imagen: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
+    organizador: 'Club Underground',
+    organizadorId: 'user_org_underground',
+    organizadorRating: 4.7,
+    totalResenias: 45,
+    descripcion: 'Una noche de deep house, techno melódico y visuales de alta fidelidad con DJ internacionales.',
+    tiposEntrada: [
+      {
+        id: 'te-under-gen',
+        nombre: 'Entrada General',
+        descripcion: 'Acceso a pista principal',
+        precio: 8500,
+        cupo: 300,
+        disponibles: 299,
+      },
+      {
+        id: 'te-under-vip',
+        nombre: 'VIP Balcón',
+        descripcion: 'Vista panorámica y barra exclusiva',
+        precio: 16000,
+        cupo: 60,
+        disponibles: 60,
+      },
+    ],
+    reseniasAnteriores: [
+      {
+        id: 'res-3',
+        comprador: 'Martín K.',
+        puntuacion: 4.7,
+        detalle: 'Las luces y la acústica de Niceto nunca fallan.',
+        fecha: 'Hace 1 mes',
+      },
+    ],
+  },
+  {
+    id: 'evt-teatro-3',
+    nombre: 'Obra: El Método Grönholm',
+    destacado: false,
+    fecha: fechaEventoTeatro.toISOString(),
+    fechaTexto: fechaTextoEventoTeatro,
+    apertura: '20:00 hs',
+    ubicacion: 'Paseo La Plaza • Sala Pablo Neruda',
+    direccion: 'Av. Corrientes 1660, San Nicolás, CABA',
+    categoria: 'Teatro',
+    imagen: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=1200&q=80',
+    organizador: 'Teatros Porteños',
+    organizadorId: 'user_org_teatros',
+    organizadorRating: 4.8,
+    totalResenias: 89,
+    descripcion: 'Aclamada comedia dramática sobre cuatro postulantes compitiendo ferozmente por un codiciado puesto ejecutivo.',
+    tiposEntrada: [
+      {
+        id: 'te-teatro-platea',
+        nombre: 'Platea Baja',
+        descripcion: 'Fila 1 a 10 central',
+        precio: 12000,
+        cupo: 180,
+        disponibles: 178,
+      },
+      {
+        id: 'te-teatro-pullman',
+        nombre: 'Pullman',
+        descripcion: 'Primer piso con excelente visibilidad',
+        precio: 9500,
+        cupo: 120,
+        disponibles: 120,
+      },
+    ],
+    reseniasAnteriores: [
+      {
+        id: 'res-4',
+        comprador: 'Ana L.',
+        puntuacion: 4.9,
+        detalle: 'Actuaciones brillantes y una trama atrapante de inicio a fin.',
+        fecha: 'Hace 3 semanas',
+      },
+    ],
+  },
+  {
+    id: 'evt-conf-4',
+    nombre: 'DevFest & Cloud Summit 2026',
+    destacado: false,
+    fecha: fechaEventoConferencia.toISOString(),
+    fechaTexto: formatearFechaEvento(fechaEventoConferencia),
+    apertura: '08:00 hs',
+    ubicacion: 'Centro de Convenciones Buenos Aires',
+    direccion: 'Av. Figueroa Alcorta 2099, Recoleta, CABA',
+    categoria: 'Conferencias',
+    imagen: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
+    organizador: 'Tech Community BA',
+    organizadorId: 'user_org_tech',
+    organizadorRating: 5.0,
+    totalResenias: 62,
+    descripcion: 'Charlas magistrales sobre Inteligencia Artificial, computación en la nube, arquitecturas modernas y networking técnico.',
+    tiposEntrada: [
+      {
+        id: 'te-conf-pass',
+        nombre: 'Pase General',
+        descripcion: 'Acceso a todas las charlas y coffee breaks',
+        precio: 6000,
+        cupo: 400,
+        disponibles: 400,
+      },
+    ],
+    reseniasAnteriores: [],
+  },
+  {
+    id: 'evt-sonora-aniversario',
+    nombre: 'Noche Aniversario Sonora',
+    destacado: false,
+    fecha: fechaEventoTerminado.toISOString(),
+    fechaTexto: fechaTextoEventoTerminado,
+    apertura: '20:00 hs',
+    ubicacion: 'Teatro Vorterix • Colegiales',
+    direccion: 'Av. Federico Lacroze 3455, CABA',
+    categoria: 'Recitales',
+    imagen: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
+    organizador: 'Producciones Sonora',
+    organizadorId: 'user_org_sonora',
+    organizadorRating: 4.9,
+    totalResenias: 120,
+    descripcion: 'Una noche especial para celebrar un nuevo aniversario de Producciones Sonora.',
+    tiposEntrada: [
+      {
+        id: 'te-sonora-aniversario-gen',
+        nombre: 'Entrada General',
+        descripcion: 'Acceso al evento',
+        precio: 12000,
+        cupo: 100,
+        disponibles: 99,
+      },
+    ],
+    reseniasAnteriores: [],
+  },
+];
+
+export const COMPRAS_INICIALES = [
+  {
+    id: 'compra-1',
+    ordenCodigo: '#TK-84920',
+    eventoId: 'evt-utn-2026',
+    eventoNombre: 'Festival de Música UTN 2026',
+    eventoFecha: fechaEventoUtn.toISOString(),
+    eventoFechaTexto: formatearFechaEvento(fechaEventoUtn),
+    fechaHora: fechaCompraConfirmada,
+    tipoEntradaId: 'te-gen-1',
+    tipoEntradaNombre: 'General',
+    cantidad: 2,
+    total: 30000,
+    estado: 'CONFIRMADA', // PENDIENTE | CONFIRMADA | UTILIZADA | CANCELADA | REEMBOLSADA
+    compradorId: 'user_comprador_1',
+    compradorNombre: 'Mathi Castets',
+    organizadorNombre: 'Producciones Sonora',
+    organizadorId: 'user_org_sonora',
+    imagen: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+    ubicacion: 'Estadio Obras Sanitarias / Predio UTN',
+    reseniaRealizada: false,
+    mensajes: [
+      {
+        id: 'msg-1',
+        emisor: 'comprador',
+        usuario: 'Mathi Castets',
+        texto: '¡Hola! ¿A qué hora abren las puertas del predio? ¿Hay estacionamiento disponible en el lugar?',
+        ...crearFechaRelativa(48),
+      },
+      {
+        id: 'msg-2',
+        emisor: 'organizador',
+        usuario: 'Producciones Sonora',
+        texto: '¡Buenas tardes! Las puertas abren puntualmente a las 18:00 hs. Sí, contaremos con estacionamiento vigilado por orden de llegada con tarifa especial presentando tu entrada digital.',
+        ...crearFechaRelativa(12),
+      },
+    ],
+  },
+  {
+    id: 'compra-2',
+    ordenCodigo: '#TK-39218',
+    eventoId: 'evt-electro-2',
+    eventoNombre: 'Noche Electrónica Underground',
+    eventoFecha: fechaEventoElectro.toISOString(),
+    eventoFechaTexto: formatearFechaEvento(fechaEventoElectro),
+    fechaHora: fechaCompraPendiente,
+    tipoEntradaId: 'te-under-gen',
+    tipoEntradaNombre: 'Entrada General',
+    cantidad: 1,
+    total: 8500,
+    estado: 'PENDIENTE',
+    compradorId: 'user_comprador_2',
+    compradorNombre: 'Lucía Fernández',
+    organizadorNombre: 'Club Underground',
+    organizadorId: 'user_org_underground',
+    imagen: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
+    ubicacion: 'Club Niceto • Palermo',
+    reseniaRealizada: false,
+    mensajes: [],
+  },
+  {
+    id: 'compra-3',
+    ordenCodigo: '#TK-10492',
+    eventoId: 'evt-teatro-3',
+    eventoNombre: 'Obra: El Método Grönholm',
+    eventoFecha: fechaEventoTeatro.toISOString(),
+    eventoFechaTexto: fechaTextoEventoTeatro,
+    fechaHora: fechaCompraUtilizada,
+    tipoEntradaId: 'te-teatro-platea',
+    tipoEntradaNombre: 'Platea Baja',
+    cantidad: 2,
+    total: 24000,
+    estado: 'UTILIZADA',
+    compradorId: 'user_comprador_2',
+    compradorNombre: 'Lucía Fernández',
+    organizadorNombre: 'Teatros Porteños',
+    organizadorId: 'user_org_teatros',
+    imagen: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=1200&q=80',
+    ubicacion: 'Paseo La Plaza • Sala Pablo Neruda',
+    reseniaRealizada: false,
+    mensajes: [],
+  },
+  {
+    id: 'compra-4',
+    ordenCodigo: '#TK-58317',
+    eventoId: 'evt-sonora-aniversario',
+    eventoNombre: 'Noche Aniversario Sonora',
+    eventoFecha: fechaEventoTerminado.toISOString(),
+    eventoFechaTexto: fechaTextoEventoTerminado,
+    fechaHora: fechaCompraEventoTerminado,
+    tipoEntradaId: 'te-sonora-aniversario-gen',
+    tipoEntradaNombre: 'Entrada General',
+    cantidad: 1,
+    total: 12000,
+    estado: 'UTILIZADA',
+    compradorId: 'user_comprador_1',
+    compradorNombre: 'Mathi Castets',
+    organizadorNombre: 'Producciones Sonora',
+    organizadorId: 'user_org_sonora',
+    imagen: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
+    ubicacion: 'Teatro Vorterix • Colegiales',
+    reseniaRealizada: false,
+    mensajes: [],
+  },
+];
