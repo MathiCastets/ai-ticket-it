@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, useWindowDimensions, Platform, Modal } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../theme/colors';
+import { commonStyles } from '../theme/commonStyles';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
+import TicketOptionCard from '../components/eventos/TicketOptionCard';
+import OrganizerReviewsSection from '../components/eventos/OrganizerReviewsSection';
+import CompraExitosaModal from '../components/eventos/CompraExitosaModal';
 
 export default function DetalleEventoScreen({ route, navigation }) {
   const { eventoId } = route.params;
@@ -92,7 +96,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
 
   if (!evento) {
     return (
-      <View style={styles.screenContainer}>
+      <View style={commonStyles.screenContainer}>
         <Header
           title="AI Ticket It"
           subtitle="Detalle Evento"
@@ -209,10 +213,10 @@ export default function DetalleEventoScreen({ route, navigation }) {
   const orgNombre = typeof evento?.organizador === 'object' && evento?.organizador !== null ? evento.organizador.nombre : (evento?.organizador || '');
 
   return (
-    <View style={styles.screenContainer}>
+    <View style={commonStyles.screenContainer}>
       <Header title="AI Ticket It" subtitle="Detalle Evento" showBack onBack={() => navigation.goBack()} />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + bottomInset }]} showsVerticalScrollIndicator={false}>
+      <ScrollView style={commonStyles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + bottomInset }]} showsVerticalScrollIndicator={false}>
         {favoritosError ? (
           <Text style={{ color: COLORS.textMuted, marginBottom: 12 }} accessibilityLiveRegion="polite">
             No se pudieron sincronizar los favoritos: {favoritosError}
@@ -350,168 +354,44 @@ export default function DetalleEventoScreen({ route, navigation }) {
 
           {/* Description */}
           <View style={styles.descriptionBox}>
-            <Text style={styles.subHeading}>Sobre el Espectáculo</Text>
+            <Text style={commonStyles.subHeading}>Sobre el Espectáculo</Text>
             <Text style={styles.descriptionText}>{evento.descripcion}</Text>
           </View>
 
           {/* Ticket Selection (Tipos de Entrada) */}
           <View style={styles.ticketSection}>
-            <Text style={styles.subHeading}>Seleccioná tu Entrada</Text>
+            <Text style={commonStyles.subHeading}>Seleccioná tu Entrada</Text>
             <Text style={styles.sectionSubtitle}>Elegí la ubicación y cantidad deseada (sujeto a cupo):</Text>
 
-            {evento.tiposEntrada?.map((tipo) => {
-              const isSelected = selectedTipoId === tipo.id;
-              const hasCupo = tipo.disponibles > 0;
-              return (
-                <View
-                  key={tipo.id}
-                  style={[
-                    styles.ticketOptionCard,
-                    isSelected && styles.ticketOptionSelected,
-                    !hasCupo && styles.ticketOptionDisabled,
-                  ]}
-                >
-                  <View style={styles.ticketOptionHeader}>
-                    <TouchableOpacity
-                      style={styles.ticketTitleRow}
-                      disabled={isBuying || !hasCupo}
-                      onPress={() => {
-                        setSelectedTipoId(tipo.id);
-                        setCantidad(1);
-                      }}
-                      activeOpacity={0.8}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: isSelected, disabled: !hasCupo || isBuying }}
-                      accessibilityLabel={`${tipo.nombre}, $${tipo.precio.toLocaleString('es-AR')}`}
-                    >
-                      <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-                        {isSelected && <View style={styles.radioInnerDot} />}
-                      </View>
-                      <Text style={styles.ticketName}>{tipo.nombre}</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.ticketPrice}>${tipo.precio.toLocaleString('es-AR')}</Text>
-                  </View>
-
-                  <Text style={styles.ticketDescription}>{tipo.descripcion}</Text>
-
-                  <View style={styles.ticketFooter}>
-                    <View style={styles.cupoBadge}>
-                      <Ionicons
-                        name={hasCupo ? 'checkmark-circle' : 'close-circle'}
-                        size={12}
-                        color={hasCupo ? COLORS.statusSuccess : COLORS.statusDanger}
-                      />
-                      <Text
-                        style={[
-                          styles.cupoText,
-                          { color: hasCupo ? COLORS.statusSuccess : COLORS.statusDanger },
-                        ]}
-                      >
-                        {hasCupo ? `${tipo.disponibles} cupos disponibles de ${tipo.cupo}` : 'Agotado'}
-                      </Text>
-                    </View>
-                    {isSelected && hasCupo ? (
-                      <View style={styles.counterRow}>
-                        <TouchableOpacity
-                          style={styles.counterBtn}
-                          onPress={handleDecrement}
-                          disabled={isBuying || cantidad <= 1}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Restar una entrada de ${tipo.nombre}`}
-                        >
-                          <Feather name="minus" size={14} color={COLORS.textPrimary} />
-                        </TouchableOpacity>
-                        <Text style={styles.counterValue}>{cantidad}</Text>
-                        <TouchableOpacity
-                          style={styles.counterBtn}
-                          onPress={handleIncrement}
-                          disabled={isBuying}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Agregar una entrada de ${tipo.nombre}`}
-                        >
-                          <Feather name="plus" size={14} color={COLORS.textPrimary} />
-                        </TouchableOpacity>
-                      </View>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
+            {evento.tiposEntrada?.map((tipo) => (
+              <TicketOptionCard
+                key={tipo.id}
+                tipo={tipo}
+                isSelected={selectedTipoId === tipo.id}
+                cantidad={cantidad}
+                isBuying={isBuying}
+                onSelect={() => {
+                  setSelectedTipoId(tipo.id);
+                  setCantidad(1);
+                }}
+                onIncrement={handleIncrement}
+                onDecrement={handleDecrement}
+              />
+            ))}
           </View>
 
           {/* Previous Reviews from Organizer (TP requirement) */}
-          <View style={styles.reviewsSection}>
-            <View style={styles.reviewsHeader}>
-              <Text style={styles.subHeading}>Reseñas de este Organizador</Text>
-              {/*<Text style={styles.reviewsNote}>Experiencias previas</Text> */}
-            </View>
-
-            {isLoadingResenias && reseniasOrganizador.length === 0 ? (
-              <Text style={styles.noReviewsText}>Cargando reseñas...</Text>
-            ) : errorResenias && reseniasOrganizador.length === 0 ? (
-              <View>
-                <Text style={styles.noReviewsText} accessibilityLiveRegion="polite">
-                  {errorResenias}
-                </Text>
-                <TouchableOpacity
-                  style={styles.reviewsAction}
-                  onPress={handleRetryReviews}
-                  disabled={isLoadingResenias}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.reviewsActionText}>
-                    {isLoadingResenias ? 'Reintentando...' : 'Reintentar'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : reseniasOrganizador.length > 0 ? (
-              <>
-                {reseniasOrganizador.map((res) => (
-                <View key={res.id} style={styles.reviewCard}>
-                  <View style={styles.reviewHeader}>
-                    <Text style={styles.reviewUser}>
-                      {typeof res.comprador === 'object' && res.comprador !== null
-                        ? `${res.comprador.nombre || ''} ${res.comprador.apellido || ''}`.trim()
-                        : (res.comprador || 'Comprador')}
-                    </Text>
-                    <View style={styles.reviewStars}>
-                      <Ionicons name="star" size={12} color={COLORS.statusWarning} />
-                      <Text style={styles.reviewScore}>{res.puntuacion}</Text>
-                    </View>
-                  </View>
-                  {res.eventoNombre ? (
-                    <Text style={styles.reviewEvent}>{res.eventoNombre}</Text>
-                  ) : null}
-                  <Text style={styles.reviewComment}>{res.detalle}</Text>
-                  <Text style={styles.reviewDate}>{res.fecha}</Text>
-                </View>
-                ))}
-                {errorResenias ? (
-                  <Text style={styles.noReviewsText} accessibilityLiveRegion="polite">
-                    {errorResenias}
-                  </Text>
-                ) : null}
-                {paginaResenias < totalPaginasResenias ? (
-                  <TouchableOpacity
-                    style={styles.reviewsAction}
-                    onPress={handleLoadMoreReviews}
-                    disabled={isLoadingMoreResenias}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.reviewsActionText}>
-                      {isLoadingMoreResenias
-                        ? 'Cargando...'
-                        : `Cargar más reseñas (${reseniasTotal - reseniasOrganizador.length} restantes)`}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </>
-            ) : (
-              <Text style={styles.noReviewsText}>Aún no hay reseñas registradas para este organizador.</Text>
-            )}
-          </View>
+          <OrganizerReviewsSection
+            resenias={reseniasOrganizador}
+            total={reseniasTotal}
+            paginaActual={paginaResenias}
+            totalPaginas={totalPaginasResenias}
+            isLoading={isLoadingResenias}
+            isLoadingMore={isLoadingMoreResenias}
+            error={errorResenias}
+            onRetry={handleRetryReviews}
+            onLoadMore={handleLoadMoreReviews}
+          />
         </View>
       </ScrollView>
 
@@ -545,54 +425,23 @@ export default function DetalleEventoScreen({ route, navigation }) {
       </View>
 
       {/* Success Modal */}
-      <Modal
-        transparent
-        animationType="fade"
+      <CompraExitosaModal
         visible={compraExitosa}
-        onRequestClose={() => setCompraExitosa(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.successModalCard} accessibilityViewIsModal={true}>
-            <View style={styles.successIconBox}>
-              <Ionicons name="checkmark-done" size={32} color={COLORS.statusSuccess} />
-            </View>
-            <Text style={styles.modalTitle}>¡Compra Confirmada!</Text>
-            <Text style={styles.modalSubtitle}>
-              Tu entrada para <Text style={{ color: COLORS.textPrimary, fontWeight: '700' }}>{evento.nombre}</Text> fue registrada con éxito.
-            </Text>
-
-            <View style={styles.modalDetailsBox}>
-              <Text style={styles.modalDetailRow}>Entrada: {selectedTipo?.nombre} (x{cantidad})</Text>
-              <Text style={styles.modalDetailRow}>Total: ${total.toLocaleString('es-AR')}</Text>
-              <Text style={[styles.modalDetailRow, { color: COLORS.statusSuccess }]}>Estado: CONFIRMADA</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.modalActionBtn}
-              onPress={() => {
-                setCompraExitosa(false);
-                navigation.navigate('MainTabs', { screen: 'TicketsTab' });
-              }}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-            >
-              <Text style={styles.modalActionText}>VER MIS TICKETS</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        eventoNombre={evento.nombre}
+        tipoNombre={selectedTipo?.nombre}
+        cantidad={cantidad}
+        total={total}
+        onClose={() => setCompraExitosa(false)}
+        onVerMisTickets={() => {
+          setCompraExitosa(false);
+          navigation.navigate('MainTabs', { screen: 'TicketsTab' });
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screenContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
     paddingBottom: 110,
   },
@@ -765,13 +614,6 @@ const styles = StyleSheet.create({
   descriptionBox: {
     marginBottom: 20,
   },
-  subHeading: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    letterSpacing: -0.3,
-    marginBottom: 6,
-  },
   sectionSubtitle: {
     fontSize: 12,
     color: COLORS.textMuted,
@@ -784,185 +626,6 @@ const styles = StyleSheet.create({
   },
   ticketSection: {
     marginBottom: 16,
-  },
-  ticketOptionCard: {
-    backgroundColor: COLORS.surfaceCard,
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 10,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  ticketOptionSelected: {
-    borderColor: COLORS.accentElectric,
-    backgroundColor: COLORS.surfaceCardSubtle,
-  },
-  ticketOptionDisabled: {
-    opacity: 0.5,
-  },
-  ticketOptionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  ticketTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    minHeight: 40,
-  },
-  radioCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: COLORS.textMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioCircleSelected: {
-    borderColor: COLORS.accentElectric,
-  },
-  radioInnerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.accentElectric,
-  },
-  ticketName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  ticketPrice: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: COLORS.tertiary,
-  },
-  ticketDescription: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 8,
-    marginLeft: 26,
-  },
-  ticketFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-    marginLeft: 26,
-  },
-  cupoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    flexShrink: 1,
-  },
-  cupoText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  counterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexShrink: 0,
-  },
-  counterBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.surfaceCardSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  counterValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    minWidth: 20,
-    textAlign: 'center',
-  },
-  reviewsSection: {
-    marginTop: 8,
-  },
-  reviewsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  reviewsNote: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.tertiary,
-  },
-  reviewCard: {
-    backgroundColor: COLORS.surfaceCard,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  reviewUser: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  reviewEvent: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: COLORS.tertiary,
-    marginBottom: 4,
-  },
-  reviewStars: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  reviewScore: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.statusWarning,
-  },
-  reviewComment: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    lineHeight: 18,
-  },
-  reviewDate: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    marginTop: 4,
-  },
-  noReviewsText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    fontStyle: 'italic',
-  },
-  reviewsAction: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 210, 242, 0.14)',
-  },
-  reviewsActionText: {
-    color: COLORS.badgeCyanGlow,
-    fontSize: 12,
-    fontWeight: '700',
   },
   bottomBar: {
     position: 'absolute',
@@ -1009,70 +672,6 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   confirmBuyBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    letterSpacing: 0.5,
-  },
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 8, 29, 0.85)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  successModalCard: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: COLORS.surfaceCard,
-    borderRadius: 20,
-    padding: 22,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  successIconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(0, 245, 160, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 6,
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  modalDetailsBox: {
-    width: '100%',
-    backgroundColor: COLORS.surfaceContainerLow,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 16,
-    gap: 4,
-  },
-  modalDetailRow: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  modalActionBtn: {
-    width: '100%',
-    backgroundColor: COLORS.accentElectric,
-    paddingVertical: 13,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  modalActionText: {
     fontSize: 13,
     fontWeight: '800',
     color: COLORS.textPrimary,

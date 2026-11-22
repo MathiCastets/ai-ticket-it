@@ -12,6 +12,7 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
+import EstadoCompraBadge from '../components/EstadoCompraBadge';
 
 export default function PanelVentasScreen({ route, navigation }) {
   const { eventos, compras, comprasCargando, currentUser } = useApp();
@@ -241,16 +242,6 @@ export default function PanelVentasScreen({ route, navigation }) {
             <Text style={styles.noSalesText}>Aún no se han registrado compras para este evento.</Text>
           ) : (
             comprasDelEvento.map((compra) => {
-              const isConfirmada = compra.estado === 'CONFIRMADA';
-              const isUtilizada = compra.estado === 'UTILIZADA';
-              const isPendiente = compra.estado === 'PENDIENTE';
-              const statusColor = isConfirmada
-                ? COLORS.statusSuccess
-                : isUtilizada
-                ? COLORS.secondary
-                : isPendiente
-                ? COLORS.statusWarning
-                : COLORS.statusDanger;
               const buyerName =
                 compra.compradorNombre ||
                 (typeof compra.comprador === 'object'
@@ -274,11 +265,7 @@ export default function PanelVentasScreen({ route, navigation }) {
                   </View>
 
                   <View style={styles.saleItemRight}>
-                    <View style={[styles.saleStatusChip, { borderColor: statusColor }]}>
-                      <Text style={[styles.saleStatusText, { color: statusColor }]}>
-                        {compra.estado}
-                      </Text>
-                    </View>
+                    <EstadoCompraBadge estado={compra.estado} variant="outlined" />
 
                     <TouchableOpacity
                       style={styles.chatBuyerBtn}
@@ -319,48 +306,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-  },
-  accessErrorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-    gap: 12,
-  },
-  accessErrorIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surfaceCard,
-    borderWidth: 1,
-    borderColor: COLORS.borderTranslucent,
-  },
-  accessErrorTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  accessErrorText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
-    maxWidth: 360,
-  },
-  accessBackButton: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: COLORS.secondaryContainer,
-  },
-  accessBackButtonText: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
   },
   selectorSection: {
     gap: 6,
@@ -620,17 +565,6 @@ const styles = StyleSheet.create({
   saleItemRight: {
     alignItems: 'flex-end',
     gap: 6,
-  },
-  saleStatusChip: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  saleStatusText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
   },
   chatBuyerBtn: {
     flexDirection: 'row',

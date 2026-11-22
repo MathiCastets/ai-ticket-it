@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Image,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
+import { commonStyles } from '../theme/commonStyles';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
-import LoadingSpinner from '../components/loading/Spinners';
+import SearchBar from '../components/SearchBar';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
+import OrganizadorEventoCard from '../components/eventos/OrganizadorEventoCard';
+import EditarEventoModal from '../components/eventos/EditarEventoModal';
 
 const crearFormulario = (evento) => ({
   nombre: evento.nombre || '',
@@ -154,6 +154,24 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
     setFormulario(null);
   };
 
+  const duplicarEvento = (evento) => {
+    navigation.navigate('OrganizarTab', {
+      duplicateEvento: {
+        nombre: evento.nombre,
+        categoria: evento.categoria,
+        ubicacion: evento.ubicacion,
+        direccion: evento.direccion,
+        descripcion: evento.descripcion,
+        imagen: evento.imagen || evento.multimedia?.[0] || '',
+        tiposEntrada: (evento.tiposEntrada || []).map((tipo) => ({
+          nombre: tipo.nombre,
+          precio: tipo.precio,
+          cupo: tipo.cupo,
+        })),
+      },
+    });
+  };
+
   const seleccionarImagen = async () => {
     setIsPickingImage(true);
     try {
@@ -248,7 +266,7 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={commonStyles.screenContainer}>
       <Header title="AI Ticket It" subtitle="Mis Eventos" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.pageHeading}>
@@ -265,28 +283,12 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
           ) : (
             <>
               <View style={styles.filters}>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="search" size={18} color={COLORS.textMuted} />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Buscar por nombre o categoría..."
-                    placeholderTextColor={COLORS.textMuted}
-                    value={busqueda}
-                    onChangeText={setBusqueda}
-                    returnKeyType="search"
-                    accessibilityLabel="Buscar eventos por nombre o categoría"
-                  />
-                  {busqueda.length > 0 ? (
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      accessibilityLabel="Limpiar búsqueda"
-                      onPress={() => setBusqueda('')}
-                      hitSlop={8}
-                    >
-                      <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
+                <SearchBar
+                  value={busqueda}
+                  onChangeText={setBusqueda}
+                  placeholder="Buscar por nombre o categoría..."
+                  accessibilityLabel="Buscar eventos por nombre o categoría"
+                />
                 <View style={styles.filterTabs}>
                   {[
                     { id: 'todos', label: 'Todos', count: eventosDelUsuario.length },
@@ -443,268 +445,40 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
               ) : eventosVisibles.map((evento) => {
                 const estado = obtenerEstadoEvento(evento, ahora);
                 return (
-                  <View
+                  <OrganizadorEventoCard
                     key={evento.id}
-                    style={[
-                      styles.eventCard,
-                      estado === 'terminados' && styles.endedEventCard,
-                    ]}
-                  >
-                    {evento.imagen ? (
-                      <Image source={{ uri: evento.imagen }} style={styles.eventImage} />
-                    ) : (
-                      <View style={[styles.eventImage, styles.imagePlaceholder]}>
-                        <Ionicons name="image-outline" size={28} color={COLORS.textMuted} />
-                      </View>
-                    )}
-                    <View style={styles.eventInfo}>
-                      <View style={styles.eventLabels}>
-                        <Text style={styles.eventCategory}>{evento.categoria}</Text>
-                        {estado !== 'sinFecha' ? (
-                          <View
-                            style={[
-                              styles.statusBadge,
-                              estado === 'terminados' && styles.endedStatusBadge,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.statusBadgeText,
-                                estado === 'terminados' && styles.endedStatusBadgeText,
-                              ]}
-                            >
-                              {estado === 'terminados' ? 'TERMINADO' : 'ACTIVO'}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Text style={styles.eventName}>{evento.nombre}</Text>
-                      <Text style={styles.eventMeta}>{evento.fechaTexto || evento.fecha}</Text>
-                      <Text style={styles.eventMeta}>{evento.ubicacion}</Text>
-                    </View>
-                    <View style={styles.actions}>
-                      <TouchableOpacity
-                        style={[
-                          styles.secondaryButton,
-                          (estado === 'terminados' || evento.cerrado) && styles.disabledSecondaryButton,
-                        ]}
-                        onPress={() => abrirEdicion(evento)}
-                        disabled={estado === 'terminados' || Boolean(evento.cerrado)}
-                        activeOpacity={(estado === 'terminados' || evento.cerrado) ? 1 : 0.7}
-                        accessibilityRole="button"
-                        accessibilityLabel={
-                          (estado === 'terminados' || evento.cerrado)
-                            ? `Evento finalizado, no se puede editar ${evento.nombre}`
-                            : `Editar ${evento.nombre}`
-                        }
-                        accessibilityState={{ disabled: estado === 'terminados' || Boolean(evento.cerrado) }}
-                      >
-                        <Feather
-                          name="edit-2"
-                          size={15}
-                          color={(estado === 'terminados' || evento.cerrado) ? COLORS.textMuted : COLORS.tertiary}
-                        />
-                        <Text
-                          style={[
-                            styles.secondaryButtonText,
-                            (estado === 'terminados' || evento.cerrado) && styles.disabledSecondaryButtonText,
-                          ]}
-                        >
-                          Editar
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.primaryButton}
-                        onPress={() => navigation.navigate('PanelVentas', { eventoId: evento.id })}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Ver ventas de ${evento.nombre}`}
-                      >
-                        <Ionicons name="stats-chart-outline" size={15} color={COLORS.textPrimary} />
-                        <Text style={styles.primaryButtonText}>Ventas</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.repeatButton}
-                      onPress={() =>
-                        navigation.navigate('OrganizarTab', {
-                          duplicateEvento: {
-                            nombre: evento.nombre,
-                            categoria: evento.categoria,
-                            ubicacion: evento.ubicacion,
-                            direccion: evento.direccion,
-                            descripcion: evento.descripcion,
-                            imagen: evento.imagen || evento.multimedia?.[0] || '',
-                            tiposEntrada: (evento.tiposEntrada || []).map((tipo) => ({
-                              nombre: tipo.nombre,
-                              precio: tipo.precio,
-                              cupo: tipo.cupo,
-                            })),
-                          },
-                        })
-                      }
-                      accessibilityRole="button"
-                      accessibilityLabel={`Duplicar ${evento.nombre}`}
-                    >
-                      <Feather name="copy" size={14} color={COLORS.tertiary} />
-                      <Text style={styles.repeatButtonText}>Duplicar evento</Text>
-                    </TouchableOpacity>
-                  </View>
+                    evento={evento}
+                    estado={estado}
+                    onEdit={abrirEdicion}
+                    onViewSales={(item) => navigation.navigate('PanelVentas', { eventoId: item.id })}
+                    onDuplicate={duplicarEvento}
+                  />
                 );
               })}
             </>
           )}
       </ScrollView>
 
-      <Modal visible={!!eventoEditando} transparent animationType="fade" onRequestClose={cerrarEdicion}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Editar evento</Text>
-              </View>
-              <TouchableOpacity
-                onPress={cerrarEdicion}
-                disabled={isSaving || isPickingImage}
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar edición"
-              >
-                <Ionicons name="close" size={22} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            {formulario ? (
-              <ScrollView
-                style={styles.modalFormScroll}
-                contentContainerStyle={styles.modalFormContent}
-                keyboardShouldPersistTaps="handled"
-              >
-                <Text style={styles.fieldLabel}>Foto de portada</Text>
-                {formulario.imagen && !formulario.quitarImagen ? (
-                  <Image source={{ uri: formulario.imagen }} style={styles.coverPreview} />
-                ) : (
-                  <View style={[styles.coverPreview, styles.coverPlaceholder]}>
-                    <Ionicons name="image-outline" size={28} color={COLORS.textMuted} />
-                    <Text style={styles.coverPlaceholderText}>Sin foto de portada</Text>
-                  </View>
-                )}
-                <View style={styles.coverActions}>
-                  <TouchableOpacity
-                    style={styles.coverButton}
-                    onPress={seleccionarImagen}
-                    disabled={isSaving || isPickingImage}
-                    accessibilityRole="button"
-                    accessibilityLabel="Cambiar foto de portada"
-                  >
-                    {isPickingImage ? (
-                      <LoadingSpinner size={16} />
-                    ) : (
-                      <>
-                        <Feather name="upload" size={14} color={COLORS.tertiary} />
-                        <Text style={styles.coverButtonText}>
-                          {formulario.imagen && !formulario.quitarImagen
-                            ? 'Cambiar foto'
-                            : 'Elegir foto'}
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  {formulario.imagen && !formulario.quitarImagen ? (
-                    <TouchableOpacity
-                      style={styles.removeCoverButton}
-                      onPress={() =>
-                        setFormulario((prev) => ({
-                          ...prev,
-                          imagen: '',
-                          imagenSeleccionada: null,
-                          quitarImagen: true,
-                        }))
-                      }
-                      disabled={isSaving || isPickingImage}
-                      accessibilityRole="button"
-                      accessibilityLabel="Quitar foto de portada"
-                    >
-                      <Text style={styles.removeCoverButtonText}>Quitar foto</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-                <Text style={styles.coverHint}>JPEG, PNG o WebP de hasta 5 MB.</Text>
-                <Text style={styles.fieldLabel}>Fecha y horario</Text>
-                <DateTimeSelector
-                  value={formulario.fecha}
-                  disabled={isSaving || isPickingImage}
-                  accessibilityLabel="Modificar fecha y horario del evento"
-                  onChange={(fecha) =>
-                    setFormulario((prev) => ({
-                      ...prev,
-                      fecha,
-                      fechaModificada: true,
-                    }))
-                  }
-                />
-                <Text style={styles.fieldLabel}>Nombre</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formulario.nombre}
-                  onChangeText={(nombre) => setFormulario((prev) => ({ ...prev, nombre }))}
-                  maxLength={100}
-                  accessibilityLabel="Nombre del evento"
-                />
-                <Text style={styles.fieldLabel}>Ubicación</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formulario.ubicacion}
-                  onChangeText={(ubicacion) => setFormulario((prev) => ({ ...prev, ubicacion }))}
-                  maxLength={160}
-                  accessibilityLabel="Ubicación del evento"
-                />
-                <Text style={styles.fieldLabel}>Descripción</Text>
-                <TextInput
-                  style={[styles.input, styles.descriptionInput]}
-                  value={formulario.descripcion}
-                  onChangeText={(descripcion) => setFormulario((prev) => ({ ...prev, descripcion }))}
-                  multiline
-                  maxLength={1000}
-                  accessibilityLabel="Descripción del evento"
-                />
-                <TouchableOpacity
-                  style={[styles.saveButton, isSaving && styles.disabled]}
-                  onPress={guardarCambios}
-                  disabled={isSaving || isPickingImage}
-                  accessibilityRole="button"
-                >
-                  {isSaving ? (
-                    <LoadingSpinner size={18} />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Guardar cambios</Text>
-                  )}
-                </TouchableOpacity>
-              </ScrollView>
-            ) : null}
-          </View>
-        </View>
-      </Modal>
+      <EditarEventoModal
+        visible={!!eventoEditando}
+        formulario={formulario}
+        setFormulario={setFormulario}
+        isSaving={isSaving}
+        isPickingImage={isPickingImage}
+        onSelectImage={seleccionarImagen}
+        onClose={cerrarEdicion}
+        onSave={guardarCambios}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: 16, paddingBottom: 36, gap: 14 },
   pageHeading: { gap: 4, marginBottom: 4 },
   title: { color: COLORS.textPrimary, fontSize: 22, fontWeight: '800' },
   subtitle: { color: COLORS.textMuted, fontSize: 12, lineHeight: 18 },
   filters: { gap: 10 },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 44,
-    gap: 9,
-    paddingHorizontal: 14,
-    backgroundColor: COLORS.surfaceCard,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  searchInput: { flex: 1, color: COLORS.textPrimary, fontSize: 13 },
   filterTabs: { flexDirection: 'row', gap: 8 },
   filterTab: {
     flex: 1,
@@ -775,75 +549,6 @@ const styles = StyleSheet.create({
   },
   categoryChipText: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' },
   categoryChipTextActive: { color: COLORS.tertiary },
-  eventCard: {
-    overflow: 'hidden',
-    borderRadius: 16,
-    backgroundColor: COLORS.surfaceCard,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-  },
-  endedEventCard: {
-    backgroundColor: COLORS.surfaceContainer,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  eventImage: { width: '100%', height: 150 },
-  imagePlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surfaceContainerLow },
-  eventInfo: { padding: 14, gap: 5 },
-  eventLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  eventCategory: { color: COLORS.tertiary, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,245,160,0.12)',
-  },
-  statusBadgeText: { color: COLORS.statusSuccess, fontSize: 9, fontWeight: '800' },
-  endedStatusBadge: { backgroundColor: 'rgba(138,126,166,0.18)' },
-  endedStatusBadgeText: { color: COLORS.textMuted },
-  eventName: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '800' },
-  eventMeta: { color: COLORS.textMuted, fontSize: 11 },
-  actions: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingBottom: 14 },
-  repeatButton: {
-    minHeight: 36,
-    marginHorizontal: 14,
-    marginBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    borderRadius: 10,
-    backgroundColor: COLORS.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  repeatButtonText: { color: COLORS.tertiary, fontSize: 11, fontWeight: '700' },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 40,
-    flexDirection: 'row',
-    gap: 7,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 10,
-    backgroundColor: COLORS.surfaceContainerLow,
-  },
-  disabledSecondaryButton: {
-    opacity: 0.45,
-    backgroundColor: COLORS.surfaceContainerLowest,
-  },
-  secondaryButtonText: { color: COLORS.tertiary, fontSize: 12, fontWeight: '700' },
-  disabledSecondaryButtonText: { color: COLORS.textMuted },
-  primaryButton: {
-    flex: 1,
-    minHeight: 40,
-    flexDirection: 'row',
-    gap: 7,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 10,
-    backgroundColor: COLORS.accentElectric,
-  },
-  primaryButtonText: { color: COLORS.textPrimary, fontSize: 12, fontWeight: '700' },
   emptyState: { alignItems: 'center', gap: 8, paddingVertical: 56 },
   emptyTitle: { color: COLORS.textPrimary, fontSize: 15, fontWeight: '700' },
   clearFiltersButton: {
@@ -854,73 +559,4 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceContainerLow,
   },
   clearFiltersText: { color: COLORS.tertiary, fontSize: 12, fontWeight: '700' },
-  modalBackdrop: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: 'rgba(4,8,16,0.78)' },
-  modalCard: {
-    width: '100%',
-    maxWidth: 480,
-    maxHeight: '90%',
-    alignSelf: 'center',
-    padding: 18,
-    gap: 10,
-    borderRadius: 18,
-    backgroundColor: COLORS.surfaceContainerLowest,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  modalFormScroll: { flexShrink: 1 },
-  modalFormContent: { gap: 10, paddingBottom: 2 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
-  modalTitle: { color: COLORS.textPrimary, fontSize: 18, fontWeight: '800' },
-  modalSubtitle: { color: COLORS.textMuted, fontSize: 11, marginTop: 3 },
-  fieldLabel: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' },
-  coverPreview: {
-    width: '100%',
-    height: 150,
-    borderRadius: 10,
-    backgroundColor: COLORS.surfaceContainerLow,
-  },
-  coverPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  coverPlaceholderText: { color: COLORS.textMuted, fontSize: 11 },
-  coverActions: { flexDirection: 'row', gap: 10 },
-  coverButton: {
-    minHeight: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    backgroundColor: COLORS.surfaceContainerLow,
-  },
-  coverButtonText: { color: COLORS.tertiary, fontSize: 11, fontWeight: '700' },
-  removeCoverButton: {
-    minHeight: 38,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  removeCoverButtonText: { color: COLORS.statusDanger, fontSize: 11, fontWeight: '700' },
-  coverHint: { color: COLORS.textMuted, fontSize: 10 },
-  input: {
-    minHeight: 42,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-    borderRadius: 9,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.surfaceContainerLow,
-    fontSize: 13,
-  },
-  descriptionInput: { minHeight: 90, textAlignVertical: 'top' },
-  saveButton: {
-    minHeight: 44,
-    marginTop: 4,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.accentElectric,
-  },
-  disabled: { opacity: 0.6 },
 });

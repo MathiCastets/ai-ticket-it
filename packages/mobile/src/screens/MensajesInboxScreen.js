@@ -4,14 +4,15 @@ import {
   View,
   Text,
   ScrollView,
-  TextInput,
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
+import { commonStyles } from '../theme/commonStyles';
 import { useApp } from '../context/AppContext';
 import { useFocusEffect } from '@react-navigation/native';
 import Header from '../components/Header';
+import SearchBar from '../components/SearchBar';
 import { ConversationListSkeleton } from '../components/loading/Skeletons';
 
 const formatearFechaUltimoMensaje = (mensaje) => {
@@ -191,10 +192,10 @@ export default function MensajesInboxScreen({ navigation }) {
   const noHayResultados = !noHayConversaciones && conversacionesVisibles.length === 0;
 
   return (
-    <View style={styles.screenContainer}>
+    <View style={commonStyles.screenContainer}>
       <Header title="AI Ticket It" subtitle="Bandeja de Mensajes" />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={commonStyles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerInfo}>
           <Text style={styles.pageTitle}>Tus Conversaciones</Text>
           {/*<Text style={styles.pageSubtitle}>
@@ -206,28 +207,12 @@ export default function MensajesInboxScreen({ navigation }) {
 
         {!comprasCargando && !noHayConversaciones ? (
           <View style={styles.filters}>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={18} color={COLORS.textMuted} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar contacto o evento..."
-                placeholderTextColor={COLORS.textMuted}
-                accessibilityLabel="Buscar conversación por contacto o evento"
-                value={busqueda}
-                onChangeText={setBusqueda}
-                returnKeyType="search"
-              />
-              {busqueda.length > 0 ? (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel="Limpiar búsqueda"
-                  onPress={() => setBusqueda('')}
-                  hitSlop={8}
-                >
-                  <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
+            <SearchBar
+              value={busqueda}
+              onChangeText={setBusqueda}
+              placeholder="Buscar contacto o evento..."
+              accessibilityLabel="Buscar conversación por contacto o evento"
+            />
             <View style={styles.filterTabs}>
               {[
                 { id: 'todos', label: 'Todos' },
@@ -416,13 +401,6 @@ export default function MensajesInboxScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  screenContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
     padding: 16,
     paddingBottom: 30,
@@ -444,22 +422,6 @@ const styles = StyleSheet.create({
   },
   filters: {
     gap: 10,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 44,
-    gap: 9,
-    paddingHorizontal: 14,
-    backgroundColor: COLORS.surfaceCard,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  searchInput: {
-    flex: 1,
-    color: COLORS.textPrimary,
-    fontSize: 13,
   },
   filterTabs: {
     flexDirection: 'row',

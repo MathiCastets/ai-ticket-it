@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TextInput, TouchableOpacity, Modal } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme/colors';
+import { commonStyles } from '../theme/commonStyles';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
+import SearchBar from '../components/SearchBar';
 import { TicketListSkeleton } from '../components/loading/Skeletons';
-import LoadingSpinner from '../components/loading/Spinners';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
+import TicketCard from '../components/tickets/TicketCard';
+import TicketQrModal from '../components/tickets/TicketQrModal';
+import CancelCompraModal from '../components/tickets/CancelCompraModal';
 
 const normalizarTexto = (texto) =>
   String(texto || '')
@@ -103,10 +106,10 @@ export default function MisTicketsScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.screenContainer}>
+    <View style={commonStyles.screenContainer}>
       <Header title="AI Ticket It" subtitle="Mis Tickets" />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={commonStyles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header Overview */}
         <View style={styles.headerInfo}>
           <View>
@@ -116,28 +119,12 @@ export default function MisTicketsScreen({ navigation }) {
         </View>
 
         <View style={styles.filters}>
-          <View style={styles.searchInputContainer}>
-            <Ionicons name="search" size={18} color={COLORS.textMuted} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar por nombre, lugar o categoría..."
-              placeholderTextColor={COLORS.textMuted}
-              value={busqueda}
-              onChangeText={setBusqueda}
-              returnKeyType="search"
-              accessibilityLabel="Buscar tickets por nombre, lugar o categoría"
-            />
-            {busqueda.length > 0 ? (
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Limpiar búsqueda"
-                onPress={() => setBusqueda('')}
-                hitSlop={8}
-              >
-                <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
+          <SearchBar
+            value={busqueda}
+            onChangeText={setBusqueda}
+            placeholder="Buscar por nombre, lugar o categoría..."
+            accessibilityLabel="Buscar tickets por nombre, lugar o categoría"
+          />
           <View style={styles.sortSection}>
             <Text style={styles.eventCount}>
               {filteredCompras.length} {filteredCompras.length === 1 ? 'ticket' : 'tickets'}
@@ -228,147 +215,17 @@ export default function MisTicketsScreen({ navigation }) {
               const dias = Number.isFinite(compra.diasFaltantes)
                 ? compra.diasFaltantes
                 : getDiasRestantes(compra.eventoFecha);
-              const isConfirmada = compra.estado === 'CONFIRMADA';
-              const isUtilizada = compra.estado === 'UTILIZADA';
-              const isPendiente = compra.estado === 'PENDIENTE';
-
-              const statusColor = isConfirmada
-                ? COLORS.statusSuccess
-                : isUtilizada
-                ? COLORS.secondary
-                : isPendiente
-                ? COLORS.statusWarning
-                : COLORS.statusDanger;
 
               return (
-                <View key={compra.id} style={styles.ticketCard}>
-                  {/* Card Media Header */}
-                  <View style={styles.cardImageContainer}>
-                    <Image
-                      source={compra.imagen || compra.evento?.imagen ? { uri: compra.imagen || compra.evento?.imagen } : null}
-                      style={styles.cardImage}
-                    />
-                    <LinearGradient
-                      colors={['rgba(15, 8, 29, 0.65)', 'rgba(15, 8, 29, 0)']}
-                      style={styles.cardImageScrim}
-                      pointerEvents="none"
-                    />
-
-                    {/* Top Badges */}
-                    <View style={styles.cardTopRow}>
-                      <View style={[styles.statusChip, { backgroundColor: 'rgba(15, 8, 29, 0.85)' }]}>
-                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                        <Text style={[styles.statusChipText, { color: statusColor }]}>{compra.estado}</Text>
-                      </View>
-                      <Text style={styles.orderCode}>{compra.ordenCodigo}</Text>
-                    </View>
-
-                  </View>
-
-                  {isConfirmada ? (
-                    <View style={styles.countdownBar}>
-                      <Ionicons name="time" size={14} color={COLORS.badgeCyanGlow} />
-                      <Text style={styles.countdownText}>
-                        {dias > 0
-                          ? dias === 1
-                            ? '¡Falta 1 día para el evento!'
-                            : `¡Faltan ${dias} días para el evento!`
-                          : '¡El evento es hoy!'}
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  {/* Card Content */}
-                  <View style={styles.cardBody}>
-                    <Text style={styles.eventTitle}>{compra.eventoNombre || compra.evento?.nombre}</Text>
-                    <Text style={styles.ticketInfo}>
-                      {compra.cantidad}x {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} • Total: ${compra.total?.toLocaleString('es-AR')}
-                    </Text>
-
-                    <View style={styles.detailRow}>
-                      <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
-                      <Text style={styles.detailText} numberOfLines={1}>
-                        {compra.ubicacion || compra.evento?.ubicacion}
-                      </Text>
-                    </View>
-
-                    <View style={styles.detailRow}>
-                      <Ionicons name="business-outline" size={13} color={COLORS.tertiary} />
-                      <Text style={styles.detailText}>
-                        Organiza: {compra.organizadorNombre || (typeof compra.evento?.organizador === 'object' ? compra.evento.organizador.nombre : compra.evento?.organizador) || 'Organizador'}
-                      </Text>
-                    </View>
-
-                    {/* Action Buttons Row */}
-                    <View style={styles.actionsRow}>
-                      {/* View QR (if Confirmada) */}
-                      {isConfirmada && (
-                        <TouchableOpacity
-                          style={styles.actionBtnQr}
-                          onPress={() => setSelectedCompraQR(compra)}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                        >
-                          <Ionicons name="qr-code-outline" size={15} color={COLORS.background} />
-                          <Text style={styles.actionBtnQrText}>Ver QR</Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Chat with organizer */}
-                      <TouchableOpacity
-                        style={styles.actionBtnChat}
-                        onPress={() => navigation.navigate('Chat', { compraId: compra.id })}
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                      >
-                        <Ionicons name="chatbubble-ellipses-outline" size={15} color={COLORS.badgeCyanGlow} />
-                        <Text style={styles.actionBtnChatText}>Chat</Text>
-                      </TouchableOpacity>
-
-                      {/* Cancel / Refund Button */}
-                      {(isConfirmada || isPendiente) && (
-                        <TouchableOpacity
-                          style={styles.actionBtnCancel}
-                          onPress={() => setSelectedCompraCancel(compra)}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.actionBtnCancelText}>
-                            <Ionicons name="close-circle-outline" size={15} color={COLORS.statusDanger} />
-                            {' '}Cancelar
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Rate event if UTILIZADA */}
-                      {isUtilizada &&
-                        (compra.reseniaRealizada ? (
-                          <View style={styles.ratedChip}>
-                            <View style={styles.ratedIconCircle}>
-                              <Ionicons
-                                name="checkmark"
-                                size={10}
-                                color={COLORS.badgeCyanGlow}
-                                style={styles.ratedCheckIcon}
-                              />
-                            </View>
-                            <Text style={styles.ratedChipText}>Calificada</Text>
-                          </View>
-                        ) : (
-                          <TouchableOpacity
-                            style={styles.actionBtnRate}
-                            onPress={() => navigation.navigate('Calificar', { compraId: compra.id })}
-                            activeOpacity={0.7}
-                            accessibilityRole="button"
-                          >
-                            <Ionicons name="star" size={14} color={COLORS.statusWarning} />
-                            <Text style={styles.actionBtnRateText}>Calificar Evento</Text>
-                          </TouchableOpacity>
-                        ))}
-
-                    </View>
-                  </View>
-                </View>
+                <TicketCard
+                  key={compra.id}
+                  compra={compra}
+                  dias={dias}
+                  onOpenQr={() => setSelectedCompraQR(compra)}
+                  onOpenChat={() => navigation.navigate('Chat', { compraId: compra.id })}
+                  onRequestCancel={() => setSelectedCompraCancel(compra)}
+                  onRate={() => navigation.navigate('Calificar', { compraId: compra.id })}
+                />
               );
             })
           )}
@@ -377,143 +234,23 @@ export default function MisTicketsScreen({ navigation }) {
 
       {/* QR Code Modal */}
       {selectedCompraQR && (
-        <Modal
-          transparent
-          animationType="fade"
-          visible={!!selectedCompraQR}
-          onRequestClose={() => setSelectedCompraQR(null)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.qrModalCard} accessibilityViewIsModal={true}>
-              <TouchableOpacity
-                style={styles.closeModalBtn}
-                onPress={() => setSelectedCompraQR(null)}
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar código QR"
-              >
-                <Ionicons name="close" size={20} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-
-              <View style={styles.qrIconCircle}>
-                <Ionicons name="qr-code" size={26} color={COLORS.badgeCyanGlow} />
-              </View>
-
-              <Text style={styles.qrEventTitle}>{selectedCompraQR.eventoNombre}</Text>
-              <Text style={styles.qrSubtitle}>
-                {selectedCompraQR.cantidad}x {selectedCompraQR.tipoEntradaNombre} • {selectedCompraQR.ordenCodigo}
-              </Text>
-
-              {/* Realistic QR Container Box */}
-              <View style={styles.qrWhiteBox}>
-                <Ionicons name="qr-code" size={160} color="#0F081D" />
-              </View>
-
-              <View style={styles.qrVerifiedRow}>
-                <View style={styles.greenPulse} />
-                <Text style={styles.qrVerifiedText}>Entrada digital válida para acreditar</Text>
-              </View>
-
-            </View>
-          </View>
-        </Modal>
+        <TicketQrModal compra={selectedCompraQR} onClose={() => setSelectedCompraQR(null)} />
       )}
 
       {/* Cancellation Modal */}
       {selectedCompraCancel && (
-        <Modal
-          transparent
-          animationType="fade"
-          visible={!!selectedCompraCancel}
-          onRequestClose={() => !isCancelling && setSelectedCompraCancel(null)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.cancelModalCard} accessibilityViewIsModal={true}>
-              <View style={styles.cancelDangerIcon}>
-                <Ionicons name="alert-circle" size={32} color={COLORS.statusDanger} />
-              </View>
-
-              <Text style={styles.cancelTitle}>
-                {selectedCompraCancel.estado === 'PENDIENTE'
-                  ? '¿Cancelar compra pendiente?'
-                  : '¿Cancelar compra y solicitar reembolso?'}
-              </Text>
-              <Text style={styles.cancelSubtitle}>
-                {selectedCompraCancel.estado === 'PENDIENTE'
-                  ? 'Estás por cancelar la orden '
-                  : 'Estás por solicitar la cancelación de la orden '}
-                <Text style={{ fontWeight: '700', color: COLORS.textPrimary }}>
-                  {selectedCompraCancel.ordenCodigo}
-                </Text>{' '}
-                ({selectedCompraCancel.eventoNombre}).
-              </Text>
-
-              <View style={styles.cancelInfoBox}>
-                <View style={styles.cancelInfoRow}>
-                  <Text style={styles.cancelInfoLabel}>
-                    {selectedCompraCancel.estado === 'PENDIENTE' ? 'Total de la compra:' : 'Total pagado:'}
-                  </Text>
-                  <Text style={styles.cancelInfoValue}>${selectedCompraCancel.total?.toLocaleString('es-AR')}</Text>
-                </View>
-                <View style={styles.cancelInfoRow}>
-                  <Text style={styles.cancelInfoLabel}>
-                    {selectedCompraCancel.estado === 'PENDIENTE'
-                      ? 'Reembolso:'
-                      : 'Reembolso estimado:'}
-                  </Text>
-                  <Text style={[styles.cancelInfoValue, { color: COLORS.statusSuccess }]}>
-                    {selectedCompraCancel.estado === 'PENDIENTE'
-                      ? 'No aplica'
-                      : `100% ($${selectedCompraCancel.total?.toLocaleString('es-AR')})`}
-                  </Text>
-                </View>
-                <Text style={styles.cancelPolicyText}>
-                  {selectedCompraCancel.estado === 'PENDIENTE'
-                    ? 'La compra pendiente se cancelará sin generar un reembolso.'
-                    : '✓ Cumple con la política de devolución.'}
-                </Text>
-              </View>
-
-              <View style={styles.cancelBtnRow}>
-                <TouchableOpacity
-                  style={styles.cancelBackBtn}
-                  onPress={() => setSelectedCompraCancel(null)}
-                  disabled={isCancelling}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: isCancelling }}
-                >
-                  <Text style={styles.cancelBackBtnText}>Volver</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.cancelConfirmBtn}
-                  onPress={handleConfirmCancel}
-                  disabled={isCancelling}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: isCancelling }}
-                >
-                  {isCancelling ? (
-                    <LoadingSpinner size={18} style={styles.actionSpinner} />
-                  ) : (
-                    <Text style={styles.cancelConfirmBtnText}>Confirmar</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
+        <CancelCompraModal
+          compra={selectedCompraCancel}
+          isCancelling={isCancelling}
+          onClose={() => setSelectedCompraCancel(null)}
+          onConfirm={handleConfirmCancel}
+        />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screenContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
     paddingBottom: 60,
   },
@@ -536,16 +273,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 2,
   },
-  ticketCountBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.surfaceCard,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 0, 127, 0.25)',
-  },
   tabsRow: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -554,22 +281,6 @@ const styles = StyleSheet.create({
   filters: {
     gap: 10,
     paddingHorizontal: 16,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 44,
-    gap: 9,
-    paddingHorizontal: 14,
-    backgroundColor: COLORS.surfaceCard,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  searchInput: {
-    flex: 1,
-    color: COLORS.textPrimary,
-    fontSize: 13,
   },
   sortSection: {
     flexDirection: 'row',
@@ -664,372 +375,5 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     maxWidth: 240,
-  },
-  ticketCard: {
-    backgroundColor: COLORS.surfaceCard,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  cardImageContainer: {
-    position: 'relative',
-    width: '100%',
-    height: 120,
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  cardImageScrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 72,
-  },
-  cardTopRow: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    right: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  ratedIconCircle: {
-    width: 16,
-    height: 16,
-    borderWidth: 2,
-    borderColor: COLORS.badgeCyanGlow,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-  },
-  ratedCheckIcon: {
-    lineHeight: 12,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusChipText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  orderCode: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    backgroundColor: 'rgba(15, 8, 29, 0.8)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  countdownBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 30,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(0, 210, 242, 0.1)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 210, 242, 0.18)',
-  },
-  countdownText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.badgeCyanGlow,
-  },
-  cardBody: {
-    padding: 14,
-  },
-  eventTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    letterSpacing: -0.3,
-  },
-  ticketInfo: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.tertiary,
-    marginTop: 2,
-    marginBottom: 6,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  detailText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    flex: 1,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  actionBtnQr: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: COLORS.badgeCyanGlow,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  actionBtnQrText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.background,
-  },
-  actionBtnChat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(0, 210, 242, 0.14)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  actionBtnChatText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.badgeCyanGlow,
-  },
-  actionBtnCancel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255, 51, 102, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  actionBtnCancelText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.statusDanger,
-  },
-  actionBtnRate: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255, 183, 3, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  actionBtnRateText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.statusWarning,
-  },
-  ratedChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(0, 210, 242, 0.14)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  ratedChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.badgeCyanGlow,
-  },
-  actionSpinner: {
-    width: 18,
-    padding: 0,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 8, 29, 0.85)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  qrModalCard: {
-    width: '100%',
-    maxWidth: 320,
-    backgroundColor: COLORS.surfaceCard,
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    position: 'relative',
-  },
-  closeModalBtn: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COLORS.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 210, 242, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  qrEventTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    textAlign: 'center',
-  },
-  qrSubtitle: {
-    fontSize: 11,
-    color: COLORS.tertiary,
-    marginTop: 2,
-    marginBottom: 14,
-  },
-  qrWhiteBox: {
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: COLORS.badgeCyanGlow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-  },
-  qrVerifiedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 14,
-  },
-  greenPulse: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.statusSuccess,
-  },
-  qrVerifiedText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.statusSuccess,
-  },
-  qrDoorText: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  cancelModalCard: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: COLORS.surfaceCard,
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  cancelDangerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 51, 102, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  cancelTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  cancelSubtitle: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    lineHeight: 18,
-    marginTop: 6,
-  },
-  cancelInfoBox: {
-    backgroundColor: COLORS.surfaceContainerLow,
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 14,
-    marginBottom: 18,
-    gap: 4,
-  },
-  cancelInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cancelInfoLabel: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
-  cancelInfoValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  cancelPolicyText: {
-    fontSize: 10,
-    color: COLORS.tertiary,
-    marginTop: 6,
-  },
-  cancelBtnRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  cancelBackBtn: {
-    flex: 1,
-    backgroundColor: COLORS.surfaceContainer,
-    paddingVertical: 12,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  cancelBackBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-  },
-  cancelConfirmBtn: {
-    flex: 1,
-    backgroundColor: COLORS.statusDanger,
-    paddingVertical: 12,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  cancelConfirmBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
   },
 });

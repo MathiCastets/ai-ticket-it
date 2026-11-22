@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Modal,
   KeyboardAvoidingView,
   Keyboard,
   Platform,
@@ -15,12 +14,15 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
+import { commonStyles } from '../theme/commonStyles';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/loading/Spinners';
 import DateTimeSelector, { formatearFechaEvento } from '../components/DateTimeSelector';
 import AccessDeniedView from '../components/AccessDeniedView';
 import { useNotification } from '../components/NotificationProvider';
+import TipoEntradaFormCard from '../components/eventos/TipoEntradaFormCard';
+import PublicacionResultadoModal from '../components/eventos/PublicacionResultadoModal';
 
 export default function CrearEventoScreen({ navigation, route }) {
   const { crearEvento, categorias, currentUser } = useApp();
@@ -369,14 +371,14 @@ export default function CrearEventoScreen({ navigation, route }) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.screenContainer}
+      style={commonStyles.screenContainer}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Header title="AI Ticket It" subtitle="Crear Evento" />
 
       <ScrollView
         ref={scrollViewRef}
-        style={styles.scrollView}
+        style={commonStyles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           {
@@ -426,7 +428,7 @@ export default function CrearEventoScreen({ navigation, route }) {
           >
             <Text style={styles.inputLabel}>Nombre del Evento</Text>
             <TextInput
-              style={[styles.textInput, errores.nombre && styles.inputError]}
+              style={[styles.textInput, errores.nombre && commonStyles.inputError]}
               value={nombre}
               onChangeText={(value) => cambiarCampo(setNombre, 'nombre', value)}
               placeholder="Ej. Recital Acústico 2026"
@@ -435,7 +437,7 @@ export default function CrearEventoScreen({ navigation, route }) {
               accessibilityLabel="Nombre del evento"
             />
             {errores.nombre ? (
-              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+              <Text style={commonStyles.errorLabel} accessibilityLiveRegion="polite">
                 {errores.nombre}
               </Text>
             ) : null}
@@ -467,7 +469,7 @@ export default function CrearEventoScreen({ navigation, route }) {
               })}
             </ScrollView>
             {errores.categoria ? (
-              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+              <Text style={commonStyles.errorLabel} accessibilityLiveRegion="polite">
                 {errores.categoria}
               </Text>
             ) : null}
@@ -491,7 +493,7 @@ export default function CrearEventoScreen({ navigation, route }) {
           >
             <Text style={styles.inputLabel}>Lugar / Predio</Text>
             <TextInput
-              style={[styles.textInput, errores.ubicacion && styles.inputError]}
+              style={[styles.textInput, errores.ubicacion && commonStyles.inputError]}
               value={ubicacion}
               onChangeText={(value) => cambiarCampo(setUbicacion, 'ubicacion', value)}
               placeholder="Ej. Estadio Central"
@@ -500,7 +502,7 @@ export default function CrearEventoScreen({ navigation, route }) {
               accessibilityLabel="Lugar o predio del evento"
             />
             {errores.ubicacion ? (
-              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+              <Text style={commonStyles.errorLabel} accessibilityLiveRegion="polite">
                 {errores.ubicacion}
               </Text>
             ) : null}
@@ -514,7 +516,7 @@ export default function CrearEventoScreen({ navigation, route }) {
           >
             <Text style={styles.inputLabel}>Dirección</Text>
             <TextInput
-              style={[styles.textInput, errores.direccion && styles.inputError]}
+              style={[styles.textInput, errores.direccion && commonStyles.inputError]}
               value={direccion}
               onChangeText={(value) => cambiarCampo(setDireccion, 'direccion', value)}
               placeholder="Ej. Av. Corrientes 1234, CABA"
@@ -523,7 +525,7 @@ export default function CrearEventoScreen({ navigation, route }) {
               accessibilityLabel="Dirección del evento"
             />
             {errores.direccion ? (
-              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+              <Text style={commonStyles.errorLabel} accessibilityLiveRegion="polite">
                 {errores.direccion}
               </Text>
             ) : null}
@@ -537,7 +539,7 @@ export default function CrearEventoScreen({ navigation, route }) {
           >
             <Text style={styles.inputLabel}>Descripción del Evento</Text>
             <TextInput
-              style={[styles.textInput, styles.textArea, errores.descripcion && styles.inputError]}
+              style={[styles.textInput, styles.textArea, errores.descripcion && commonStyles.inputError]}
               value={descripcion}
               onChangeText={(value) => cambiarCampo(setDescripcion, 'descripcion', value)}
               placeholder="Describí los artistas, propuesta y normas..."
@@ -548,7 +550,7 @@ export default function CrearEventoScreen({ navigation, route }) {
               accessibilityLabel="Descripción del evento"
             />
             {errores.descripcion ? (
-              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+              <Text style={commonStyles.errorLabel} accessibilityLiveRegion="polite">
                 {errores.descripcion}
               </Text>
             ) : null}
@@ -638,81 +640,19 @@ export default function CrearEventoScreen({ navigation, route }) {
           </Text>
 
           {tiposEntrada.map((tipo, idx) => (
-            <View
+            <TipoEntradaFormCard
               key={tipo.id}
-              style={styles.tipoRowCard}
+              tipo={tipo}
+              index={idx}
+              canRemove={tiposEntrada.length > 1}
+              errores={errores}
               onLayout={(e) => {
                 tipoOffsets.current[tipo.id] = e.nativeEvent.layout.y;
               }}
-            >
-              <View style={styles.tipoHeader}>
-                <Text style={styles.tipoNumber}>Entrada #{idx + 1}</Text>
-                {tiposEntrada.length > 1 && (
-                  <TouchableOpacity
-                    onPress={() => handleRemoveTipo(tipo.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Eliminar tipo de entrada ${idx + 1}`}
-                  >
-                    <Ionicons name="trash-outline" size={16} color={COLORS.statusDanger} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <TextInput
-                style={[styles.tipoInput, errores[`tipo-${tipo.id}-nombre`] && styles.inputError]}
-                value={tipo.nombre}
-                onChangeText={(val) => handleUpdateTipo(tipo.id, 'nombre', val)}
-                placeholder="Nombre (ej. Platea VIP, General)"
-                placeholderTextColor={COLORS.textMuted}
-                onFocus={() => handleFocusTipo(tipo.id)}
-                accessibilityLabel={`Nombre del tipo de entrada ${idx + 1}`}
-              />
-              {errores[`tipo-${tipo.id}-nombre`] ? (
-                <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
-                  {errores[`tipo-${tipo.id}-nombre`]}
-                </Text>
-              ) : null}
-
-              <View style={styles.tipoInlineRow}>
-                <View style={styles.tipoHalfInputBox}>
-                  <Text style={styles.subInputLabel}>Precio ($ ARS):</Text>
-                  <TextInput
-                    style={[styles.tipoInput, errores[`tipo-${tipo.id}-precio`] && styles.inputError]}
-                    value={tipo.precio}
-                    onChangeText={(val) => handleUpdateTipo(tipo.id, 'precio', val)}
-                    placeholder="8000"
-                    placeholderTextColor={COLORS.textMuted}
-                    keyboardType="numeric"
-                    onFocus={() => handleFocusTipo(tipo.id)}
-                    accessibilityLabel={`Precio en pesos argentinos de entrada ${idx + 1}`}
-                  />
-                  {errores[`tipo-${tipo.id}-precio`] ? (
-                    <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
-                      {errores[`tipo-${tipo.id}-precio`]}
-                    </Text>
-                  ) : null}
-                </View>
-
-                <View style={styles.tipoHalfInputBox}>
-                  <Text style={styles.subInputLabel}>Cupo Máximo:</Text>
-                  <TextInput
-                    style={[styles.tipoInput, errores[`tipo-${tipo.id}-cupo`] && styles.inputError]}
-                    value={tipo.cupo}
-                    onChangeText={(val) => handleUpdateTipo(tipo.id, 'cupo', val)}
-                    placeholder="150"
-                    placeholderTextColor={COLORS.textMuted}
-                    keyboardType="numeric"
-                    onFocus={() => handleFocusTipo(tipo.id)}
-                    accessibilityLabel={`Cupo máximo de entrada ${idx + 1}`}
-                  />
-                  {errores[`tipo-${tipo.id}-cupo`] ? (
-                    <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
-                      {errores[`tipo-${tipo.id}-cupo`]}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-            </View>
+              onFocus={handleFocusTipo}
+              onUpdate={handleUpdateTipo}
+              onRemove={handleRemoveTipo}
+            />
           ))}
         </View>
 
@@ -738,69 +678,16 @@ export default function CrearEventoScreen({ navigation, route }) {
           )}
         </TouchableOpacity>
       </ScrollView>
-      <Modal
-        visible={!!resultadoPublicacion}
-        transparent
-        animationType="fade"
-        onRequestClose={cerrarResultado}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.resultModal}>
-            <View
-              style={[
-                styles.resultIcon,
-                resultadoPublicacion?.tipo === 'exito' ? styles.successIcon : styles.failureIcon,
-              ]}
-            >
-              <Ionicons
-                name={resultadoPublicacion?.tipo === 'exito' ? 'checkmark' : 'alert'}
-                size={28}
-                color={COLORS.textPrimary}
-              />
-            </View>
-            <Text style={styles.resultTitle}>
-              {resultadoPublicacion?.tipo === 'exito'
-                ? '¡Evento publicado!'
-                : 'No se pudo publicar'}
-            </Text>
-            <Text style={styles.resultMessage}>{resultadoPublicacion?.mensaje}</Text>
-            <View style={styles.resultActions}>
-              {resultadoPublicacion?.tipo === 'exito' ? (
-                <TouchableOpacity
-                  style={styles.secondaryModalButton}
-                  onPress={cerrarResultado}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.secondaryModalButtonText}>Cerrar</Text>
-                </TouchableOpacity>
-              ) : null}
-              <TouchableOpacity
-                style={styles.primaryModalButton}
-                onPress={
-                  resultadoPublicacion?.tipo === 'exito' ? verEventoCreado : cerrarResultado
-                }
-                accessibilityRole="button"
-              >
-                <Text style={styles.primaryModalButtonText}>
-                  {resultadoPublicacion?.tipo === 'exito' ? 'Ver evento' : 'Cerrar'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <PublicacionResultadoModal
+        resultado={resultadoPublicacion}
+        onClose={cerrarResultado}
+        onViewEvent={verEventoCreado}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  screenContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
@@ -843,20 +730,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginBottom: 4,
   },
-  iaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 0, 127, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  iaButtonText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.accentElectric,
-  },
   inputGroup: {
     gap: 4,
   },
@@ -864,15 +737,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.textSecondary,
-  },
-  inputError: {
-    borderWidth: 1,
-    borderColor: COLORS.statusDanger,
-  },
-  errorLabel: {
-    color: COLORS.statusDanger,
-    fontSize: 11,
-    marginTop: 2,
   },
   textInput: {
     backgroundColor: COLORS.surfaceContainerLow,
@@ -993,44 +857,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.tertiary,
   },
-  tipoRowCard: {
-    backgroundColor: COLORS.surfaceContainerLow,
-    padding: 12,
-    borderRadius: 12,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  tipoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  tipoNumber: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.badgeCyanGlow,
-  },
-  tipoInput: {
-    backgroundColor: COLORS.surfaceCard,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    color: COLORS.textPrimary,
-    fontSize: 12,
-  },
-  tipoInlineRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  tipoHalfInputBox: {
-    flex: 1,
-    gap: 4,
-  },
-  subInputLabel: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-  },
   publishBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1058,83 +884,5 @@ const styles = StyleSheet.create({
   buttonSpinner: {
     width: 18,
     padding: 0,
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
-    padding: 24,
-  },
-  resultModal: {
-    width: '100%',
-    maxWidth: 420,
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceCard,
-    borderColor: COLORS.borderGlass,
-    borderWidth: 1,
-    borderRadius: 20,
-    padding: 24,
-  },
-  resultIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  successIcon: {
-    backgroundColor: COLORS.statusSuccess,
-  },
-  failureIcon: {
-    backgroundColor: COLORS.statusDanger,
-  },
-  resultTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 19,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  resultMessage: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    lineHeight: 19,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  resultActions: {
-    width: '100%',
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 22,
-  },
-  primaryModalButton: {
-    flex: 1,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.accentElectric,
-    borderRadius: 22,
-    paddingHorizontal: 12,
-  },
-  primaryModalButtonText: {
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  secondaryModalButton: {
-    flex: 1,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceContainerHigh,
-    borderRadius: 22,
-    paddingHorizontal: 12,
-  },
-  secondaryModalButtonText: {
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
   },
 });
