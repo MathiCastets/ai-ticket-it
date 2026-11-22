@@ -236,6 +236,7 @@ export default function CalificarScreen({ route, navigation }) {
             style={styles.textArea}
             placeholder="Escribí aquí tu reseña sobre el evento..."
             placeholderTextColor={COLORS.textMuted}
+            accessibilityLabel="Comentario sobre tu experiencia en el evento"
             value={comentario}
             onChangeText={setComentario}
             maxLength={MAX_REVIEW_LENGTH}
@@ -252,6 +253,8 @@ export default function CalificarScreen({ route, navigation }) {
           onPress={handleSubmit}
           disabled={isSubmitting}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSubmitting }}
         >
           {isSubmitting ? (
             <>

@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  Image,
-  TextInput,
-  TouchableOpacity,
-  Modal,
-} from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TextInput, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme/colors';
@@ -316,28 +307,31 @@ export default function MisTicketsScreen({ navigation }) {
                           style={styles.actionBtnQr}
                           onPress={() => setSelectedCompraQR(compra)}
                           activeOpacity={0.7}
+                          accessibilityRole="button"
                         >
                           <Ionicons name="qr-code-outline" size={15} color={COLORS.background} />
                           <Text style={styles.actionBtnQrText}>Ver QR</Text>
                         </TouchableOpacity>
                       )}
 
-                      {/* Chat with organizer (TP Requirement) */}
+                      {/* Chat with organizer */}
                       <TouchableOpacity
                         style={styles.actionBtnChat}
                         onPress={() => navigation.navigate('Chat', { compraId: compra.id })}
                         activeOpacity={0.7}
+                        accessibilityRole="button"
                       >
                         <Ionicons name="chatbubble-ellipses-outline" size={15} color={COLORS.badgeCyanGlow} />
                         <Text style={styles.actionBtnChatText}>Chat</Text>
                       </TouchableOpacity>
 
-                      {/* Cancel / Refund Button (TP Requirement) */}
+                      {/* Cancel / Refund Button */}
                       {(isConfirmada || isPendiente) && (
                         <TouchableOpacity
                           style={styles.actionBtnCancel}
                           onPress={() => setSelectedCompraCancel(compra)}
                           activeOpacity={0.7}
+                          accessibilityRole="button"
                         >
                           <Text style={styles.actionBtnCancelText}>
                             <Ionicons name="close-circle-outline" size={15} color={COLORS.statusDanger} />
@@ -346,7 +340,7 @@ export default function MisTicketsScreen({ navigation }) {
                         </TouchableOpacity>
                       )}
 
-                      {/* Rate event if UTILIZADA (TP Requirement) */}
+                      {/* Rate event if UTILIZADA */}
                       {isUtilizada &&
                         (compra.reseniaRealizada ? (
                           <View style={styles.ratedChip}>
@@ -365,6 +359,7 @@ export default function MisTicketsScreen({ navigation }) {
                             style={styles.actionBtnRate}
                             onPress={() => navigation.navigate('Calificar', { compraId: compra.id })}
                             activeOpacity={0.7}
+                            accessibilityRole="button"
                           >
                             <Ionicons name="star" size={14} color={COLORS.statusWarning} />
                             <Text style={styles.actionBtnRateText}>Calificar Evento</Text>
@@ -382,10 +377,20 @@ export default function MisTicketsScreen({ navigation }) {
 
       {/* QR Code Modal */}
       {selectedCompraQR && (
-        <Modal transparent animationType="fade" visible={!!selectedCompraQR}>
+        <Modal
+          transparent
+          animationType="fade"
+          visible={!!selectedCompraQR}
+          onRequestClose={() => setSelectedCompraQR(null)}
+        >
           <View style={styles.modalBackdrop}>
-            <View style={styles.qrModalCard}>
-              <TouchableOpacity style={styles.closeModalBtn} onPress={() => setSelectedCompraQR(null)}>
+            <View style={styles.qrModalCard} accessibilityViewIsModal={true}>
+              <TouchableOpacity
+                style={styles.closeModalBtn}
+                onPress={() => setSelectedCompraQR(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar código QR"
+              >
                 <Ionicons name="close" size={20} color={COLORS.textPrimary} />
               </TouchableOpacity>
 
@@ -413,11 +418,16 @@ export default function MisTicketsScreen({ navigation }) {
         </Modal>
       )}
 
-      {/* Cancellation Modal (TP Requirement) */}
+      {/* Cancellation Modal */}
       {selectedCompraCancel && (
-        <Modal transparent animationType="fade" visible={!!selectedCompraCancel}>
+        <Modal
+          transparent
+          animationType="fade"
+          visible={!!selectedCompraCancel}
+          onRequestClose={() => !isCancelling && setSelectedCompraCancel(null)}
+        >
           <View style={styles.modalBackdrop}>
-            <View style={styles.cancelModalCard}>
+            <View style={styles.cancelModalCard} accessibilityViewIsModal={true}>
               <View style={styles.cancelDangerIcon}>
                 <Ionicons name="alert-circle" size={32} color={COLORS.statusDanger} />
               </View>
@@ -468,6 +478,8 @@ export default function MisTicketsScreen({ navigation }) {
                   style={styles.cancelBackBtn}
                   onPress={() => setSelectedCompraCancel(null)}
                   disabled={isCancelling}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: isCancelling }}
                 >
                   <Text style={styles.cancelBackBtnText}>Volver</Text>
                 </TouchableOpacity>
@@ -476,6 +488,8 @@ export default function MisTicketsScreen({ navigation }) {
                   style={styles.cancelConfirmBtn}
                   onPress={handleConfirmCancel}
                   disabled={isCancelling}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: isCancelling }}
                 >
                   {isCancelling ? (
                     <LoadingSpinner size={18} style={styles.actionSpinner} />
@@ -936,6 +950,7 @@ const styles = StyleSheet.create({
   },
   cancelModalCard: {
     width: '100%',
+    maxWidth: 420,
     backgroundColor: COLORS.surfaceCard,
     borderRadius: 20,
     padding: 20,

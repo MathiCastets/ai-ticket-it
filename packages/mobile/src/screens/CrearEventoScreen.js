@@ -432,8 +432,13 @@ export default function CrearEventoScreen({ navigation, route }) {
               placeholder="Ej. Recital Acústico 2026"
               placeholderTextColor={COLORS.textMuted}
               onFocus={() => handleFocusField('nombre')}
+              accessibilityLabel="Nombre del evento"
             />
-            {errores.nombre ? <Text style={styles.errorLabel}>{errores.nombre}</Text> : null}
+            {errores.nombre ? (
+              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+                {errores.nombre}
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.inputGroup}>
@@ -451,6 +456,8 @@ export default function CrearEventoScreen({ navigation, route }) {
                     key={cat}
                     style={[styles.catChip, isSelected && styles.catChipSelected]}
                     onPress={() => cambiarCampo(setCategoria, 'categoria', cat)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                   >
                     <Text style={[styles.catChipText, isSelected && styles.catChipTextSelected]}>
                       {cat}
@@ -459,7 +466,11 @@ export default function CrearEventoScreen({ navigation, route }) {
                 );
               })}
             </ScrollView>
-            {errores.categoria ? <Text style={styles.errorLabel}>{errores.categoria}</Text> : null}
+            {errores.categoria ? (
+              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+                {errores.categoria}
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.inputGroup}>
@@ -486,8 +497,13 @@ export default function CrearEventoScreen({ navigation, route }) {
               placeholder="Ej. Estadio Central"
               placeholderTextColor={COLORS.textMuted}
               onFocus={() => handleFocusField('ubicacion')}
+              accessibilityLabel="Lugar o predio del evento"
             />
-            {errores.ubicacion ? <Text style={styles.errorLabel}>{errores.ubicacion}</Text> : null}
+            {errores.ubicacion ? (
+              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+                {errores.ubicacion}
+              </Text>
+            ) : null}
           </View>
 
           <View
@@ -504,8 +520,13 @@ export default function CrearEventoScreen({ navigation, route }) {
               placeholder="Ej. Av. Corrientes 1234, CABA"
               placeholderTextColor={COLORS.textMuted}
               onFocus={() => handleFocusField('direccion')}
+              accessibilityLabel="Dirección del evento"
             />
-            {errores.direccion ? <Text style={styles.errorLabel}>{errores.direccion}</Text> : null}
+            {errores.direccion ? (
+              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+                {errores.direccion}
+              </Text>
+            ) : null}
           </View>
 
           <View
@@ -524,8 +545,13 @@ export default function CrearEventoScreen({ navigation, route }) {
               multiline
               numberOfLines={3}
               onFocus={() => handleFocusField('descripcion')}
+              accessibilityLabel="Descripción del evento"
             />
-            {errores.descripcion ? <Text style={styles.errorLabel}>{errores.descripcion}</Text> : null}
+            {errores.descripcion ? (
+              <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+                {errores.descripcion}
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.inputGroup}>
@@ -597,7 +623,12 @@ export default function CrearEventoScreen({ navigation, route }) {
         >
           <View style={styles.cardSectionHeader}>
             <Text style={styles.cardSectionTitle}>2. Tipos de Entrada y Cupos</Text>
-            <TouchableOpacity style={styles.addTypeBtn} onPress={handleAddTipo} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.addTypeBtn}
+              onPress={handleAddTipo}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
               <Ionicons name="add" size={16} color={COLORS.tertiary} />
               <Text style={styles.addTypeBtnText}>Agregar Tipo</Text>
             </TouchableOpacity>
@@ -617,7 +648,11 @@ export default function CrearEventoScreen({ navigation, route }) {
               <View style={styles.tipoHeader}>
                 <Text style={styles.tipoNumber}>Entrada #{idx + 1}</Text>
                 {tiposEntrada.length > 1 && (
-                  <TouchableOpacity onPress={() => handleRemoveTipo(tipo.id)}>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveTipo(tipo.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Eliminar tipo de entrada ${idx + 1}`}
+                  >
                     <Ionicons name="trash-outline" size={16} color={COLORS.statusDanger} />
                   </TouchableOpacity>
                 )}
@@ -630,9 +665,12 @@ export default function CrearEventoScreen({ navigation, route }) {
                 placeholder="Nombre (ej. Platea VIP, General)"
                 placeholderTextColor={COLORS.textMuted}
                 onFocus={() => handleFocusTipo(tipo.id)}
+                accessibilityLabel={`Nombre del tipo de entrada ${idx + 1}`}
               />
               {errores[`tipo-${tipo.id}-nombre`] ? (
-                <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-nombre`]}</Text>
+                <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+                  {errores[`tipo-${tipo.id}-nombre`]}
+                </Text>
               ) : null}
 
               <View style={styles.tipoInlineRow}>
@@ -646,9 +684,12 @@ export default function CrearEventoScreen({ navigation, route }) {
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="numeric"
                     onFocus={() => handleFocusTipo(tipo.id)}
+                    accessibilityLabel={`Precio en pesos argentinos de entrada ${idx + 1}`}
                   />
                   {errores[`tipo-${tipo.id}-precio`] ? (
-                    <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-precio`]}</Text>
+                    <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+                      {errores[`tipo-${tipo.id}-precio`]}
+                    </Text>
                   ) : null}
                 </View>
 
@@ -662,9 +703,12 @@ export default function CrearEventoScreen({ navigation, route }) {
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="numeric"
                     onFocus={() => handleFocusTipo(tipo.id)}
+                    accessibilityLabel={`Cupo máximo de entrada ${idx + 1}`}
                   />
                   {errores[`tipo-${tipo.id}-cupo`] ? (
-                    <Text style={styles.errorLabel}>{errores[`tipo-${tipo.id}-cupo`]}</Text>
+                    <Text style={styles.errorLabel} accessibilityLiveRegion="polite">
+                      {errores[`tipo-${tipo.id}-cupo`]}
+                    </Text>
                   ) : null}
                 </View>
               </View>
@@ -678,6 +722,8 @@ export default function CrearEventoScreen({ navigation, route }) {
           onPress={handlePublicar}
           disabled={isPublishing}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isPublishing }}
         >
           {isPublishing ? (
             <>

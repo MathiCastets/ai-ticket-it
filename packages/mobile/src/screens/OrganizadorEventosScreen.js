@@ -387,7 +387,9 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
                   </View>
                 </View>
                 {errorRangoFechas ? (
-                  <Text style={styles.dateRangeError}>{errorRangoFechas}</Text>
+                  <Text style={styles.dateRangeError} accessibilityRole="alert" accessibilityLiveRegion="polite">
+                    {errorRangoFechas}
+                  </Text>
                 ) : null}
                 <ScrollView
                   horizontal
@@ -644,6 +646,7 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
                   value={formulario.nombre}
                   onChangeText={(nombre) => setFormulario((prev) => ({ ...prev, nombre }))}
                   maxLength={100}
+                  accessibilityLabel="Nombre del evento"
                 />
                 <Text style={styles.fieldLabel}>Ubicación</Text>
                 <TextInput
@@ -651,6 +654,7 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
                   value={formulario.ubicacion}
                   onChangeText={(ubicacion) => setFormulario((prev) => ({ ...prev, ubicacion }))}
                   maxLength={160}
+                  accessibilityLabel="Ubicación del evento"
                 />
                 <Text style={styles.fieldLabel}>Descripción</Text>
                 <TextInput
@@ -659,6 +663,7 @@ export default function OrganizadorEventosScreen({ navigation, route }) {
                   onChangeText={(descripcion) => setFormulario((prev) => ({ ...prev, descripcion }))}
                   multiline
                   maxLength={1000}
+                  accessibilityLabel="Descripción del evento"
                 />
                 <TouchableOpacity
                   style={[styles.saveButton, isSaving && styles.disabled]}

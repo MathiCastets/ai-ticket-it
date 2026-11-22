@@ -189,9 +189,20 @@ export default function ExplorarScreen({ navigation }) {
         <View style={styles.searchSection}>
           <View style={styles.searchInputContainer}>
             <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
-            <TextInput style={styles.searchInput} placeholder="Buscar recitales, festivales, teatro..." placeholderTextColor={COLORS.textMuted} value={searchText} onChangeText={setSearchText} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar recitales, festivales, teatro..."
+              placeholderTextColor={COLORS.textMuted}
+              value={searchText}
+              onChangeText={setSearchText}
+              accessibilityLabel="Buscar eventos por nombre, lugar, organizador o categoría"
+            />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')}>
+              <TouchableOpacity
+                onPress={() => setSearchText('')}
+                accessibilityRole="button"
+                accessibilityLabel="Limpiar búsqueda"
+              >
                 <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
               </TouchableOpacity>
             )}
@@ -286,7 +297,14 @@ export default function ExplorarScreen({ navigation }) {
           ) : filteredEventos.map((item) => {
               const resumenOrganizador = obtenerResumenOrganizador(item);
               return (
-              <TouchableOpacity key={item.id} style={styles.eventCard} onPress={() => navigation.navigate('DetalleEvento', { eventoId: item.id })} activeOpacity={0.8}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.eventCard}
+                onPress={() => navigation.navigate('DetalleEvento', { eventoId: item.id })}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityHint="Abre el detalle del evento"
+              >
                 <View style={styles.eventImageContainer}>
                   <Image source={item.imagen ? { uri: item.imagen } : null} style={styles.eventImage} />
                   <LinearGradient
@@ -297,7 +315,18 @@ export default function ExplorarScreen({ navigation }) {
                   <View style={styles.eventCategoryTag}>
                     <Text style={styles.eventCategoryText}>{getCat(item.categoria)}</Text>
                   </View>
-                  <TouchableOpacity style={styles.eventFavoriteButton} onPress={() => handleToggleFavorito(item.id)} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    style={styles.eventFavoriteButton}
+                    onPress={() => handleToggleFavorito(item.id)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      favoritos.includes(item.id)
+                        ? `Quitar ${item.nombre} de favoritos`
+                        : `Agregar ${item.nombre} a favoritos`
+                    }
+                    accessibilityState={{ selected: favoritos.includes(item.id) }}
+                  >
                     <Ionicons name={favoritos.includes(item.id) ? 'heart' : 'heart-outline'} size={18} color={favoritos.includes(item.id) ? COLORS.accentElectric : COLORS.textPrimary} />
                   </TouchableOpacity>
                 </View>

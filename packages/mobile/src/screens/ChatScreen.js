@@ -311,6 +311,7 @@ export default function ChatScreen({ route, navigation }) {
             ]}
             placeholder={`Escribe como ${currentUser.nombre}...`}
             placeholderTextColor={COLORS.textMuted}
+            accessibilityLabel="Escribir mensaje"
             value={nuevoTexto}
             onChangeText={(texto) => {
               setNuevoTexto(texto);
@@ -361,6 +362,9 @@ export default function ChatScreen({ route, navigation }) {
             onPress={handleEnviar}
             disabled={isSending || conversacionCerrada || !nuevoTexto.trim()}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Enviar mensaje"
+            accessibilityState={{ disabled: isSending || conversacionCerrada || !nuevoTexto.trim() }}
           >
             {isSending ? (
               <LoadingSpinner size={16} style={styles.sendSpinner} />

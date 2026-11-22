@@ -123,6 +123,8 @@ export default function PanelVentasScreen({ route, navigation }) {
                   style={[styles.eventChip, isSelected && styles.eventChipSelected]}
                   onPress={() => setSelectedEventoId(ev.id)}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
                 >
                   <Text style={[styles.eventChipText, isSelected && styles.eventChipTextSelected]}>
                     {ev.nombre}
@@ -249,6 +251,12 @@ export default function PanelVentasScreen({ route, navigation }) {
                 : isPendiente
                 ? COLORS.statusWarning
                 : COLORS.statusDanger;
+              const buyerName =
+                compra.compradorNombre ||
+                (typeof compra.comprador === 'object'
+                  ? `${compra.comprador?.nombre || ''} ${compra.comprador?.apellido || ''}`.trim()
+                  : compra.comprador) ||
+                'Comprador';
 
               return (
                 <View key={compra.id} style={styles.saleItemCard}>
@@ -257,9 +265,7 @@ export default function PanelVentasScreen({ route, navigation }) {
                       <Ionicons name="person" size={16} color={COLORS.badgeCyanGlow} />
                     </View>
                     <View>
-                      <Text style={styles.buyerName}>
-                        {compra.compradorNombre || (typeof compra.comprador === 'object' ? `${compra.comprador?.nombre || ''} ${compra.comprador?.apellido || ''}`.trim() : compra.comprador) || 'Comprador'}
-                      </Text>
+                      <Text style={styles.buyerName}>{buyerName}</Text>
                       <Text style={styles.saleDetails}>
                         {compra.cantidad}x {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} • ${compra.total?.toLocaleString('es-AR')}
                       </Text>
@@ -278,6 +284,8 @@ export default function PanelVentasScreen({ route, navigation }) {
                       style={styles.chatBuyerBtn}
                       onPress={() => navigation.navigate('Chat', { compraId: compra.id })}
                       activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Abrir chat con ${buyerName}`}
                     >
                       <Ionicons name="chatbubble-ellipses" size={14} color={COLORS.accentElectric} />
                       <Text style={styles.chatBuyerBtnText}>Chat</Text>

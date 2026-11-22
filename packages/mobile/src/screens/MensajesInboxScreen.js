@@ -212,12 +212,14 @@ export default function MensajesInboxScreen({ navigation }) {
                 style={styles.searchInput}
                 placeholder="Buscar contacto o evento..."
                 placeholderTextColor={COLORS.textMuted}
+                accessibilityLabel="Buscar conversación por contacto o evento"
                 value={busqueda}
                 onChangeText={setBusqueda}
                 returnKeyType="search"
               />
               {busqueda.length > 0 ? (
                 <TouchableOpacity
+                  accessibilityRole="button"
                   accessibilityLabel="Limpiar búsqueda"
                   onPress={() => setBusqueda('')}
                   hitSlop={8}
@@ -286,6 +288,7 @@ export default function MensajesInboxScreen({ navigation }) {
                   setFiltro('todos');
                 }}
                 activeOpacity={0.8}
+                accessibilityRole="button"
               >
                 <Text style={styles.clearFiltersText}>Limpiar filtros</Text>
               </TouchableOpacity>
@@ -354,6 +357,7 @@ export default function MensajesInboxScreen({ navigation }) {
                   style={[styles.chatCard, conversacionCerrada && styles.closedCard]}
                   onPress={() => navigation.navigate('Chat', { compraId: compraReferencia.id })}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
                 >
                   {encabezado}
                 </TouchableOpacity>
@@ -373,6 +377,7 @@ export default function MensajesInboxScreen({ navigation }) {
                         style={[styles.orderRow, cerrada && styles.closedOrderRow]}
                         onPress={() => navigation.navigate('Chat', { compraId: compra.id })}
                         activeOpacity={0.75}
+                        accessibilityRole="button"
                       >
                         <View style={styles.orderRowContent}>
                           <Text style={styles.orderTitle}>

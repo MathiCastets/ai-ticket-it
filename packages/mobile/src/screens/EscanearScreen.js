@@ -130,7 +130,7 @@ export default function EscanearScreen({ navigation }) {
         </View>
 
         {error ? (
-          <View style={styles.errorBox}>
+          <View style={styles.errorBox} accessibilityRole="alert" accessibilityLiveRegion="polite">
             <Ionicons name="alert-circle-outline" size={18} color={COLORS.statusDanger} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
@@ -172,7 +172,7 @@ export default function EscanearScreen({ navigation }) {
         ) : null}
 
         {mensaje ? (
-          <View style={styles.successBox}>
+          <View style={styles.successBox} accessibilityLiveRegion="polite">
             <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.statusSuccess} />
             <Text style={styles.successText}>{mensaje}</Text>
           </View>

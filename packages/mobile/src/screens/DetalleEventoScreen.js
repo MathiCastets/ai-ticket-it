@@ -1,14 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  useWindowDimensions,
-  Platform,
-} from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, useWindowDimensions, Platform, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -223,7 +214,7 @@ export default function DetalleEventoScreen({ route, navigation }) {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + bottomInset }]} showsVerticalScrollIndicator={false}>
         {favoritosError ? (
-          <Text style={{ color: COLORS.textMuted, marginBottom: 12 }}>
+          <Text style={{ color: COLORS.textMuted, marginBottom: 12 }} accessibilityLiveRegion="polite">
             No se pudieron sincronizar los favoritos: {favoritosError}
           </Text>
         ) : null}
@@ -282,6 +273,13 @@ export default function DetalleEventoScreen({ route, navigation }) {
               style={styles.actionRoundBtn}
               onPress={handleToggleFavorito}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={
+                favoritos.includes(evento.id)
+                  ? 'Quitar evento de favoritos'
+                  : 'Agregar evento a favoritos'
+              }
+              accessibilityState={{ selected: favoritos.includes(evento.id) }}
             >
               <Ionicons
                 name={favoritos.includes(evento.id) ? 'heart' : 'heart-outline'}
@@ -454,7 +452,9 @@ export default function DetalleEventoScreen({ route, navigation }) {
               <Text style={styles.noReviewsText}>Cargando reseñas...</Text>
             ) : errorResenias && reseniasOrganizador.length === 0 ? (
               <View>
-                <Text style={styles.noReviewsText}>{errorResenias}</Text>
+                <Text style={styles.noReviewsText} accessibilityLiveRegion="polite">
+                  {errorResenias}
+                </Text>
                 <TouchableOpacity
                   style={styles.reviewsAction}
                   onPress={handleRetryReviews}
@@ -489,7 +489,9 @@ export default function DetalleEventoScreen({ route, navigation }) {
                 </View>
                 ))}
                 {errorResenias ? (
-                  <Text style={styles.noReviewsText}>{errorResenias}</Text>
+                  <Text style={styles.noReviewsText} accessibilityLiveRegion="polite">
+                    {errorResenias}
+                  </Text>
                 ) : null}
                 {paginaResenias < totalPaginasResenias ? (
                   <TouchableOpacity
@@ -525,6 +527,8 @@ export default function DetalleEventoScreen({ route, navigation }) {
           onPress={handleComprar}
           disabled={!selectedTipo || selectedTipo.disponibles === 0 || isBuying}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !selectedTipo || selectedTipo.disponibles === 0 || isBuying }}
         >
           {isBuying ? (
             <>
@@ -541,9 +545,14 @@ export default function DetalleEventoScreen({ route, navigation }) {
       </View>
 
       {/* Success Modal */}
-      {compraExitosa && (
+      <Modal
+        transparent
+        animationType="fade"
+        visible={compraExitosa}
+        onRequestClose={() => setCompraExitosa(false)}
+      >
         <View style={styles.modalOverlay}>
-          <View style={styles.successModalCard}>
+          <View style={styles.successModalCard} accessibilityViewIsModal={true}>
             <View style={styles.successIconBox}>
               <Ionicons name="checkmark-done" size={32} color={COLORS.statusSuccess} />
             </View>
@@ -565,12 +574,13 @@ export default function DetalleEventoScreen({ route, navigation }) {
                 navigation.navigate('MainTabs', { screen: 'TicketsTab' });
               }}
               activeOpacity={0.85}
+              accessibilityRole="button"
             >
               <Text style={styles.modalActionText}>VER MIS TICKETS</Text>
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
@@ -1013,6 +1023,7 @@ const styles = StyleSheet.create({
   },
   successModalCard: {
     width: '100%',
+    maxWidth: 420,
     backgroundColor: COLORS.surfaceCard,
     borderRadius: 20,
     padding: 22,

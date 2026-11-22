@@ -39,7 +39,7 @@ export default function AccessDeniedView({
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>
 
-        <TouchableOpacity style={styles.actionBtn} onPress={handleBack} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.actionBtn} onPress={handleBack} activeOpacity={0.85} accessibilityRole="button" >
           <Ionicons name="arrow-back" size={18} color={COLORS.textPrimary} style={{ marginRight: 8 }} />
           <Text style={styles.actionBtnText}>{actionText}</Text>
         </TouchableOpacity>

@@ -28,7 +28,13 @@ export default function Header({ title = 'AI Ticket It', subtitle = 'Explorar', 
       <View style={[styles.headerContainer, { paddingTop: topInset, height: 60 + topInset }]}>
         <View style={styles.leftRow}>
           {showBack && (
-            <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={onBack}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Volver"
+            >
               <MaterialIcons name="arrow-back-ios" size={18} color={COLORS.textPrimary} />
             </TouchableOpacity>
           )}
