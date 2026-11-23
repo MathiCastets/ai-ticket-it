@@ -3,6 +3,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
@@ -282,14 +283,26 @@ export default function MensajesInboxScreen({ navigation }) {
             const compraReferencia = grupo.compras[0].compra;
             const variasCompras = grupo.compras.length > 1;
             const conversacionCerrada = grupo.compras[0].cerrada;
+            const imagenEvento = compraReferencia.imagen || compraReferencia.evento?.imagen;
             const encabezado = (
               <>
                 <View style={styles.avatarBox}>
-                  <Ionicons
-                    name={currentUser.rol === 'organizador' ? 'person' : 'business'}
-                    size={20}
-                    color={COLORS.badgeCyanGlow}
-                  />
+                  {imagenEvento ? (
+                    <Image
+                      source={{ uri: imagenEvento }}
+                      style={[
+                        styles.avatarImage,
+                        !variasCompras && conversacionCerrada && styles.avatarImageClosed,
+                      ]}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Ionicons
+                      name={currentUser.rol === 'organizador' ? 'person' : 'business'}
+                      size={20}
+                      color={COLORS.badgeCyanGlow}
+                    />
+                  )}
                 </View>
 
                 <View style={styles.chatCardContent}>
@@ -588,8 +601,18 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: COLORS.surfaceCardSubtle,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarImageClosed: {
+    opacity: 0.55,
   },
   chatCardContent: {
     flex: 1,
