@@ -3,6 +3,7 @@ import { CompraService } from '../../src/services/CompraService.js';
 import { CompraRepository } from '../../src/repositories/inMemory/CompraRepository.js';
 import { EventoRepository } from '../../src/repositories/inMemory/EventoRepository.js';
 import { UsuarioRepository } from '../../src/repositories/inMemory/UsuarioRepository.js';
+import { Compra, MARGEN_VENCIMIENTO_MS } from '../../src/domain/entities/Compra.js';
 import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
@@ -744,6 +745,119 @@ describe('CompraService', () => {
       service = new CompraService(failingRepo, eventoRepo, usuarioRepo);
 
       await expect(service.obtenerPorId('cualquier-id')).rejects.toBe(error);
+    });
+  });
+
+  // ─── vencimiento automático (lazy) ────────────────────────────────────────
+
+  describe('vencimiento automático por margen de 2 horas', () => {
+    test('pasa CONFIRMADA a VENCIDA al listar después de 2 horas sin restituir cupo', async () => {
+      const te = new TipoEntrada({ id: 'te-venc', nombre: 'General', precio: 5000, cupo: 10, disponibles: 8 });
+      const eventoVencido = new Evento({
+        id: 'evt-vencido',
+        nombre: 'Evento Vencido',
+        fecha: new Date(Date.now() - (MARGEN_VENCIMIENTO_MS + 60 * 1000)).toISOString(),
+        organizador,
+        tiposEntrada: [te],
+      });
+      await eventoRepo.save(eventoVencido);
+
+      const compra = new Compra({
+        id: 'compra-confirmada-vencida',
+        comprador,
+        evento: eventoVencido,
+        tipoEntrada: te,
+        cantidad: 2,
+        total: 10000,
+        estado: EstadoCompra.CONFIRMADA,
+      });
+      await compraRepo.save(compra);
+
+      const compras = await service.listarPorComprador(comprador.id);
+      expect(compras[0].estado).toBe(EstadoCompra.VENCIDA);
+      expect(te.disponibles).toBe(8);
+    });
+
+    test('pasa PENDIENTE a CANCELADA y restituye cupo después de 2 horas', async () => {
+      const te = new TipoEntrada({ id: 'te-pend', nombre: 'General', precio: 5000, cupo: 10, disponibles: 7 });
+      const eventoVencido = new Evento({
+        id: 'evt-pend-vencido',
+        nombre: 'Evento Pendiente Vencido',
+        fecha: new Date(Date.now() - (MARGEN_VENCIMIENTO_MS + 60 * 1000)).toISOString(),
+        organizador,
+        tiposEntrada: [te],
+      });
+      await eventoRepo.save(eventoVencido);
+
+      const compra = new Compra({
+        id: 'compra-pendiente-vencida',
+        comprador,
+        evento: eventoVencido,
+        tipoEntrada: te,
+        cantidad: 3,
+        total: 15000,
+        estado: EstadoCompra.PENDIENTE,
+      });
+      await compraRepo.save(compra);
+
+      const recuperada = await service.obtenerPorId(compra.id);
+      expect(recuperada.estado).toBe(EstadoCompra.CANCELADA);
+      expect(te.disponibles).toBe(10);
+    });
+
+    test('mantiene CONFIRMADA dentro del margen de 2 horas y permite acreditar pero no cancelar', async () => {
+      const te = new TipoEntrada({ id: 'te-curso', nombre: 'General', precio: 5000, cupo: 10, disponibles: 9 });
+      const eventoEnCurso = new Evento({
+        id: 'evt-en-curso',
+        nombre: 'Evento En Curso',
+        fecha: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        organizador,
+        tiposEntrada: [te],
+      });
+      await eventoRepo.save(eventoEnCurso);
+
+      const compra = new Compra({
+        id: 'compra-en-curso',
+        comprador,
+        evento: eventoEnCurso,
+        tipoEntrada: te,
+        cantidad: 1,
+        total: 5000,
+        estado: EstadoCompra.CONFIRMADA,
+      });
+      await compraRepo.save(compra);
+
+      await expect(service.cancelarCompra(compra.id, comprador)).rejects.toThrow();
+      expect((await service.obtenerPorId(compra.id)).estado).toBe(EstadoCompra.CONFIRMADA);
+
+      await service.marcarUtilizada(compra.id, organizador);
+      expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
+    });
+
+    test('impide acreditar una entrada que ya superó las 2 horas y la marca como VENCIDA', async () => {
+      const te = new TipoEntrada({ id: 'te-tarde', nombre: 'General', precio: 5000, cupo: 10, disponibles: 9 });
+      const eventoVencido = new Evento({
+        id: 'evt-tarde',
+        nombre: 'Evento Terminado',
+        fecha: new Date(Date.now() - (MARGEN_VENCIMIENTO_MS + 60 * 1000)).toISOString(),
+        organizador,
+        tiposEntrada: [te],
+      });
+      await eventoRepo.save(eventoVencido);
+
+      const compra = new Compra({
+        id: 'compra-tarde',
+        comprador,
+        evento: eventoVencido,
+        tipoEntrada: te,
+        cantidad: 1,
+        total: 5000,
+        estado: EstadoCompra.CONFIRMADA,
+      });
+      await compraRepo.save(compra);
+
+      await expect(service.marcarUtilizada(compra.id, organizador)).rejects.toThrow();
+      expect(compra.estado).toBe(EstadoCompra.VENCIDA);
     });
   });
 

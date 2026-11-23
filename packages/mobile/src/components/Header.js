@@ -56,7 +56,6 @@ export default function Header({ title = 'AI Ticket It', subtitle = 'Explorar', 
           accessibilityHint="Abre la lista de perfiles disponibles para la demo"
         >
           <Image source={{ uri: currentUser.avatar }} style={styles.avatarImage} />
-          <View style={styles.avatarIndicator} />
         </TouchableOpacity>
       </View>
 
@@ -185,17 +184,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.primaryContainer,
     overflow: 'hidden',
-  },
-  avatarIndicator: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.tertiary,
-    borderWidth: 1.5,
-    borderColor: COLORS.background,
   },
   avatarImage: {
     width: '100%',

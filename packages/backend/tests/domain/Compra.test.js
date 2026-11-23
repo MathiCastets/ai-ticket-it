@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { Compra, TRANSICIONES_PERMITIDAS } from '../../src/domain/entities/Compra.js';
+import { Compra, MARGEN_VENCIMIENTO_MS, TRANSICIONES_PERMITIDAS } from '../../src/domain/entities/Compra.js';
 import { Evento } from '../../src/domain/entities/Evento.js';
 import { TipoEntrada } from '../../src/domain/entities/TipoEntrada.js';
 import { Usuario } from '../../src/domain/entities/Usuario.js';
@@ -125,10 +125,12 @@ describe('Compra', () => {
       ]);
       expect(TRANSICIONES_PERMITIDAS[EstadoCompra.CONFIRMADA]).toEqual([
         EstadoCompra.UTILIZADA,
+        EstadoCompra.VENCIDA,
         EstadoCompra.REEMBOLSADA,
         EstadoCompra.CANCELADA,
       ]);
       expect(TRANSICIONES_PERMITIDAS[EstadoCompra.UTILIZADA]).toEqual([]);
+      expect(TRANSICIONES_PERMITIDAS[EstadoCompra.VENCIDA]).toEqual([]);
       expect(TRANSICIONES_PERMITIDAS[EstadoCompra.CANCELADA]).toEqual([]);
       expect(TRANSICIONES_PERMITIDAS[EstadoCompra.REEMBOLSADA]).toEqual([]);
     });
@@ -218,6 +220,23 @@ describe('Compra', () => {
       );
     });
 
+    test('rechaza transición de PENDIENTE a VENCIDA', () => {
+      const compra = crearCompra({ estado: EstadoCompra.PENDIENTE });
+      expect(() => compra.actualizarEstado(EstadoCompra.VENCIDA, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
+    });
+
+    test('lanza error al intentar cambiar desde estado terminal VENCIDA', () => {
+      const compra = crearCompra({ estado: EstadoCompra.VENCIDA });
+      expect(() => compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
+      expect(() => compra.actualizarEstado(EstadoCompra.UTILIZADA, 'Sistema')).toThrow(
+        EstadoCompraInvalidoError
+      );
+    });
+
     test('lanza error al intentar cambiar desde estado terminal REEMBOLSADA', () => {
       const compra = crearCompra({ estado: EstadoCompra.REEMBOLSADA });
       expect(() => compra.actualizarEstado(EstadoCompra.CONFIRMADA, 'Sistema')).toThrow(
@@ -237,6 +256,11 @@ describe('Compra', () => {
 
     test('no puede cancelarse si está UTILIZADA', () => {
       const compra = crearCompra({ estado: EstadoCompra.UTILIZADA });
+      expect(compra.puedeCancelarse().puede).toBe(false);
+    });
+
+    test('no puede cancelarse si está VENCIDA', () => {
+      const compra = crearCompra({ estado: EstadoCompra.VENCIDA });
       expect(compra.puedeCancelarse().puede).toBe(false);
     });
 
@@ -290,6 +314,79 @@ describe('Compra', () => {
     test('lanza ReglaNegocioError si no está CONFIRMADA', () => {
       const compra = crearCompra({ estado: EstadoCompra.CANCELADA });
       expect(() => compra.marcarComoUtilizada('Staff')).toThrow(ReglaNegocioError);
+    });
+
+    test('permite acreditar dentro del margen de tolerancia de 2 horas', () => {
+      const eventoEnCurso = crearEvento(-60 * 60 * 1000); // empezó hace 1h
+      const compra = crearCompra({
+        evento: eventoEnCurso,
+        tipoEntrada: eventoEnCurso.tiposEntrada[0],
+        estado: EstadoCompra.CONFIRMADA,
+      });
+      compra.marcarComoUtilizada('Staff');
+      expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
+    });
+
+    test('rechaza acreditar si superó el margen de vencimiento de 2 horas', () => {
+      const eventoTerminado = crearEvento(-(MARGEN_VENCIMIENTO_MS + 60 * 1000));
+      const compra = crearCompra({
+        evento: eventoTerminado,
+        tipoEntrada: eventoTerminado.tiposEntrada[0],
+        estado: EstadoCompra.CONFIRMADA,
+      });
+      expect(() => compra.marcarComoUtilizada('Staff')).toThrow(ReglaNegocioError);
+    });
+  });
+
+  describe('aplicarVencimiento', () => {
+    test('no modifica estado antes de cumplirse las 2 horas posteriores al evento', () => {
+      const eventoReciente = crearEvento(-(MARGEN_VENCIMIENTO_MS - 60 * 1000));
+      const compra = crearCompra({
+        evento: eventoReciente,
+        tipoEntrada: eventoReciente.tiposEntrada[0],
+        estado: EstadoCompra.CONFIRMADA,
+      });
+      expect(compra.aplicarVencimiento()).toBe(false);
+      expect(compra.estado).toBe(EstadoCompra.CONFIRMADA);
+    });
+
+    test('pasa CONFIRMADA a VENCIDA al cumplirse el margen de 2 horas', () => {
+      const eventoVencido = crearEvento(-MARGEN_VENCIMIENTO_MS);
+      const compra = crearCompra({
+        evento: eventoVencido,
+        tipoEntrada: eventoVencido.tiposEntrada[0],
+        estado: EstadoCompra.CONFIRMADA,
+      });
+      expect(compra.aplicarVencimiento()).toBe(true);
+      expect(compra.estado).toBe(EstadoCompra.VENCIDA);
+    });
+
+    test('pasa PENDIENTE a CANCELADA al cumplirse el margen de 2 horas', () => {
+      const eventoVencido = crearEvento(-MARGEN_VENCIMIENTO_MS);
+      const compra = crearCompra({
+        evento: eventoVencido,
+        tipoEntrada: eventoVencido.tiposEntrada[0],
+        estado: EstadoCompra.PENDIENTE,
+      });
+      expect(compra.aplicarVencimiento()).toBe(true);
+      expect(compra.estado).toBe(EstadoCompra.CANCELADA);
+    });
+
+    test('no modifica compras ya UTILIZADA, CANCELADA o REEMBOLSADA', () => {
+      const eventoVencido = crearEvento(-MARGEN_VENCIMIENTO_MS);
+      for (const estado of [
+        EstadoCompra.UTILIZADA,
+        EstadoCompra.CANCELADA,
+        EstadoCompra.REEMBOLSADA,
+      ]) {
+        const compra = crearCompra({
+          evento: eventoVencido,
+          tipoEntrada: eventoVencido.tiposEntrada[0],
+          estado,
+        });
+        expect(compra.aplicarVencimiento()).toBe(false);
+        expect(compra.estado).toBe(estado);
+      }
     });
   });
 
@@ -362,6 +459,38 @@ describe('Compra', () => {
         tipoEntrada: eventoTerminado.tiposEntrada[0],
       });
       expect(compra.diasFaltantes()).toBe(0);
+    });
+
+    test('retorna 0 si el evento es el mismo día calendario aunque falten horas', () => {
+      const ahora = new Date(2026, 10, 23, 9, 0, 0);
+      const eventoMismoDia = new Evento({
+        id: 'evt-hoy',
+        nombre: 'Evento Hoy',
+        fecha: new Date(2026, 10, 23, 22, 0, 0).toISOString(),
+        organizador: new Usuario({ id: 'org-1', nombre: 'Org', rol: 'organizador' }),
+        tiposEntrada: [new TipoEntrada({ id: 'te-1', nombre: 'General', precio: 1000, cupo: 10 })],
+      });
+      const compra = crearCompra({
+        evento: eventoMismoDia,
+        tipoEntrada: eventoMismoDia.tiposEntrada[0],
+      });
+      expect(compra.diasFaltantes(ahora)).toBe(0);
+    });
+
+    test('retorna 1 si el evento es al día siguiente aunque falten menos de 24 horas', () => {
+      const ahora = new Date(2026, 10, 22, 23, 0, 0);
+      const eventoManiana = new Evento({
+        id: 'evt-maniana',
+        nombre: 'Evento Mañana',
+        fecha: new Date(2026, 10, 23, 10, 0, 0).toISOString(),
+        organizador: new Usuario({ id: 'org-1', nombre: 'Org', rol: 'organizador' }),
+        tiposEntrada: [new TipoEntrada({ id: 'te-1', nombre: 'General', precio: 1000, cupo: 10 })],
+      });
+      const compra = crearCompra({
+        evento: eventoManiana,
+        tipoEntrada: eventoManiana.tiposEntrada[0],
+      });
+      expect(compra.diasFaltantes(ahora)).toBe(1);
     });
   });
 

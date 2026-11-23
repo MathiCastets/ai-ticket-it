@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
+import { formatearFechaEvento } from '../../utils/normalizers';
 import EstadoCompraBadge from '../EstadoCompraBadge';
 
 export default function TicketCard({
@@ -16,6 +17,15 @@ export default function TicketCard({
   const isConfirmada = compra.estado === 'CONFIRMADA';
   const isUtilizada = compra.estado === 'UTILIZADA';
   const isPendiente = compra.estado === 'PENDIENTE';
+  const isVencida = compra.estado === 'VENCIDA';
+
+  const fechaEventoMs = Date.parse(compra.eventoFecha || compra.evento?.fecha || '');
+  const eventoYaComenzo = Number.isFinite(fechaEventoMs) && fechaEventoMs < Date.now();
+
+  const fechaEventoTexto =
+    compra.eventoFechaTexto ||
+    compra.evento?.fechaTexto ||
+    formatearFechaEvento(compra.eventoFecha || compra.evento?.fecha);
 
   const organizadorNombre =
     compra.organizadorNombre ||
@@ -25,12 +35,12 @@ export default function TicketCard({
     'Organizador';
 
   return (
-    <View style={styles.ticketCard}>
+    <View style={[styles.ticketCard, isVencida && styles.ticketCardVencida]}>
       {/* Card Media Header */}
       <View style={styles.cardImageContainer}>
         <Image
           source={compra.imagen || compra.evento?.imagen ? { uri: compra.imagen || compra.evento?.imagen } : null}
-          style={styles.cardImage}
+          style={[styles.cardImage, isVencida && styles.cardImageVencida]}
         />
         <LinearGradient
           colors={['rgba(15, 8, 29, 0.65)', 'rgba(15, 8, 29, 0)']}
@@ -56,14 +66,30 @@ export default function TicketCard({
               : '¡El evento es hoy!'}
           </Text>
         </View>
+      ) : isVencida ? (
+        <View style={styles.expiredBar}>
+          <Ionicons name="time-outline" size={14} color={COLORS.statusNeutral} />
+          <Text style={styles.expiredText}>Evento finalizado • Entrada no utilizada</Text>
+        </View>
       ) : null}
 
       {/* Card Content */}
       <View style={styles.cardBody}>
-        <Text style={styles.eventTitle}>{compra.eventoNombre || compra.evento?.nombre}</Text>
-        <Text style={styles.ticketInfo}>
+        <Text style={[styles.eventTitle, isVencida && styles.eventTitleVencida]}>
+          {compra.eventoNombre || compra.evento?.nombre}
+        </Text>
+        <Text style={[styles.ticketInfo, isVencida && styles.ticketInfoVencida]}>
           {compra.cantidad}x {compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} • Total: ${compra.total?.toLocaleString('es-AR')}
         </Text>
+
+        {fechaEventoTexto ? (
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={13} color={COLORS.textSecondary} />
+            <Text style={styles.detailText} numberOfLines={1}>
+              {fechaEventoTexto}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.detailRow}>
           <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
@@ -104,7 +130,7 @@ export default function TicketCard({
           </TouchableOpacity>
 
           {/* Cancel / Refund Button */}
-          {(isConfirmada || isPendiente) && (
+          {(isConfirmada || isPendiente) && !eventoYaComenzo && (
             <TouchableOpacity
               style={styles.actionBtnCancel}
               onPress={onRequestCancel}
@@ -157,6 +183,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
+  ticketCardVencida: {
+    backgroundColor: COLORS.surfaceContainer,
+    borderColor: 'rgba(154, 147, 171, 0.22)',
+  },
   cardImageContainer: {
     position: 'relative',
     width: '100%',
@@ -165,6 +195,9 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: '100%',
+  },
+  cardImageVencida: {
+    opacity: 0.55,
   },
   cardImageScrim: {
     position: 'absolute',
@@ -221,6 +254,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.badgeCyanGlow,
   },
+  expiredBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 30,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(154, 147, 171, 0.12)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(154, 147, 171, 0.18)',
+  },
+  expiredText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.statusNeutral,
+  },
   cardBody: {
     padding: 14,
   },
@@ -230,12 +278,18 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     letterSpacing: -0.3,
   },
+  eventTitleVencida: {
+    color: COLORS.textSecondary,
+  },
   ticketInfo: {
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.tertiary,
     marginTop: 2,
     marginBottom: 6,
+  },
+  ticketInfoVencida: {
+    color: COLORS.statusNeutral,
   },
   detailRow: {
     flexDirection: 'row',

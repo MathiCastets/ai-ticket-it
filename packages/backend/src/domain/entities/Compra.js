@@ -3,6 +3,7 @@ import { CambioEstadoCompra } from './CambioEstadoCompra.js';
 import { EstadoCompraInvalidoError, ReglaNegocioError } from '../errors/index.js';
 
 const MARGEN_CIERRE_CONVERSACION_MS = 48 * 60 * 60 * 1000;
+export const MARGEN_VENCIMIENTO_MS = 2 * 60 * 60 * 1000;
 
 export const TRANSICIONES_PERMITIDAS = Object.freeze({
   [EstadoCompra.PENDIENTE]: Object.freeze([
@@ -11,10 +12,12 @@ export const TRANSICIONES_PERMITIDAS = Object.freeze({
   ]),
   [EstadoCompra.CONFIRMADA]: Object.freeze([
     EstadoCompra.UTILIZADA,
+    EstadoCompra.VENCIDA,
     EstadoCompra.REEMBOLSADA,
     EstadoCompra.CANCELADA,
   ]),
   [EstadoCompra.UTILIZADA]: Object.freeze([]),
+  [EstadoCompra.VENCIDA]: Object.freeze([]),
   [EstadoCompra.CANCELADA]: Object.freeze([]),
   [EstadoCompra.REEMBOLSADA]: Object.freeze([]),
 });
@@ -98,6 +101,9 @@ export class Compra {
     if (this.estado === EstadoCompra.UTILIZADA) {
       return { puede: false, razon: 'No se puede cancelar una entrada que ya ha sido utilizada.' };
     }
+    if (this.estado === EstadoCompra.VENCIDA) {
+      return { puede: false, razon: 'No se puede cancelar una entrada vencida.' };
+    }
     if (this.estado === EstadoCompra.CANCELADA || this.estado === EstadoCompra.REEMBOLSADA) {
       return { puede: false, razon: 'La compra ya se encuentra cancelada o reembolsada.' };
     }
@@ -122,11 +128,51 @@ export class Compra {
     this.actualizarEstado(estadoDestino, quien, 'Cancelación solicitada por comprador');
   }
 
-  marcarComoUtilizada(quien) {
+  superoMargenVencimiento(ahora = Date.now()) {
+    const fechaEvento = new Date(this.evento.fecha).getTime();
+    const ahoraMs = ahora instanceof Date ? ahora.getTime() : Number(ahora);
+    return (
+      Number.isFinite(fechaEvento) &&
+      Number.isFinite(ahoraMs) &&
+      ahoraMs >= fechaEvento + MARGEN_VENCIMIENTO_MS
+    );
+  }
+
+  aplicarVencimiento(ahora = Date.now()) {
+    if (!this.superoMargenVencimiento(ahora)) return false;
+
+    if (this.estado === EstadoCompra.CONFIRMADA) {
+      this.actualizarEstado(
+        EstadoCompra.VENCIDA,
+        'Sistema',
+        'Entrada vencida por finalización del evento'
+      );
+      return true;
+    }
+
+    if (this.estado === EstadoCompra.PENDIENTE) {
+      this.actualizarEstado(
+        EstadoCompra.CANCELADA,
+        'Sistema',
+        'Compra pendiente cancelada automáticamente por finalización del evento'
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  marcarComoUtilizada(quien, ahora = Date.now()) {
     if (this.estado !== EstadoCompra.CONFIRMADA) {
       throw new ReglaNegocioError(
         `Solo se pueden acreditar entradas en estado CONFIRMADA (estado actual: ${this.estado})`,
         'ACREDITACION_INVALIDA'
+      );
+    }
+    if (this.superoMargenVencimiento(ahora)) {
+      throw new ReglaNegocioError(
+        'No se puede acreditar una entrada cuyo evento ya finalizó.',
+        'ENTRADA_VENCIDA'
       );
     }
     this.actualizarEstado(EstadoCompra.UTILIZADA, quien, 'Acreditación en puerta exitosa');
@@ -168,9 +214,22 @@ export class Compra {
     return this.esComprador(actor.id) || this.esOrganizador(actor.id);
   }
 
-  diasFaltantes() {
-    const diffTime = this.evento.fecha.getTime() - Date.now();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  diasFaltantes(ahora = Date.now()) {
+    const fechaEvento = new Date(this.evento.fecha);
+    const fechaAhora = new Date(ahora);
+    if (Number.isNaN(fechaEvento.getTime()) || Number.isNaN(fechaAhora.getTime())) return 0;
+
+    const diaEvento = Date.UTC(
+      fechaEvento.getFullYear(),
+      fechaEvento.getMonth(),
+      fechaEvento.getDate()
+    );
+    const diaAhora = Date.UTC(
+      fechaAhora.getFullYear(),
+      fechaAhora.getMonth(),
+      fechaAhora.getDate()
+    );
+    const diffDays = Math.round((diaEvento - diaAhora) / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 0;
   }
 

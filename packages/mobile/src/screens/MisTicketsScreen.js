@@ -67,6 +67,7 @@ export default function MisTicketsScreen({ navigation }) {
       if (activeTab === 'confirmadas' && compra.estado !== 'CONFIRMADA') return false;
       if (activeTab === 'pendientes' && compra.estado !== 'PENDIENTE') return false;
       if (activeTab === 'utilizadas' && compra.estado !== 'UTILIZADA') return false;
+      if (activeTab === 'vencidas' && compra.estado !== 'VENCIDA') return false;
       if (activeTab === 'reembolsadas' && compra.estado !== 'REEMBOLSADA') return false;
       if (activeTab === 'canceladas' && compra.estado !== 'CANCELADA') return false;
 
@@ -167,6 +168,11 @@ export default function MisTicketsScreen({ navigation }) {
               count: comprasDelUsuario.filter((c) => c.estado === 'UTILIZADA').length,
             },
             {
+              id: 'vencidas',
+              label: 'Vencidas',
+              count: comprasDelUsuario.filter((c) => c.estado === 'VENCIDA').length,
+            },
+            {
               id: 'reembolsadas',
               label: 'Reembolsadas',
               count: comprasDelUsuario.filter((c) => c.estado === 'REEMBOLSADA').length,
@@ -212,9 +218,13 @@ export default function MisTicketsScreen({ navigation }) {
             </View>
           ) : (
             filteredCompras.map((compra) => {
-              const dias = Number.isFinite(compra.diasFaltantes)
-                ? compra.diasFaltantes
-                : getDiasRestantes(compra.eventoFecha);
+              const tieneFechaEvento =
+                Boolean(compra.eventoFecha) && !Number.isNaN(Date.parse(compra.eventoFecha));
+              const dias = tieneFechaEvento
+                ? getDiasRestantes(compra.eventoFecha)
+                : Number.isFinite(compra.diasFaltantes)
+                  ? compra.diasFaltantes
+                  : 0;
 
               return (
                 <TicketCard
