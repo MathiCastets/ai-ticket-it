@@ -51,7 +51,7 @@ const normalizarTexto = (texto) =>
     .toLocaleLowerCase();
 
 export default function MensajesInboxScreen({ navigation }) {
-  const { compras, comprasCargando, currentUser, refrescarCompras } = useApp();
+  const { compras, comprasCargando, currentUser, refrescarCompras, usuarios } = useApp();
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState('todos');
   useFocusEffect(
@@ -283,13 +283,24 @@ export default function MensajesInboxScreen({ navigation }) {
             const compraReferencia = grupo.compras[0].compra;
             const variasCompras = grupo.compras.length > 1;
             const conversacionCerrada = grupo.compras[0].cerrada;
-            const imagenEvento = compraReferencia.imagen || compraReferencia.evento?.imagen;
+            const esOrganizador = currentUser.rol === 'organizador';
+            const avatarComprador =
+              compraReferencia.comprador?.avatar ||
+              usuarios?.find((u) => u.id === compraReferencia.compradorId)?.avatar;
+            const imagenAvatar = esOrganizador
+              ? avatarComprador
+              : compraReferencia.imagen || compraReferencia.evento?.imagen;
+            const nombreEvento =
+              compraReferencia.eventoNombre || compraReferencia.evento?.nombre || 'Evento';
+            const nombreContraparte = obtenerNombreContraparte(compraReferencia);
+            const tituloPrincipal = esOrganizador ? nombreContraparte : nombreEvento;
+            const subtituloEvento = esOrganizador ? nombreEvento : nombreContraparte;
             const encabezado = (
               <>
                 <View style={styles.avatarBox}>
-                  {imagenEvento ? (
+                  {imagenAvatar ? (
                     <Image
-                      source={{ uri: imagenEvento }}
+                      source={{ uri: imagenAvatar }}
                       style={[
                         styles.avatarImage,
                         !variasCompras && conversacionCerrada && styles.avatarImageClosed,
@@ -298,7 +309,7 @@ export default function MensajesInboxScreen({ navigation }) {
                     />
                   ) : (
                     <Ionicons
-                      name={currentUser.rol === 'organizador' ? 'person' : 'business'}
+                      name={esOrganizador ? 'person' : 'business'}
                       size={20}
                       color={COLORS.badgeCyanGlow}
                     />
@@ -307,11 +318,11 @@ export default function MensajesInboxScreen({ navigation }) {
 
                 <View style={styles.chatCardContent}>
                   <Text style={styles.chatTitle} numberOfLines={1}>
-                    {obtenerNombreContraparte(compraReferencia)}
+                    {tituloPrincipal}
                   </Text>
 
-                  <Text style={styles.eventRef}>
-                    {compraReferencia.eventoNombre || compraReferencia.evento?.nombre}
+                  <Text style={styles.eventRef} numberOfLines={1}>
+                    {subtituloEvento}
                   </Text>
 
                   {!variasCompras ? (
