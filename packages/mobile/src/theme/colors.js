@@ -26,6 +26,7 @@ export const COLORS = {
   statusSuccess: '#00F5A0',
   statusWarning: '#FFB703',
   statusDanger: '#FF3366',
+  statusNeutral: '#9A93AB',
 
   // Text
   textPrimary: '#FFFFFF',

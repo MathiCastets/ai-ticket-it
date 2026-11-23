@@ -97,7 +97,7 @@ export function createSeedData() {
   const teUnderVip  = new TipoEntrada({ id: 'te-under-vip',      nombre: 'VIP Balcón',                descripcion: 'Vista panorámica y barra exclusiva',                     precio: 16000, cupo: 60,  disponibles: 60  });
 
   const teTeatroPlatea  = new TipoEntrada({ id: 'te-teatro-platea',  nombre: 'Platea Baja', descripcion: 'Fila 1 a 10 central',                  precio: 12000, cupo: 180, disponibles: 178 });
-  const teTeatroPullman = new TipoEntrada({ id: 'te-teatro-pullman', nombre: 'Pullman',     descripcion: 'Primer piso con excelente visibilidad', precio: 9500,  cupo: 120, disponibles: 120 });
+  const teTeatroPullman = new TipoEntrada({ id: 'te-teatro-pullman', nombre: 'Pullman',     descripcion: 'Primer piso con excelente visibilidad', precio: 9500,  cupo: 120, disponibles: 119 });
 
   const teConfPass  = new TipoEntrada({ id: 'te-conf-pass', nombre: 'Pase General', descripcion: 'Acceso a todas las charlas y coffee breaks', precio: 6000, cupo: 400, disponibles: 400 });
 
@@ -285,7 +285,21 @@ export function createSeedData() {
     mensajes: [],
   });
 
-  const compras = [compra1, compra2, compra3, compra4];
+  const compra5 = new Compra({
+    id: 'compra-5',
+    ordenCodigo: '#TK-71405',
+    comprador: compradorMathi,
+    evento: evento3,
+    tipoEntrada: teTeatroPullman,
+    cantidad: 1,
+    total: teTeatroPullman.precio,
+    estado: EstadoCompra.VENCIDA,
+    fechaHora: new Date(fechaEvento3.getTime() - 72 * 60 * 60 * 1000),
+    reseniaRealizada: false,
+    mensajes: [],
+  });
+
+  const compras = [compra1, compra2, compra3, compra4, compra5];
 
   return { usuarios, categorias, eventos, compras };
 }

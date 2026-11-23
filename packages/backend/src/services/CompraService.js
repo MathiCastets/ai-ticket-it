@@ -48,7 +48,7 @@ export class CompraService {
     throw errorOriginal;
   }
 
-  async obtenerPorId(id) {
+  async #buscarPorId(id) {
     try {
       return await this.compraRepository.findById(id);
     } catch (error) {
@@ -59,22 +59,96 @@ export class CompraService {
     }
   }
 
+  #requiereVencimiento(compra) {
+    return (
+      (compra.estado === EstadoCompra.CONFIRMADA || compra.estado === EstadoCompra.PENDIENTE) &&
+      typeof compra.superoMargenVencimiento === 'function' &&
+      compra.superoMargenVencimiento()
+    );
+  }
+
+  async #sincronizarVencimientoCompra(compra) {
+    if (!this.#requiereVencimiento(compra)) {
+      return compra;
+    }
+
+    const eraPendiente = compra.estado === EstadoCompra.PENDIENTE;
+    const tipoEntrada = eraPendiente
+      ? compra.evento.obtenerTipoEntrada(compra.tipoEntrada.id)
+      : null;
+    const disponiblesAntes = tipoEntrada ? tipoEntrada.disponibles : null;
+    const estadoAntes = compra.estado;
+    const historialAntes = [...compra.historialCambios];
+
+    try {
+      if (!compra.aplicarVencimiento()) {
+        return compra;
+      }
+
+      if (eraPendiente && tipoEntrada) {
+        tipoEntrada.restituirCupo(compra.cantidad);
+        await this.eventoRepository.save(compra.evento);
+      }
+      await this.compraRepository.save(compra);
+      return compra;
+    } catch (error) {
+      if (eraPendiente && tipoEntrada && disponiblesAntes !== null) {
+        tipoEntrada.disponibles = disponiblesAntes;
+      }
+      compra.estado = estadoAntes;
+      compra.historialCambios = historialAntes;
+      const rollbacks = [() => this.compraRepository.save(compra)];
+      if (eraPendiente && tipoEntrada) {
+        rollbacks.unshift(() => this.eventoRepository.save(compra.evento));
+      }
+      await this.#revertirMutacion(
+        error,
+        rollbacks,
+        'No se pudo actualizar el vencimiento de la compra de forma consistente'
+      );
+    }
+  }
+
+  async #sincronizarVencimientos(compras) {
+    if (!compras.some((compra) => this.#requiereVencimiento(compra))) {
+      return compras;
+    }
+
+    await this.#serializarMutacion(async () => {
+      for (const compra of compras) {
+        await this.#sincronizarVencimientoCompra(compra);
+      }
+    });
+    return compras;
+  }
+
+  async obtenerPorId(id) {
+    const compra = await this.#buscarPorId(id);
+    await this.#sincronizarVencimientos([compra]);
+    return compra;
+  }
+
   async listarPorComprador(compradorId) {
-    return await this.compraRepository.findByCompradorId(compradorId);
+    const compras = await this.compraRepository.findByCompradorId(compradorId);
+    return this.#sincronizarVencimientos(compras);
   }
 
   async listarPorEvento(eventoId, organizadorId = null) {
     const compras = await this.compraRepository.findByEventoId(eventoId);
-    if (!organizadorId) return compras;
-    return compras.filter((c) => c.esOrganizador(organizadorId));
+    const filtradas = organizadorId
+      ? compras.filter((c) => c.esOrganizador(organizadorId))
+      : compras;
+    return this.#sincronizarVencimientos(filtradas);
   }
 
   async listarPorOrganizador(organizadorId) {
-    return await this.compraRepository.findByOrganizadorId(organizadorId);
+    const compras = await this.compraRepository.findByOrganizadorId(organizadorId);
+    return this.#sincronizarVencimientos(compras);
   }
 
   async listarTodas() {
-    return await this.compraRepository.findAll();
+    const compras = await this.compraRepository.findAll();
+    return this.#sincronizarVencimientos(compras);
   }
 
   async realizarCompra({ compradorId, eventoId, tipoEntradaId, cantidad }) {
@@ -162,7 +236,8 @@ export class CompraService {
     }
 
     return this.#serializarMutacion(async () => {
-      const compra = await this.obtenerPorId(compraId);
+      const compra = await this.#buscarPorId(compraId);
+      await this.#sincronizarVencimientoCompra(compra);
 
       if (actorObj && actorObj.id && !compra.puedeSerVistaPor(actorObj)) {
         throw new ForbiddenError(
@@ -223,7 +298,8 @@ export class CompraService {
     }
 
     return this.#serializarMutacion(async () => {
-      const compra = await this.obtenerPorId(compraId);
+      const compra = await this.#buscarPorId(compraId);
+      await this.#sincronizarVencimientoCompra(compra);
 
       if (actorObj && actorObj.id && !compra.esOrganizador(actorObj.id)) {
         throw new ForbiddenError(
@@ -251,7 +327,8 @@ export class CompraService {
 
   async calificarCompra(compraId, { puntuacion, comentario }, actor = null) {
     return this.#serializarMutacion(async () => {
-      const compra = await this.obtenerPorId(compraId);
+      const compra = await this.#buscarPorId(compraId);
+      await this.#sincronizarVencimientoCompra(compra);
 
       if (actor && typeof actor === 'object' && actor.id && !compra.esComprador(actor.id)) {
         throw new ForbiddenError(

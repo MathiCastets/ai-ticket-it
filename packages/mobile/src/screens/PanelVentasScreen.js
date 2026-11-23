@@ -57,7 +57,7 @@ export default function PanelVentasScreen({ route, navigation }) {
     const limite24Horas = ahora - 24 * 60 * 60 * 1000;
     const ingresosUltimas24Horas = comprasDelEvento
       .filter((compra) => {
-        if (!['CONFIRMADA', 'UTILIZADA'].includes(compra.estado)) return false;
+        if (!['CONFIRMADA', 'UTILIZADA', 'VENCIDA'].includes(compra.estado)) return false;
         const fechaCompra = Date.parse(compra.fechaHora);
         return Number.isFinite(fechaCompra) && fechaCompra >= limite24Horas && fechaCompra <= ahora;
       })

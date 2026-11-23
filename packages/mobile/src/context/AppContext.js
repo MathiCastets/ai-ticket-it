@@ -400,8 +400,14 @@ export const AppProvider = ({ children }) => {
   const getDiasRestantes = (fechaString) => {
     const fechaEvento = new Date(fechaString);
     if (Number.isNaN(fechaEvento.getTime())) return 0;
-    const diffTime = fechaEvento.getTime() - Date.now();
-    return Math.max(Math.ceil(diffTime / (1000 * 60 * 60 * 24)), 0);
+    const hoy = new Date();
+    const diaEvento = Date.UTC(
+      fechaEvento.getFullYear(),
+      fechaEvento.getMonth(),
+      fechaEvento.getDate()
+    );
+    const diaHoy = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    return Math.max(Math.round((diaEvento - diaHoy) / (1000 * 60 * 60 * 24)), 0);
   };
 
   const comprarEntrada = async ({ eventoId, tipoEntradaId, cantidad }) => {

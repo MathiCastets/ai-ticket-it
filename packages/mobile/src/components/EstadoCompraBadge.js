@@ -10,6 +10,8 @@ export const getEstadoCompraColor = (estado) => {
       return COLORS.secondary;
     case 'PENDIENTE':
       return COLORS.statusWarning;
+    case 'VENCIDA':
+      return COLORS.statusNeutral;
     default:
       return COLORS.statusDanger;
   }
