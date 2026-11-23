@@ -3,6 +3,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   ScrollView,
   TextInput,
   TouchableOpacity,
@@ -49,6 +50,7 @@ export default function ChatScreen({ route, navigation }) {
     marcarMensajesLeidos,
     refrescarCompras,
     currentUser,
+    usuarios,
   } = useApp();
   const { notify } = useNotification();
   const insets = useSafeAreaInsets();
@@ -187,6 +189,18 @@ export default function ChatScreen({ route, navigation }) {
         ? compra.evento.organizador.nombre
         : compra.evento?.organizador) ||
       'Organizador';
+  const avatarComprador =
+    compra.comprador?.avatar ||
+    usuarios?.find((u) => u.id === compra.compradorId)?.avatar;
+  const imagenAvatar = esOrganizador
+    ? avatarComprador
+    : compra.imagen || compra.evento?.imagen;
+  const nombreEvento = compra.eventoNombre || compra.evento?.nombre || 'Evento';
+  const detalleEntrada = `${compra.tipoEntradaNombre || compra.tipoEntrada?.nombre || 'Entrada'} x${compra.cantidad}`;
+  const tituloBanner = esOrganizador ? nombreContraparte : nombreEvento;
+  const subtituloBanner = esOrganizador
+    ? `${nombreEvento} (${detalleEntrada})`
+    : `${nombreContraparte} · ${detalleEntrada}`;
 
   return (
     <KeyboardAvoidingView
@@ -204,19 +218,24 @@ export default function ChatScreen({ route, navigation }) {
       <View style={styles.contextBanner}>
         <View style={styles.contextLeft}>
           <View style={styles.orgAvatar}>
-            <Ionicons name={esOrganizador ? 'person' : 'business'} size={18} color={COLORS.badgeCyanGlow} />
+            {imagenAvatar ? (
+              <Image
+                source={{ uri: imagenAvatar }}
+                style={styles.orgAvatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Ionicons name={esOrganizador ? 'person' : 'business'} size={18} color={COLORS.badgeCyanGlow} />
+            )}
           </View>
           <View style={styles.contextDetails}>
             <View style={styles.orgNameRow}>
               <Text style={styles.orgName} numberOfLines={1}>
-                {nombreContraparte}
+                {tituloBanner}
               </Text>
-              {!esOrganizador ? (
-                <Ionicons name="checkmark-circle" size={13} color={COLORS.statusSuccess} />
-              ) : null}
             </View>
             <Text style={styles.contextSub} numberOfLines={1} ellipsizeMode="tail">
-              {compra.eventoNombre || compra.evento?.nombre} ({compra.tipoEntradaNombre || compra.tipoEntrada?.nombre} x{compra.cantidad})
+              {subtituloBanner}
             </Text>
           </View>
         </View>
@@ -309,7 +328,7 @@ export default function ChatScreen({ route, navigation }) {
               Platform.OS === 'web' && { scrollbarWidth: 'none' },
               { height: chatInputHeight },
             ]}
-            placeholder={`Escribe como ${currentUser.nombre}...`}
+            placeholder="Escribe un mensaje..."
             placeholderTextColor={COLORS.textMuted}
             accessibilityLabel="Escribir mensaje"
             value={nuevoTexto}
@@ -409,8 +428,15 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: COLORS.surfaceContainer,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  orgAvatarImage: {
+    width: '100%',
+    height: '100%',
   },
   orgNameRow: {
     flexDirection: 'row',
